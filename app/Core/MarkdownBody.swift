@@ -186,7 +186,7 @@ enum MarkdownBody {
     }
 
     // MARK: content, words
-    struct ContentLine { var text: String; var isCode: Bool; var checked: Bool?; var inCarried: Bool }
+    struct ContentLine { var text: String; var isCode: Bool; var checked: Bool?; var inCarried: Bool; var listItem = false }
 
     /// True for "Carried over from ..." (what CarryOver inserts), at any level, however the heading is decorated.
     static func isCarriedHeading(_ title: String) -> Bool {
@@ -196,10 +196,11 @@ enum MarkdownBody {
 
     /// Lines that carry writing: not blank, not headings, not fence lines; list/quote/task markers stripped.
     /// `inCarried` marks lines inside a "Carried over from" block (see the header); `checked` is non-nil for task lines.
-    static func contentLines(_ body: String) -> [ContentLine] {
+    static func contentLines(_ body: String) -> [ContentLine] { contentLines(of: scan(body)) }
+    static func contentLines(of lines: [ScannedLine]) -> [ContentLine] {
         var out = [ContentLine]()
         var carried: Int?   // level of the open "Carried over from" heading
-        for l in scan(body) {
+        for l in lines {
             switch l.kind {
             case .blank, .fence: continue
             case .heading(let level, let title):
@@ -209,15 +210,20 @@ enum MarkdownBody {
                 if !l.text.dlTrimmed.isEmpty { out.append(ContentLine(text: l.text, isCode: true, checked: nil, inCarried: carried != nil)) }
             case .text:
                 let m = stripMarkers(l.text)
-                if !m.text.isEmpty { out.append(ContentLine(text: m.text, isCode: false, checked: m.checked, inCarried: carried != nil)) }
+                if !m.text.isEmpty {
+                    out.append(ContentLine(text: m.text, isCode: false, checked: m.checked, inCarried: carried != nil, listItem: listItemIndent(l.text) != nil))
+                }
             }
         }
         return out
     }
-    static func words(in body: String) -> Int {
-        contentLines(body).reduce(0) { n, l in
+    static func words(in body: String) -> Int { wordCount(contentLines(body)) }
+    /// The one counting formula. `dropJotTimes` skips a leading H:mm / HH:mm token on list items (a jot's time stamp is not a word).
+    static func wordCount(_ lines: [ContentLine], dropJotTimes: Bool = false) -> Int {
+        lines.reduce(0) { n, l in
             if l.inCarried && l.checked != nil { return n }   // carried-over task lines never count
-            return n + countTokens(l.isCode ? l.text : removeNoise(l.text))
+            if l.isCode { return n + countTokens(l.text) }
+            return n + countTokens(removeNoise(dropJotTimes && l.listItem ? dropLeadingTime(l.text) : l.text))
         }
     }
     static func hasContent(_ body: String) -> Bool { !contentLines(body).isEmpty }

@@ -5,6 +5,7 @@
 //       documents = [dayKey: DayDocument] (LogStore.documents(from:to:)); states = LogStore.fileStates(minWords:)
 //   WeeklyReview.shift(_ date, weeks:, calendar:) -> Date          prev/next week (UI disables future)
 //   WeeklyReview.markdown(for:, grouping: .day | .section, calendar:) -> String
+//   WeeklyReview.itemMarkdown(label:, text:) -> String        one "- **Mon 5 Oct**: text" entry of a by-section list (also used by Review/ReviewFormats)
 //   WeekSummary: weekStart, weekEnd, days:[WeekDay{day,status,doc}], loggedCount, workdayCount (scheduled days not in the
 //                future), skippedCount, missingDays, sections:[WeekSection{title,isOther,items:[WeekItem{day,text}]}],
 //                section(titled:) -> WeekSection?
@@ -117,17 +118,21 @@ enum WeeklyReview {
         case .section:
             for s in w.sections {
                 out += "## \(s.title)\n\n"
-                for it in s.items {
-                    let lines = it.text.components(separatedBy: "\n")
-                    let first = lines[0]
-                    let plain = MarkdownBody.stripMarkers(first).text == first.dlTrimmed && !first.hasPrefix("```")
-                        && !(lines.count > 1 && first.hasPrefix("**") && first.hasSuffix("**"))
-                    out += "- **\(short(it.day))**" + (plain ? ": \(first)\n" : "\n")
-                    for l in (plain ? Array(lines.dropFirst()) : lines) { out += l.isEmpty ? "\n" : "  \(l)\n" }
-                }
+                for it in s.items { out += itemMarkdown(label: short(it.day), text: it.text) }
                 out += "\n"
             }
         }
         return out.dlTrimmed + "\n"
+    }
+
+    /// One entry of a "by section" list: "- **Mon 5 Oct**: first line", then the other lines indented (also used by the Review screen's copies).
+    static func itemMarkdown(label: String, text: String) -> String {
+        let lines = text.components(separatedBy: "\n")
+        let first = lines[0]
+        let plain = MarkdownBody.stripMarkers(first).text == first.dlTrimmed && !first.hasPrefix("```")
+            && !(lines.count > 1 && first.hasPrefix("**") && first.hasSuffix("**"))
+        var out = "- **\(label)**" + (plain ? ": \(first)\n" : "\n")
+        for l in (plain ? Array(lines.dropFirst()) : lines) { out += l.isEmpty ? "\n" : "  \(l)\n" }
+        return out
     }
 }

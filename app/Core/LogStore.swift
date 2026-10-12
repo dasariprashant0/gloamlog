@@ -17,7 +17,8 @@
 //   skipRange(from:to:reason:weekdays:calendar:) -> [String]   one file per scheduled day; days with writing are left alone
 //   unskip(day) -> Bool               deletes the marker only
 //   fileStates(minWords:) -> [String: DayStatus]   logged/partial/skipped per file; days with 0 words are omitted
-//                                     (input for Status/Streak/Heatmap/WeeklyReview)
+//                                     (input for Status/Streak/Heatmap/WeeklyReview). Follows LogStore.jotsRules: jots are not words
+//                                     (unless countTowardLogged), and a day with only jots is .partial, so it is in the map.
 //   documents(from:to:) -> [String: DayDocument] / allDocuments()
 //   search(query, heading:) -> [SearchHit]         see Search.swift
 //   folderSummary() -> FolderSummary  counts for Settings > Storage
@@ -98,6 +99,18 @@ private enum BackupName {
 
 final class LogStore {
     static let maxBackupsPerDay = 10
+
+    /// The Jots rule behind "logged" (M2): which heading holds the jots, and whether their words count toward a day being logged.
+    /// The app sets it from Settings.capture; DayDocument.words/status, fileStates and everything built on them follow it.
+    /// Both spellings compile: `LogStore.jotsRules = (heading: "Jots", countTowardLogged: false)` and `LogStore.JotsRules(heading:countTowardLogged:)`.
+    /// Guarded by a lock: background readers (fileStates off the main thread) never see a half-written value.
+    typealias JotsRules = (heading: String, countTowardLogged: Bool)
+    private static let jotsRulesLock = NSLock()
+    private static var storedJotsRules: JotsRules = (heading: "Jots", countTowardLogged: false)
+    static var jotsRules: JotsRules {
+        get { jotsRulesLock.lock(); defer { jotsRulesLock.unlock() }; return storedJotsRules }
+        set { jotsRulesLock.lock(); defer { jotsRulesLock.unlock() }; storedJotsRules = newValue }
+    }
 
     let dir: URL
     let backupDir: URL?
@@ -311,7 +324,11 @@ final class LogStore {
         return backupNames(in: d).compactMap { name in
             guard let date = BackupName.date(fromFile: name) else { return nil }
             let u = d.appendingPathComponent(name)
-            let words = (try? String(contentsOf: u, encoding: .utf8)).map { MarkdownFormat.parse(day: day, raw: $0).words } ?? 0
+            // the size of the version, jots included (the "logged" rule is not what a restore list is about)
+            let words = (try? String(contentsOf: u, encoding: .utf8)).map { raw -> Int in
+                let page = MarkdownFormat.parse(day: day, raw: raw)
+                return page.isSkipped ? 0 : MarkdownBody.words(in: page.body)
+            } ?? 0
             return BackupInfo(date: date, url: u, words: words)
         }
     }

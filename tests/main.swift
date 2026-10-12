@@ -2071,6 +2071,396 @@ test("kill regression: saving keeps the day file's permissions, as Foundation's 
     try fm.setAttributes([.posixPermissions: 0o644], ofItemAtPath: store.url(for: "2026-10-05").path)
 }
 
+// MARK: M2 quick capture, stream K (K1 CapturePlacement + Jots rules, K2 CaptureJournal, K3 DayWriter, K4 logged rule)
+let jotT0 = mk(2026, 10, 7, 14, 32)   // Wed 7 Oct 2026, 14:32 New York
+func jot(_ text: String, stamp: String? = "14:32", todo: Bool = false, day: String = "2026-10-07", source: String = "hotkey") -> CaptureItem {
+    CaptureItem(id: UUID().uuidString, ts: jotT0, day: day, text: text, stamp: stamp, todo: todo, source: source)
+}
+func jr(_ s: String, stamp: String? = "14:32", todo: Bool = false) -> String { CapturePlacement.render(jot(s, stamp: stamp, todo: todo)) }
+func ja(_ s: String, to body: String, heading: String = "Jots", stamp: String? = "14:32", todo: Bool = false) -> String {
+    CapturePlacement.apply(jot(s, stamp: stamp, todo: todo), to: body, jotsHeading: heading)
+}
+func jhas(_ item: CaptureItem, _ body: String, heading: String = "Jots") -> Bool { CapturePlacement.contains(item, in: body, jotsHeading: heading) }
+func jcounts(_ body: String, _ heading: String = "Jots") -> MarkdownBody.Counts { MarkdownBody.counts(in: body, jotsHeading: heading) }
+
+// MARK: K1 CapturePlacement
+test("capture render: time stamp, no stamp, to-do, multi-line") {
+    expect(jr("call with Sam about pricing") == "- 14:32 call with Sam about pricing")
+    expect(jr("x", stamp: nil) == "- x")
+    expect(jr("call Sam", stamp: nil, todo: true) == "- [ ] call Sam")
+    expect(jr("call Sam", stamp: "14:32", todo: true) == "- [ ] call Sam", "a to-do never carries a time")
+    expect(jr("one\ntwo\n  three  ") == "- 14:32 one\n  two\n  three", "continuation lines are trimmed and indented two spaces")
+    expect(jr("one\r\ntwo") == "- 14:32 one\n  two" && jr("one\n\n\ntwo") == "- 14:32 one\n  two", "CRLF, and blank lines inside a note are dropped")
+    expect(jr("one\ntwo", stamp: nil, todo: true) == "- [ ] one\n  two")
+    expect(jr("  padded  ") == "- 14:32 padded")
+    expect(jr("emoji 🎉 \"quotes\" and \\ backslash") == "- 14:32 emoji 🎉 \"quotes\" and \\ backslash", "only the start of a line is ever escaped")
+}
+test("capture render: a leading # > - + * or 1. is backslash-escaped so a note never becomes a heading or a nested list") {
+    expect(jr("# x") == "- 14:32 \\# x" && jr("## x") == "- 14:32 \\## x" && jr("###### x") == "- 14:32 \\###### x" && jr("#") == "- 14:32 \\#")
+    expect(jr("- x") == "- 14:32 \\- x" && jr("+ x") == "- 14:32 \\+ x" && jr("* x") == "- 14:32 \\* x")
+    expect(jr("1. x") == "- 14:32 1\\. x" && jr("12) x") == "- 14:32 12\\) x" && jr("1.") == "- 14:32 1\\.")
+    expect(jr("> x") == "- 14:32 \\> x" && jr(">x") == "- 14:32 \\>x")
+    expect(jr("# x", stamp: nil) == "- \\# x" && jr("1. x", stamp: nil, todo: true) == "- [ ] 1\\. x", "also without a time, where it matters most")
+    // things that only look like markers stay as typed
+    expect(jr("#tag x") == "- 14:32 #tag x" && jr("####### x") == "- 14:32 ####### x")
+    expect(jr("-5 degrees") == "- 14:32 -5 degrees" && jr("*bold* word") == "- 14:32 *bold* word" && jr("+1 yes") == "- 14:32 +1 yes")
+    expect(jr("1.5x faster") == "- 14:32 1.5x faster" && jr("2026-10-07 plan") == "- 14:32 2026-10-07 plan")
+    expect(jr("call # x") == "- 14:32 call # x", "only the start of a line matters")
+    // every line of a multi-line note
+    expect(jr("a\n# b\n- c\n> d\n1. e") == "- 14:32 a\n  \\# b\n  \\- c\n  \\> d\n  1\\. e")
+    // setext underlines, thematic breaks, fences and HTML comments would also rewrite the page structure
+    expect(jr("a\n---") == "- 14:32 a\n  \\---" && jr("a\n===") == "- 14:32 a\n  \\===" && jr("***") == "- 14:32 \\***" && jr("- - -") == "- 14:32 \\- - -")
+    expect(jr("```") == "- 14:32 \\```" && jr("~~~x") == "- 14:32 \\~~~x")
+    expect(jr("see <!-- x") == "- 14:32 see <\\!-- x" && jr("<!--") == "- 14:32 <\\!--")
+    // the escaped text still reads as the same words and can never produce a heading
+    for t in ["# x", "## y z", "- a", "1. b", "> c", "a\n# b", "```", "<!-- x"] {
+        let page = ja(t, to: "")
+        expect(MarkdownBody.sections(of: page).filter { $0.level > 0 }.map { $0.normalizedTitle } == ["jots"], "no extra heading for \(t.debugDescription): \(page.debugDescription)")
+    }
+}
+test("capture apply: no Jots block creates one at the end and keeps the page") {
+    expect(ja("call Sam", to: "") == "## Jots\n\n- 14:32 call Sam")
+    expect(ja("call Sam", to: "\n\n  \n") == "## Jots\n\n- 14:32 call Sam")
+    expect(ja("call Sam", to: "Some text here.\n\n") == "Some text here.\n\n## Jots\n\n- 14:32 call Sam")
+    expect(ja("x", to: Settings.defaultTemplate) == Settings.defaultTemplate + "\n\n## Jots\n\n- 14:32 x", "a template page keeps its headings")
+    expect(ja("x", to: "## Jotsy\n\ntext") == "## Jotsy\n\ntext\n\n## Jots\n\n- 14:32 x", "a similar heading is not the Jots heading")
+    expect(ja("x", to: "```\n## Jots\n```") == "```\n## Jots\n```\n\n## Jots\n\n- 14:32 x", "a heading inside a code fence is not a heading")
+    expect(ja("x", to: "<!--\n## Jots\n-->\ntext") == "<!--\n## Jots\n-->\ntext\n\n## Jots\n\n- 14:32 x", "nor one inside a comment")
+    expect(ja("x", to: "a\r\nb") == "a\nb\n\n## Jots\n\n- 14:32 x", "CRLF becomes LF")
+    expect(ja("x", to: "text", stamp: nil, todo: true) == "text\n\n## Jots\n\n- [ ] x")
+}
+test("capture apply: an existing Jots block gets the line at its end, joined to the list") {
+    expect(ja("b", to: "text\n\n## Jots\n\n- 14:30 a") == "text\n\n## Jots\n\n- 14:30 a\n- 14:32 b", "last block, ends in a list")
+    expect(ja("b", to: "## Jots\n\n- 14:30 a\n\n## Finished\n\nstuff") == "## Jots\n\n- 14:30 a\n- 14:32 b\n\n## Finished\n\nstuff", "block in the middle")
+    expect(ja("b", to: "## Jots\n\n- 14:30 a\n\n\n") == "## Jots\n\n- 14:30 a\n- 14:32 b", "trailing blank lines are not content")
+    expect(ja("b", to: "## Jots\n\nremember this") == "## Jots\n\nremember this\n\n- 14:32 b", "last content line a paragraph: one blank line")
+    expect(ja("b", to: "## Jots\n\n- 14:30 a\n  more") == "## Jots\n\n- 14:30 a\n  more\n- 14:32 b", "a multi-line item above is still a list")
+    expect(ja("b", to: "## Jots\n\n- 14:30 a\nlazy") == "## Jots\n\n- 14:30 a\nlazy\n- 14:32 b", "so is a lazy continuation")
+    expect(ja("b", to: "## Jots\n\n- a\n\npara") == "## Jots\n\n- a\n\npara\n\n- 14:32 b", "a paragraph after the list needs the blank line again")
+    expect(ja("b", to: "## Jots\n\n1. a") == "## Jots\n\n1. a\n- 14:32 b" && ja("b", to: "## Jots\n- [ ] a") == "## Jots\n- [ ] a\n- 14:32 b", "ordered and task items are list items")
+    expect(ja("b", to: "## Jots\n\n```\n- code\n```") == "## Jots\n\n```\n- code\n```\n\n- 14:32 b", "a list-looking line inside code is not a list")
+    // empty blocks
+    expect(ja("b", to: "## Jots") == "## Jots\n\n- 14:32 b" && ja("b", to: "## Jots\n\n") == "## Jots\n\n- 14:32 b")
+    expect(ja("b", to: "## Jots\n\n## Next\n\nstuff") == "## Jots\n\n- 14:32 b\n\n## Next\n\nstuff")
+    expect(ja("b", to: "## Jots\n## Next") == "## Jots\n\n- 14:32 b\n\n## Next")
+    // multi-line note
+    expect(ja("b\nc", to: "## Jots\n\n- 14:30 a") == "## Jots\n\n- 14:30 a\n- 14:32 b\n  c")
+    // two applies in a row build one list in order
+    let twice = CapturePlacement.apply(jot("c", stamp: "14:33"), to: ja("b", to: "## Jots\n\n- 14:30 a"), jotsHeading: "Jots")
+    expect(twice == "## Jots\n\n- 14:30 a\n- 14:32 b\n- 14:33 c")
+}
+test("capture apply: block boundaries by heading level; case, emoji and the configured heading") {
+    expect(ja("b", to: "### Jots\n- a\n\n## Next\ntext") == "### Jots\n- a\n- 14:32 b\n\n## Next\ntext", "a higher heading ends the block")
+    expect(ja("b", to: "### Jots\n- a\n#### Sub\nmore") == "### Jots\n- a\n#### Sub\nmore\n\n- 14:32 b", "a deeper heading stays inside: the line goes after it")
+    expect(ja("b", to: "# Jots\n- a\n## Sub\ntext\n# Next\nx") == "# Jots\n- a\n## Sub\ntext\n\n- 14:32 b\n\n# Next\nx")
+    expect(ja("b", to: "## 📝 JOTS\n- a") == "## 📝 JOTS\n- a\n- 14:32 b" && ja("b", to: "## jots!\n- a") == "## jots!\n- a\n- 14:32 b", "case, emoji, punctuation")
+    expect(ja("b", to: "## Jots\n- a", heading: "📝 Jots") == "## Jots\n- a\n- 14:32 b", "matching is by normalised text")
+    expect(ja("b", to: "text", heading: "📝 Jots") == "text\n\n## 📝 Jots\n\n- 14:32 b", "a new heading uses the configured text")
+    expect(ja("b", to: "text", heading: "") == "text\n\n## Jots\n\n- 14:32 b" && ja("b", to: "text", heading: "🙂") == "text\n\n## Jots\n\n- 14:32 b", "an unusable heading falls back to Jots")
+    expect(ja("b", to: "text", heading: "  Daily \n notes ") == "text\n\n## Daily notes\n\n- 14:32 b")
+    expect(ja("b", to: "## Notes\n- a", heading: "Notes") == "## Notes\n- a\n- 14:32 b")
+    expect(ja("b", to: "## Jots\n- a\n\n## Other\n\n## Jots\n- z") == "## Jots\n- a\n- 14:32 b\n\n## Other\n\n## Jots\n- z", "the first Jots block is the target, like the editor")
+    expect(ja("b", to: "## What I did\n\nwrote\n\n### 🗒️ Jots\n\n- 08:55 a\n\n#### Later\n\n- 09:30 z\n\n### Finished\n\nshipped")
+           == "## What I did\n\nwrote\n\n### 🗒️ Jots\n\n- 08:55 a\n\n#### Later\n\n- 09:30 z\n- 14:32 b\n\n### Finished\n\nshipped", "the editor fixture shape")
+}
+test("capture contains: true after apply; ignores list-marker style, escapes, a ticked box and soft breaks; false elsewhere") {
+    let bodies = ["", "text", "## Jots\n\n- 14:30 a", "## Jots\n\n- 14:30 a\n\n## Finished\n\nstuff", Settings.defaultTemplate, "## Jots", "### Jots\n- a\n## N\nz", "## Jots\n\nremember"]
+    for text in ["call Sam", "# x", "- y", "a\nb", "1. n", "caf\u{e9} \u{1F389}"] {
+        for b in bodies {
+            let it = jot(text)
+            expect(!jhas(it, b), "not yet in \(b.debugDescription)")
+            let applied = CapturePlacement.apply(it, to: b, jotsHeading: "Jots")
+            expect(jhas(it, applied), "contains after apply: \(text.debugDescription) into \(b.debugDescription) -> \(applied.debugDescription)")
+            expect(!jhas(jot(text + " more"), applied) && !jhas(jot(text, stamp: "09:00"), applied), "other text or time is another note")
+        }
+    }
+    // what the editor may write back
+    expect(jhas(jot("call Sam"), "## Jots\n\n* 14:32 call Sam") && jhas(jot("call Sam"), "## Jots\n\n+ 14:32   call   Sam  "), "marker style, spaces")
+    expect(jhas(jot("# x"), "## Jots\n\n- 14:32 # x") && jhas(jot("2 * 3 = 6"), "## Jots\n\n- 14:32 2 \\* 3 = 6") && jhas(jot("a_b"), "## Jots\n\n- 14:32 a\\_b"), "escape differences")
+    expect(jhas(jot("call Sam", stamp: nil, todo: true), "## Jots\n\n- [x] call Sam"), "a to-do ticked since is still the same note")
+    expect(jhas(jot("a\nb"), "## Jots\n\n- 14:32 a\n  b") && jhas(jot("a\nb"), "## Jots\n\n- 14:32 a\\\n  b") && jhas(jot("a\nb"), "## Jots\n\n- 14:32 a b"), "soft and hard breaks")
+    // not the same note
+    expect(!jhas(jot("call Sam"), "## Jots\n\n- 14:33 call Sam") && !jhas(jot("call Sam"), "## Jots\n\n- 14:32 call Sam now") && !jhas(jot("call Sam"), "## Jots\n\n- 14:32 Call Sam"))
+    expect(!jhas(jot("call Sam"), "## Finished\n\n- 14:32 call Sam"), "outside the Jots block")
+    expect(!jhas(jot("call Sam"), "## Jots\n\ntext\n\n## Finished\n\n- 14:32 call Sam"), "after the block ended")
+    expect(jhas(jot("call Sam"), "## Jots\n\n- a\n\n## X\n\n## Jots\n\n- 14:32 call Sam"), "in any Jots block")
+    expect(!jhas(jot("call Sam"), "## Jots\n\n```\n- 14:32 call Sam\n```"), "code is not a note")
+    expect(!jhas(jot("call Sam", stamp: nil, todo: true), "## Jots\n\n- 14:32 call Sam") && !jhas(jot("call Sam"), "## Jots\n\n- [ ] call Sam"), "a to-do is not a stamped note")
+    expect(jhas(jot("x", stamp: nil), "## Jots\n- x") && !jhas(jot("x", stamp: nil), "## Jots\n- 14:32 x"), "no stamp")
+    expect(jhas(jot("b"), "## Notes\n- 14:32 b", heading: "Notes") && !jhas(jot("b"), "## Notes\n- 14:32 b"), "the configured heading")
+}
+
+test("capture apply: a page that ends inside an open fence or comment still gets a visible note (no swallowed note, no endless replay)") {
+    expect(ja("b", to: "```\ncode") == "```\ncode\n```\n\n## Jots\n\n- 14:32 b", "no block, open fence")
+    expect(ja("b", to: "~~~~\ncode") == "~~~~\ncode\n~~~~\n\n## Jots\n\n- 14:32 b", "the closing fence copies the opener")
+    expect(ja("b", to: "## Jots\n- a\n```\ncode") == "## Jots\n- a\n```\ncode\n```\n\n- 14:32 b", "block, open fence")
+    expect(ja("b", to: "text <!-- open") == "text <!-- open\n-->\n\n## Jots\n\n- 14:32 b", "open comment")
+    expect(ja("b", to: "## Jots\n- a\ntext <!-- open\nmore") == "## Jots\n- a\ntext <!-- open\n-->\n\n- 14:32 b\n\nmore")
+    for body in ["```\ncode", "## Jots\n- a\n```\ncode", "text <!-- open", "~~~\n## Jots\n- a"] {
+        let it = jot("zz")
+        let out = CapturePlacement.apply(it, to: body, jotsHeading: "Jots")
+        expect(jhas(it, out) && MarkdownBody.counts(in: out).jotCount >= 1, body.debugDescription)
+        expect(CapturePlacement.apply(it, to: out, jotsHeading: "Jots") != out, "apply is not its own guard: contains is")
+    }
+}
+struct LCG {
+    var s: UInt64
+    mutating func next() -> Int { s = s &* 6364136223846793005 &+ 1442695040888963407; return Int(s >> 33) }
+    mutating func pick<T>(_ a: [T]) -> T { a[next() % a.count] }
+}
+test("capture apply: fuzz - the page's own lines are never lost, reordered or edited; the note is always recognised afterwards") {
+    var g = LCG(s: 20261007)
+    let safe = ["", "text words here", "## Jots", "### Jots", "# Top", "## Other", "- item", "- 14:30 note", "1. one", "  more", "> quote", "---",
+                "- [ ] task", "para line", "## Carried over from Mon", "#### deep", "- 08:00 [x] looks like a task", "# Jots"]
+    let hazard = safe + ["```", "~~~", "code line", "<!-- c", "-->", "<!-- all -->", "```swift"]
+    for n in 0..<600 {
+        let hazardous = n % 2 == 1
+        let lines = (0..<(g.next() % 14)).map { _ in g.pick(hazardous ? hazard : safe) }
+        let body = lines.joined(separator: "\n")
+        let it = jot("zz\(n) note")
+        expect(!jhas(it, body), "fresh note is not in \(body.debugDescription)")
+        let out = CapturePlacement.apply(it, to: body, jotsHeading: "Jots")
+        expect(jhas(it, out), "recognised after apply: \(body.debugDescription) -> \(out.debugDescription)")
+        var rest = out.components(separatedBy: "\n")[...]
+        var kept = true
+        for l in lines where !l.dlTrimmed.isEmpty {
+            if let i = rest.firstIndex(of: l) { rest = rest[(i + 1)...] } else { kept = false; break }
+        }
+        expect(kept, "own lines kept in order: \(body.debugDescription) -> \(out.debugDescription)")
+        if !hazardous {
+            expect(MarkdownBody.loggedWords(in: out) == MarkdownBody.loggedWords(in: body), "jots never change the logged words: \(body.debugDescription)")
+            expect(MarkdownBody.counts(in: out).jotCount == MarkdownBody.counts(in: body).jotCount + 1, "one more jot: \(body.debugDescription) -> \(out.debugDescription)")
+            func headingCount(_ s: String) -> Int { MarkdownBody.scan(s).filter { if case .heading = $0.kind { return true }; return false }.count }
+            let hadBlock = !MarkdownBody.jotsBlocks(in: MarkdownBody.scan(body), jotsHeading: "Jots").isEmpty
+            expect(headingCount(out) == headingCount(body) + (hadBlock ? 0 : 1), "only a missing Jots heading is ever added: \(body.debugDescription) -> \(out.debugDescription)")
+        }
+        // a second, different note joins the same block and the first is still recognised
+        let it2 = jot("yy\(n) other", stamp: "14:40")
+        let out2 = CapturePlacement.apply(it2, to: out, jotsHeading: "Jots")
+        expect(jhas(it, out2) && jhas(it2, out2), "two notes: \(out2.debugDescription)")
+    }
+}
+
+// MARK: K1 Jots rules in the words rule
+test("jots rules: counts split the page at the Jots block; a leading time is not a word") {
+    expect(jcounts("") == MarkdownBody.Counts(words: 0, jotWords: 0, jotCount: 0))
+    expect(jcounts(lorem(5)) == MarkdownBody.Counts(words: 5, jotWords: 0, jotCount: 0), "no Jots block: everything is words")
+    expect(jcounts("intro words here\n\n## Jots\n\n- 14:32 call Sam\n- 14:40 email Ana now") == MarkdownBody.Counts(words: 3, jotWords: 5, jotCount: 2))
+    expect(jcounts("## Jots\n- 14:32 meet at 15:00") == MarkdownBody.Counts(words: 0, jotWords: 3, jotCount: 1), "only a LEADING time is dropped")
+    expect(jcounts("## Jots\n- [ ] call Sam\n- plain note here") == MarkdownBody.Counts(words: 0, jotWords: 5, jotCount: 2), "a to-do and a note without a time")
+    expect(jcounts("## Jots\n- 9:05 a\n- 23:59 b\n- 24:00 c\n- 12:75 d\n- 7:5 e") == MarkdownBody.Counts(words: 0, jotWords: 1 + 1 + 2 + 2 + 2, jotCount: 5), "only a real HH:mm is dropped")
+    expect(jcounts("## Jots\n- 14:32\n- 14:33 ") == MarkdownBody.Counts(words: 0, jotWords: 0, jotCount: 2), "a bare time is a jot with no words")
+    expect(jcounts("## Jots\n14:32 typed by hand\n- 14:33 x") == MarkdownBody.Counts(words: 0, jotWords: 4 + 1, jotCount: 1), "a time that starts a paragraph is the user's own text")
+    expect(jcounts("## Jots\n- 14:32 a b\n  c d\n  - nested e\n- 14:33 f") == MarkdownBody.Counts(words: 0, jotWords: 7, jotCount: 2), "continuation and nested lines count as words, nested items are not jots")
+    expect(jcounts("## Jots\n- a b\n## Finished\nfour words right here") == MarkdownBody.Counts(words: 4, jotWords: 2, jotCount: 1), "the next heading of the same level ends the block")
+    expect(jcounts("## Notes\nn1 n2\n### Jots\n- j1 j2\n## Other\no1") == MarkdownBody.Counts(words: 3, jotWords: 2, jotCount: 1), "### Jots under ## Notes")
+    expect(jcounts("## Jots\n- a\n### sub\nmore words") == MarkdownBody.Counts(words: 0, jotWords: 3, jotCount: 1), "a deeper heading stays inside the block")
+    expect(jcounts("# Jots\n- a\n## sub\nmore\n# Next\nx y") == MarkdownBody.Counts(words: 2, jotWords: 2, jotCount: 1))
+    expect(jcounts("## Carried over from Mon\n- [ ] x y\n## Jots\n- j") == MarkdownBody.Counts(words: 0, jotWords: 1, jotCount: 1), "carried tasks still never count")
+    expect(jcounts("## Jots\n- a\n```\ncode here\n```") == MarkdownBody.Counts(words: 0, jotWords: 3, jotCount: 1), "code words count, fence lines do not")
+    expect(jcounts("## Jots\n<!-- hidden words -->\n- a") == MarkdownBody.Counts(words: 0, jotWords: 1, jotCount: 1), "comments are not words")
+    expect(jcounts("## Jots\n- a\n## X\nw\n## Jots\n- b c") == MarkdownBody.Counts(words: 1, jotWords: 3, jotCount: 2), "every Jots block counts as jots")
+    expect(jcounts("## JOTS!\n- a") == MarkdownBody.Counts(words: 0, jotWords: 1, jotCount: 1) && jcounts("## 📝 Jots\n- a").jotCount == 1)
+    expect(jcounts("## Jotsy\n- a b") == MarkdownBody.Counts(words: 2, jotWords: 0, jotCount: 0) && jcounts("##\n- a b").jotCount == 0, "a similar or empty heading is not a Jots heading")
+    expect(jcounts("```\n## Jots\n- a\n```").jotCount == 0, "a heading inside a fence is no heading")
+    expect(jcounts("## Notes\n- a b", "Notes") == MarkdownBody.Counts(words: 0, jotWords: 2, jotCount: 1) && jcounts("## Jots\n- a b", "") == MarkdownBody.Counts(words: 0, jotWords: 2, jotCount: 1), "configured heading; an unusable one falls back to Jots")
+    // a page without a Jots block counts exactly like words(in:)
+    for b in [Settings.defaultTemplate, "## A\ntext here\n## Carried over from Mon\n- [ ] x\n- y", "![i](a.png) word", "```\ncode\n```", lorem(30)] {
+        expect(jcounts(b) == MarkdownBody.Counts(words: W(b), jotWords: 0, jotCount: 0), b)
+    }
+}
+test("jots rules: loggedWords is words, plus jot words only when asked") {
+    let body = "intro words here\n\n## Jots\n\n- 14:32 call Sam\n- 14:40 email Ana now"
+    expect(MarkdownBody.loggedWords(in: body) == 3 && MarkdownBody.loggedWords(in: body, jotsCount: false) == 3)
+    expect(MarkdownBody.loggedWords(in: body, jotsCount: true) == 8, "the two times are still not words")
+    expect(MarkdownBody.loggedWords(in: body, jotsHeading: "Notes", jotsCount: false) == 10, "no such block: everything counts")
+    expect(MarkdownBody.loggedWords(in: lorem(7)) == 7 && MarkdownBody.loggedWords(in: "") == 0)
+    expect(MarkdownBody.loggedWords(in: "## Jots\n- a b c") == 0 && MarkdownBody.loggedWords(in: "## Jots\n- a b c", jotsCount: true) == 3)
+}
+test("jots rules: isJotsOnly") {
+    expect(!MarkdownBody.isJotsOnly("") && !MarkdownBody.isJotsOnly("\n \n"), "an empty page is not jots-only")
+    for b in ["## Jots\n\n- 14:32 a", "\n\n## Jots\n- a\n\n", "## Jots", "### Jots\n- a", "# Jots\n- a\n## Sub\nx", "## Jots\n- a\n### sub\nx",
+              "## Jots\n- a\n## Jots\n- b", "<!-- c -->\n## Jots\n- a", "## 📝 jots\n- a", "  \n## Jots\n- 14:32 a\n- 14:40 b\n"] {
+        expect(MarkdownBody.isJotsOnly(b), b.debugDescription)
+    }
+    for b in ["text\n## Jots\n- a", "## Jots\n- a\n## Other\nx", Settings.defaultTemplate + "\n\n## Jots\n- a", "- a", "```\n## Jots\n```", "## Jotsy\n- a", "## What I did\n\n## Jots\n- a"] {
+        expect(!MarkdownBody.isJotsOnly(b), b.debugDescription)
+    }
+    expect(MarkdownBody.isJotsOnly("## Notes\n- a", jotsHeading: "Notes") && !MarkdownBody.isJotsOnly("## Jots\n- a", jotsHeading: "Notes"))
+}
+test("jots rules: stripUntouchedTemplate (the template above a jots-only page is never written back)") {
+    let t = Settings.defaultTemplate
+    let jots = "## Jots\n\n- 14:32 call Sam\n- 14:40 email Ana"
+    func strip(_ md: String, _ template: String = t, _ heading: String = "Jots") -> String { MarkdownBody.stripUntouchedTemplate(md, template: template, jotsHeading: heading) }
+    expect(strip(t + "\n\n" + jots) == jots, "template + jots round trip")
+    expect(MarkdownBody.isJotsOnly(strip(t + "\n\n" + jots)))
+    expect(strip(t) == "" && strip("\n" + t + "\n\n") == "", "the template alone has nothing to write")
+    expect(strip(t + "\n" + jots) == jots && strip("\n\n" + t + "\n\n\n" + jots + "\n\n") == jots, "blank lines around do not matter")
+    expect(strip("## What I did\n## Finished\n## Started\n## Pending / blocked\n## To do next\n\n" + jots) == jots, "nor between template headings")
+    expect(strip(t + "\n\n### Jots\n- a") == "### Jots\n- a" && strip(t + "\n\n## Jots\n- a\n### sub\ntext") == "## Jots\n- a\n### sub\ntext")
+    // anything the user wrote is left alone
+    for md in [t + "\n\nmy own text", t + "\n\n" + jots + "\n\n## Finished\nreal text", "## What I did\n\nwrote code\n\n## Finished\n\n" + jots,
+               jots, "", "my own text", t.replacingOccurrences(of: "## Started", with: "## Begun") + "\n\n" + jots, "## What I did\n\n## Finished"] {
+        expect(strip(md) == md, md.debugDescription)
+    }
+    expect(strip(t + "\n\n" + jots, "") == t + "\n\n" + jots, "no template, nothing to strip")
+    expect(strip("## A\n\n## B\n\n## Jots\n- a", "## A\n\n## B") == "## Jots\n- a" && strip("## AB\n\n## Jots\n- a", "## A") == "## AB\n\n## Jots\n- a", "a prefix inside a word is not the template")
+    expect(strip(t + "\n\n## Notes\n- a", t, "Notes") == "## Notes\n- a" && strip(t + "\n\n## Jots\n- a", t, "Notes") == t + "\n\n## Jots\n- a")
+}
+
+// MARK: K2 CaptureJournal
+func jdir(_ name: String) -> URL { root.appendingPathComponent("jr-" + name + "-" + UUID().uuidString.prefix(6)) }   // not created: the journal makes it
+func jfile(_ dir: URL) -> URL { dir.appendingPathComponent("journal.jsonl") }
+func fmode(_ u: URL) -> Int { ((try? FileManager.default.attributesOfItem(atPath: u.path))?[.posixPermissions] as? Int) ?? -1 }
+func appendRaw(_ s: String, to u: URL) throws {
+    try FileManager.default.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if !FileManager.default.fileExists(atPath: u.path) { FileManager.default.createFile(atPath: u.path, contents: nil, attributes: [.posixPermissions: 0o600]) }
+    let h = try FileHandle(forWritingTo: u); defer { try? h.close() }
+    _ = try h.seekToEnd(); try h.write(contentsOf: Data(s.utf8))
+}
+func jlines(_ u: URL) -> [String] { ((try? String(contentsOf: u, encoding: .utf8)) ?? "").components(separatedBy: "\n").filter { !$0.isEmpty } }
+func jitem(_ n: Int, text: String? = nil, day: String = "2026-10-07") -> CaptureItem {
+    CaptureItem(id: "id-\(n)", ts: jotT0.addingTimeInterval(Double(n)), day: day, text: text ?? "note \(n)", stamp: "14:32", todo: false, source: "hotkey")
+}
+
+test("journal: append, pending and ack in order; the folder is created; the file is 0600") {
+    let d = jdir("basic"); let j = CaptureJournal(dir: d)
+    let (a, b, c) = (jitem(1), jitem(2), jitem(3))
+    expect(j.pending().isEmpty, "no file yet")
+    try j.append(a); try j.append(b); try j.append(c)
+    expect(j.pending() == [a, b, c])
+    try j.ack(b.id)
+    expect(j.pending() == [a, c])
+    try j.ack("never-seen")
+    expect(j.pending() == [a, c], "an unknown ack changes nothing")
+    try j.ack(a.id); try j.ack(c.id)
+    expect(j.pending().isEmpty)
+    expect(jfile(d).path == j.fileURL.path && fmode(jfile(d)) == 0o600, "journal.jsonl, mode \(String(fmode(jfile(d)), radix: 8))")
+    expect(fmode(d) == 0o700, "the folder is private too: \(String(fmode(d), radix: 8))")
+    expect(CaptureJournal(dir: d).pending().isEmpty && CaptureJournal(dir: d).fileURL.path == j.fileURL.path)
+}
+test("journal: one JSON line per record, and any text survives") {
+    let d = jdir("format"); let j = CaptureJournal(dir: d)
+    let wild = "line one\nline \"two\" \\ back\tslash \u{2028} sep \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467} caf\u{e9} </script> {\"x\":1}"
+    let items = [jitem(1, text: wild), jitem(2, text: String(repeating: "word ", count: 800)), jitem(3, text: "[] literal")]
+    for it in items { try j.append(it) }
+    try j.ack("id-9")
+    let lines = jlines(jfile(d))
+    expect(lines.count == 4, "three notes and one ack, one physical line each: \(lines.count)")
+    for l in lines.dropLast() {
+        let o = try JSONSerialization.jsonObject(with: Data(l.utf8)) as? [String: Any]
+        expect(o?["v"] as? Int == 1 && o?["id"] is String && o?["ts"] is String && o?["day"] as? String == "2026-10-07"
+               && o?["text"] is String && o?["source"] as? String == "hotkey" && o?["todo"] as? Bool == false, l)
+    }
+    expect(lines[0].contains("\"ts\":\"2026-10-07T18:32:01") && lines[0].contains("\"stamp\":\"14:32\""), lines[0])
+    expect(lines.last == "{\"ack\":\"id-9\"}", lines.last ?? "")
+    expect(j.pending() == items, "exact round trip")
+    let withMs = CaptureItem(id: "ms", ts: Date(timeIntervalSince1970: 1_790_000_000.123), day: "2026-10-07", text: "x", stamp: nil, todo: true, source: "menu")
+    try j.append(withMs)
+    let back = j.pending().last
+    expect(back?.stamp == nil && back?.todo == true && back?.source == "menu" && abs((back?.ts.timeIntervalSince1970 ?? 0) - 1_790_000_000.123) < 0.001, "milliseconds, nil stamp, to-do")
+}
+test("journal: a torn last line never loses earlier notes, and the next append is not glued onto it") {
+    let d = jdir("torn"); let j = CaptureJournal(dir: d)
+    let (a, b, c) = (jitem(1), jitem(2), jitem(3))
+    try j.append(a); try j.append(b)
+    try appendRaw("{\"v\":1,\"id\":\"torn\",\"ts\":\"2026-10-07T14:3", to: jfile(d))      // power cut mid-write: no newline
+    expect(j.pending() == [a, b], "the torn line is ignored, earlier notes intact")
+    try j.append(c)
+    expect(j.pending() == [a, b, c], "a new note after a torn line is a note of its own")
+    expect(jlines(jfile(d)).count == 4, "the fragment sits on its own line")
+    try appendRaw("{\"ack\":\"id-", to: jfile(d))                                           // a torn ack
+    expect(j.pending() == [a, b, c], "a torn ack acknowledges nothing")
+    try j.ack(a.id)
+    expect(j.pending() == [b, c])
+}
+test("journal: unknown, garbled and future lines are skipped; old records and duplicates are tolerated") {
+    let d = jdir("garbage"); let j = CaptureJournal(dir: d)
+    let good = jitem(1)
+    var text = ["", "not json at all", "{\"foo\":1}", "[1,2]", "42", "\"str\"", "{\"ack\":42}", "{\"v\":9,\"kind\":\"future\"}", "{\"ack\":null}",
+                "{\"id\":\"bad-day\",\"ts\":\"2026-10-07T14:32:11Z\",\"day\":\"../../etc\",\"text\":\"x\",\"source\":\"hotkey\"}",
+                "{\"id\":\"no-text\",\"ts\":\"2026-10-07T14:32:11Z\",\"day\":\"2026-10-07\",\"text\":\"\",\"source\":\"hotkey\"}",
+                "{\"id\":\"no-ts\",\"day\":\"2026-10-07\",\"text\":\"x\",\"source\":\"hotkey\"}",
+                CaptureJournal.line(for: good), CaptureJournal.line(for: good)]            // the same id twice
+    text += ["{\"id\":\"old\",\"ts\":\"2026-10-07T14:32:11Z\",\"day\":\"2026-10-07\",\"text\":\"hi\",\"stamp\":\"14:32\",\"source\":\"hotkey\"}",   // no v, no todo
+             "{\"v\":2,\"id\":\"newer\",\"ts\":\"2026-10-07T14:33:00.250Z\",\"day\":\"2026-10-07\",\"text\":\"from the future\",\"stamp\":null,\"todo\":true,\"source\":\"x\",\"extra\":[1]}",
+             "{\"ack\":\"never\",\"also\":1}"]
+    try appendRaw(text.joined(separator: "\n") + "\n", to: jfile(d))
+    let p = j.pending()
+    expect(p.map { $0.id } == ["id-1", "old", "newer"], "\(p.map { $0.id })")
+    expect(p[1].todo == false && p[1].stamp == "14:32" && p[1].ts == ISO8601DateFormatter().date(from: "2026-10-07T14:32:11Z") && p[1].text == "hi", "a record without v and todo reads")
+    expect(p[2].todo == true && p[2].stamp == nil && abs(p[2].ts.timeIntervalSince(ISO8601DateFormatter().date(from: "2026-10-07T14:33:00Z")!) - 0.25) < 0.001, "unknown fields are ignored")
+    try appendRaw("{\"ack\":\"old\",\"x\":1}\n", to: jfile(d))
+    expect(j.pending().map { $0.id } == ["id-1", "newer"], "an ack with extra keys still acks")
+}
+test("journal: an unwritable folder throws a typed error; nothing is pending; it works again when the folder does") {
+    let fm = FileManager.default
+    // the folder's parent is a file
+    let blockerDir = jdir("blocker"); try fm.createDirectory(at: blockerDir, withIntermediateDirectories: true)
+    let blocker = blockerDir.appendingPathComponent("file"); try Data("x".utf8).write(to: blocker)
+    let j1 = CaptureJournal(dir: blocker.appendingPathComponent("capture"))
+    do { try j1.append(jitem(1)); expect(false, "append must throw") } catch { expect(error is JournalError, "\(error)") }
+    do { try j1.ack("id-1"); expect(false, "ack must throw") } catch { expect(error is JournalError, "\(error)") }
+    expect(j1.pending().isEmpty)
+    // a folder without write permission
+    let d = jdir("readonly"); let j2 = CaptureJournal(dir: d)
+    try j2.append(jitem(1))
+    try fm.setAttributes([.posixPermissions: 0o500], ofItemAtPath: d.path)
+    try fm.setAttributes([.posixPermissions: 0o400], ofItemAtPath: jfile(d).path)
+    do { try j2.append(jitem(2)); expect(false, "append must throw") } catch { expect(error is JournalError, "\(error)") }
+    expect(j2.pending() == [jitem(1)], "what is already there is still readable")
+    try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: d.path)
+    try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: jfile(d).path)
+    try j2.append(jitem(2))
+    expect(j2.pending() == [jitem(1), jitem(2)], "writable again")
+}
+test("journal: a file that existed with wider permissions is tightened to 0600") {
+    let d = jdir("mode"); try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: jfile(d).path, contents: nil, attributes: [.posixPermissions: 0o644])
+    try CaptureJournal(dir: d).append(jitem(1))
+    expect(fmode(jfile(d)) == 0o600, String(fmode(jfile(d)), radix: 8))
+}
+test("journal: compact drops acknowledged notes (2,000 items), keeps order and mode, leaves no temp file, and is a no-op when clean") {
+    let d = jdir("compact"); let j = CaptureJournal(dir: d)
+    var body = "", keep = [CaptureItem]()
+    for n in 0..<2000 {
+        let it = jitem(n); body += CaptureJournal.line(for: it) + "\n"
+        if n % 200 == 7 { keep.append(it) } else { body += CaptureJournal.ackLine(it.id) + "\n" }
+    }
+    body += "garbage line\n{\"v\":1,\"id\":\"torn"                                   // and a torn last line
+    try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+    try body.write(to: jfile(d), atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: jfile(d).path)
+    let t0 = Date(); let before = j.pending(); let readTime = Date().timeIntervalSince(t0)
+    expect(before == keep && keep.count == 10, "10 of 2,000 are still pending")
+    expect(readTime < 5.0, "reading a 4,000-line journal: \(Int(readTime * 1000)) ms")
+    try j.compact()
+    expect(j.pending() == keep, "the same notes in the same order")
+    expect(jlines(jfile(d)).count == 10 && !(jlines(jfile(d)).joined().contains("garbage")), "10 lines: acked notes, acks, garbage and the torn line are gone")
+    expect(fmode(jfile(d)) == 0o600)
+    try expect(!(try FileManager.default.contentsOfDirectory(atPath: d.path)).contains { $0.hasPrefix(".gloamlog-tmp-") }, "no temp file")
+    let bytes = try Data(contentsOf: jfile(d))
+    try j.compact()
+    try expect(try Data(contentsOf: jfile(d)) == bytes, "compacting a clean journal changes nothing")
+    try j.append(jitem(5000))
+    expect(j.pending() == keep + [jitem(5000)], "appends go on after a compaction")
+    for it in keep + [jitem(5000)] { try j.ack(it.id) }
+    try j.compact()
+    expect(j.pending().isEmpty && ((try? Data(contentsOf: jfile(d)))?.isEmpty ?? false) && fmode(jfile(d)) == 0o600, "everything acknowledged: an empty file")
+    try j.append(jitem(1))
+    expect(j.pending() == [jitem(1)])
+    try CaptureJournal(dir: jdir("nothing")).compact()                              // no file at all: not an error
+}
+test("journal: dropping the writer without any ack loses nothing (in-process kill)") {
+    let d = jdir("drop")
+    var j: CaptureJournal? = CaptureJournal(dir: d)
+    let items = (1...5).map { jitem($0) }
+    for it in items { try j?.append(it) }
+    try j?.ack(items[1].id); try j?.ack(items[3].id)
+    j = nil                                                                          // the process dies here: no flush, no compact, no goodbye
+    expect(CaptureJournal(dir: d).pending() == [items[0], items[2], items[4]], "pending equals exactly the unacknowledged notes")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

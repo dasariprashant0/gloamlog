@@ -8,6 +8,9 @@
 //                     `body` never contains the "# yyyy-MM-dd" title line (LogStore adds/strips it).
 //                     Logged rule: words >= minWords. partial = 1...minWords-1 words. 0 words -> .missed (= no log).
 //                     Task lines under a "Carried over from ..." heading are not words (a Carry over click alone never logs a day).
+//                     Jots (M2): the words of the Jots block (LogStore.jotsRules.heading) are not words unless LogStore.jotsRules.countTowardLogged
+//                     is on, and a leading HH:mm of a jot is never a word. A page with no words but at least one jot is .partial ("started"),
+//                     whatever the switch says, so a jots-only day stays in Catch up and the reminder still asks for the write-up.
 // All dates are passed in with a Calendar; nothing here reads the clock.
 import Foundation
 
@@ -78,16 +81,26 @@ struct DayDocument: Equatable {
     }
 
     /// Words per the contract rule (headings, empty list/task markers, code-fence lines, images, HTML comments ignored;
-    /// task lines under a "Carried over from ..." heading never count, see MarkdownBody).
-    var words: Int { isSkipped ? 0 : MarkdownBody.words(in: body) }
+    /// task lines under a "Carried over from ..." heading never count, see MarkdownBody). Jots do not count unless
+    /// LogStore.jotsRules.countTowardLogged is on (MarkdownBody.loggedWords): this is what "logged" is measured in.
+    var words: Int {
+        if isSkipped { return 0 }
+        let rules = LogStore.jotsRules
+        return MarkdownBody.loggedWords(in: body, jotsHeading: rules.heading, jotsCount: rules.countTowardLogged)
+    }
+    /// How many notes the page's Jots block holds (top-level list items), whatever the rule counts as words.
+    var jotCount: Int { isSkipped ? 0 : MarkdownBody.counts(in: body, jotsHeading: LogStore.jotsRules.heading).jotCount }
     /// True if the page holds anything beyond headings / empty markers (an image or a carried-over block alone counts).
     var hasContent: Bool { !isSkipped && MarkdownBody.hasContent(body) }
 
-    /// .skipped / .logged (words >= minWords) / .partial (1...minWords-1) / .missed (nothing written: treat as "no log").
+    /// .skipped / .logged (words >= minWords) / .partial (1...minWords-1, or no words but at least one jot) / .missed (nothing written:
+    /// treat as "no log"). One scan of the page: the words and the jot count come from the same MarkdownBody.counts.
     func status(minWords: Int) -> DayStatus {
         if isSkipped { return .skipped }
-        let w = words
+        let rules = LogStore.jotsRules
+        let c = MarkdownBody.counts(in: body, jotsHeading: rules.heading)
+        let w = c.words + (rules.countTowardLogged ? c.jotWords : 0)
         if w >= max(1, minWords) { return .logged }
-        return w > 0 ? .partial : .missed
+        return (w > 0 || c.jotCount > 0) ? .partial : .missed
     }
 }
