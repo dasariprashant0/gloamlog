@@ -58,13 +58,14 @@ struct Settings: Codable, Equatable {
     static let catchUpWindowRange = 7...365
     var capture = CapturePrefs()                  // M2: quick capture (shortcut, timestamps, Jots heading)
     var closedAppReminders = true                 // M5a: macOS delivers the end-of-day reminder while Gloamlog is quit (this Mac only)
+    var sources = SourcesPrefs()                  // M6: "Suggested from your work" (Claude Code, Git); everything off until ticked. This Mac only.
 
     init() {}
 
     enum CodingKeys: String, CodingKey {
         case reminderMinutes, weekdays, mode, snoozeMinutes, storageFolder, launchAtLogin
         case template, carryOverHeadings, minWords, onboarded
-        case logStartDate, appearance, weekStart, catchUpWindowDays, capture, closedAppReminders
+        case logStartDate, appearance, weekStart, catchUpWindowDays, capture, closedAppReminders, sources
     }
     private enum LegacyKeys: String, CodingKey { case sections }
     private struct LegacySection: Decodable { var title: String }
@@ -87,6 +88,7 @@ struct Settings: Codable, Equatable {
         catchUpWindowDays = try c.decodeIfPresent(Int.self, forKey: .catchUpWindowDays) ?? catchUpWindowDays
         capture = try c.decodeIfPresent(CapturePrefs.self, forKey: .capture) ?? capture
         closedAppReminders = try c.decodeIfPresent(Bool.self, forKey: .closedAppReminders) ?? closedAppReminders
+        sources = (try? c.decodeIfPresent(SourcesPrefs.self, forKey: .sources)) ?? SourcesPrefs()      // a damaged value never costs the other settings
         if let t = try c.decodeIfPresent(String.self, forKey: .template) {
             template = t
         } else if let lc = try? d.container(keyedBy: LegacyKeys.self),

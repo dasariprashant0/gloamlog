@@ -11,7 +11,7 @@ import AppKit
 enum Destination: Hashable { case day(String), catchUp, week, search }
 
 enum ActiveSheet: Identifiable, Equatable {
-    case skip(String), skipMany([String]), onboarding, whatsNew, restore(String)
+    case skip(String), skipMany([String]), onboarding, whatsNew, restore(String), conflicts
     var id: String {
         switch self {
         case .skip(let d): return "skip-\(d)"
@@ -19,6 +19,7 @@ enum ActiveSheet: Identifiable, Equatable {
         case .onboarding: return "onboarding"
         case .whatsNew: return "whatsnew"
         case .restore(let d): return "restore-\(d)"
+        case .conflicts: return "conflicts"
         }
     }
 }
@@ -62,6 +63,10 @@ final class AppModel: ObservableObject {
     lazy var jotPanel: JotPanelController = JotPanelController(model: self)
     /// The Review screen's state and every copy and export of it (M3), see ReviewController.swift.
     lazy var review = ReviewController(model: self)
+    /// "Suggested from your work" (M6): what Claude Code and Git say you did on the open day, and the Sources settings. See SourcesController.swift.
+    lazy var sources = SourcesController(model: self)
+    /// Sync through a shared folder (M5b): the folder watcher, days still in the cloud, conflict copies. See SyncController.swift.
+    lazy var sync = SyncController(model: self)
 
     @Published var now: Date
     @Published var settings: Settings { didSet { settingsChanged(old: oldValue) } }
@@ -237,6 +242,7 @@ final class AppModel: ObservableObject {
         heat = Heatmap.weeks(states: states, now: now, calendar: cal, weekdays: settings.weekdays, since: settings.logStartDate)
         catchUpDays = CatchUp.missing(states: states, now: now, calendar: cal, weekdays: settings.weekdays,
                                       logStart: settings.logStartDate, windowDays: settings.catchUpWindowDays)
+            .filter { !sync.isBlocked($0) }                  // a day that is only still downloading is not "unlogged"
         if selection == .week { refreshWeek() }
     }
 

@@ -197,6 +197,7 @@ struct SidebarFooter: View {
         let n = model.streak.current
         VStack(spacing: 0) {
             if model.notesWaiting > 0 { JotsWaitingRow(model: model) }
+            SyncChip(model: model)                                      // M5b: "3 days still downloading" / "1 conflict to review"; hidden otherwise
             HStack(spacing: Theme.s2) {
                 Button { open.value.toggle() } label: {
                     Text(n == 0 ? "No streak yet" : "\(n) day streak")

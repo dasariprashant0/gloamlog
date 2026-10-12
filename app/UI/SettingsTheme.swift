@@ -20,6 +20,7 @@ extension SettingsPane {
         case .page: return "Page"
         case .storage: return "Storage and backups"
         case .shortcuts: return "Shortcuts"
+        case .sources: return "Sources"
         case .about: return "About"
         }
     }
@@ -30,6 +31,7 @@ extension SettingsPane {
         case .page: return "doc.text"
         case .storage: return "externaldrive"
         case .shortcuts: return "keyboard"
+        case .sources: return "tray.and.arrow.down"
         case .about: return "info.circle"
         }
     }
@@ -39,8 +41,9 @@ extension SettingsPane {
         case .general: return 460
         case .reminders: return 600
         case .page: return 640
-        case .storage: return 440
+        case .storage: return 600
         case .shortcuts: return 640
+        case .sources: return 640
         case .about: return 380
         }
     }

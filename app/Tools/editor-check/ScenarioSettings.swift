@@ -321,9 +321,10 @@ func runSettingsScenarios() {
     arrowKey(124, in: w); let r1 = controller.nav.pane
     arrowKey(124, in: w); let r2 = controller.nav.pane
     arrowKey(124, in: w); let r3 = controller.nav.pane
+    arrowKey(124, in: w); let r4 = controller.nav.pane
     arrowKey(123, in: w); let l1 = controller.nav.pane
-    focusCheck("→ and ← change pane and stop at the ends", needsKey: false, ok: { r1 == .shortcuts && r2 == .about && r3 == .about && l1 == .shortcuts }, detail: "\(r1) \(r2) \(r3) \(l1)")
-    focusCheck("the title and tab followed the arrows", needsKey: false, ok: { w.title == "Shortcuts" && w.toolbar?.selectedItemIdentifier?.rawValue == "shortcuts" })
+    focusCheck("→ and ← change pane and stop at the ends", needsKey: false, ok: { r1 == .shortcuts && r2 == .sources && r3 == .about && r4 == .about && l1 == .sources }, detail: "\(r1) \(r2) \(r3) \(r4) \(l1)")
+    focusCheck("the title and tab followed the arrows", needsKey: false, ok: { w.title == "Sources" && w.toolbar?.selectedItemIdentifier?.rawValue == "sources" })
 
     // the pane is remembered (in the model's defaults) and a new model reopens on it
     if controller.nav.pane != .shortcuts { controller.nav.pane = .shortcuts }       // (arrows that did not land must not hide this check)
@@ -343,6 +344,7 @@ func runSettingsScenarios() {
         .page: ["A day counts as logged after", "Log start date", "Catch-up window", "New day template"],
         .storage: ["Folder", "Show in Finder", "Change", "Use default", "Safety copies", "Restore Previous Version"],
         .shortcuts: ["Today", "Catch Up", "Go to Date", "Search Logs", "Open Settings"],
+        .sources: ["Claude Code", "Git", "Insert under", "Hidden projects are skipped"],
         .about: ["Gloamlog", "No network requests", "Run setup again", "MIT licence"],
     ]
     var recognitionWorks = true

@@ -14,6 +14,7 @@ struct SettingsView: View {
             case .page: PageSettings(model: model)
             case .storage: StorageSettings(model: model)
             case .shortcuts: ShortcutsSettings(model: model)
+            case .sources: SourcesSettings(model: model)
             case .about: AboutSettings(model: model)
             }
         }

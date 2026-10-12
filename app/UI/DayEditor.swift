@@ -34,6 +34,7 @@ final class DayEditor: ObservableObject {
     @Published var externalNotice = false
     @Published var backupNotice: String?
     @Published private(set) var rawTextOnly = false      // the editor could not parse the page without loss: raw text, read-only
+    @Published private(set) var downloading = false      // the day's page is still in the cloud: no editor, nothing is written, it opens when it arrives (M5b)
 
     private(set) var initialBody: String
     private(set) var diskBody: String?                  // body on disk as a later load() would return it; nil = no log file
@@ -48,6 +49,7 @@ final class DayEditor: ObservableObject {
     init(day: String, model: AppModel) {
         self.day = day; self.model = model
         openedAsToday = day == model.today
+        downloading = model.store.isNotLocal(day)          // load() refuses such a day: it is "still coming", never "no log"
         let doc = (try? model.store.load(day)) ?? nil
         isSkipped = doc?.isSkipped ?? false
         skipReason = doc?.skipReason ?? ""
@@ -78,7 +80,7 @@ final class DayEditor: ObservableObject {
     }
 
     // MARK: derived
-    var showsEditor: Bool { !isSkipped || writingAnyway }
+    var showsEditor: Bool { !downloading && (!isSkipped || writingAnyway) }
     var baselineMarkdown: String { baseline }
     var minWords: Int { model.settings.minWords }
     var isLogged: Bool { words >= max(1, minWords) }
@@ -225,6 +227,7 @@ final class DayEditor: ObservableObject {
         case .folderMissing(let p): model.folderProblem = .missing(p); errorText = "The log folder can't be found."
         case .folderNotWritable(let p): model.folderProblem = .notWritable(p); errorText = "Gloamlog can't save to the log folder."
         case .io(let m): errorText = "Couldn't save. \(m)"
+        case .notLocal: errorText = "This day is still downloading from your cloud folder. Your text stays here and is saved when it arrives."
         default: errorText = "Couldn't save this page."
         }
         if model.live { UIAnnounce.say("Couldn't save. Your text is still on screen.", assertive: true) }
@@ -246,7 +249,7 @@ final class DayEditor: ObservableObject {
 
     /// Called on the timer / app activation. Quiet reload when nothing is unsaved, a small notice otherwise.
     func checkExternalChange() {
-        guard loaded, !abandoned else { return }
+        guard loaded, !abandoned, !model.store.isNotLocal(day) else { return }     // a day that went back to the cloud is waiting, not deleted
         let disk = readDisk()
         if disk.body == diskBody && disk.skipped == isSkipped { return }
         if hasUnsavedEdits {

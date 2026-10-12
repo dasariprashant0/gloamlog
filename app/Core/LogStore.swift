@@ -9,6 +9,8 @@
 //   listDays() -> [String]            day keys that have a file, newest first (the assets/ folder, a backups folder inside
 //                                     the storage folder and foreign files are ignored)
 //   load(day) -> DayDocument?         nil = no file. v0.1/v0.2 files load as plain markdown (see MarkdownFormat)
+//                                     Throws .notLocal while the day's page is still in the cloud (iCloud placeholder, dataless file):
+//                                     so do save/skip/unskip/restoreBackup. isNotLocal(day) says so without reading (Core/Sync/CloudFile.swift)
 //   save(day:body:) -> SaveOutcome    atomic; writes "# day\n\n<body>\n". Replaces a skip marker ("write a log anyway").
 //                                     A whitespace-only body deletes an existing log file instead (an emptied page is "no log")
 //                                     and never touches a skip marker. Identical content is not rewritten. The UI must only
@@ -58,6 +60,7 @@ enum LogError: Error, Equatable {
     case badPath(String)             // e.g. assets/ is a symlink leaving the storage folder
     case backupsDisabled             // restoreBackup on a store created without backupDir
     case backupFailed(String)        // restoreBackup could not make its safety copy of the current page (nothing changed)
+    case notLocal(String)            // the day's page is still in the cloud (iCloud placeholder or dataless file): never read, changed or replaced until it is here
     case io(String)
 }
 
@@ -140,6 +143,16 @@ final class LogStore {
     func url(for day: String) -> URL { dir.appendingPathComponent(day + ".md") }
     private func validate(_ day: String) throws { if !DayKey.isWellFormed(day) { throw LogError.badDay(day) } }
 
+    /// True when the day's page is in the folder but not (fully) on this Mac yet: an iCloud placeholder or a dataless file (Core/Sync/CloudFile.swift).
+    /// load, save, skip, unskip and restore refuse such a day with LogError.notLocal, so a day that is merely still downloading is never
+    /// read as "no log" and never gets a page created over it.
+    func isNotLocal(_ day: String) -> Bool { CloudFile.isNotLocal(dir: dir, day: day) }
+    private func requireLocal(_ day: String) throws { if isNotLocal(day) { throw LogError.notLocal(day) } }
+    /// load() for loops over many days: a day that is not here yet is left out instead of failing the whole call.
+    private func loadIfLocal(_ day: String) throws -> DayDocument? {
+        do { return try load(day) } catch LogError.notLocal { return nil }
+    }
+
     // MARK: read
     private func dayFiles() throws -> (days: [String], other: Int) {
         try checkFolder(writable: false)
@@ -160,6 +173,7 @@ final class LogStore {
     func load(_ day: String) throws -> DayDocument? {
         try validate(day)
         try checkFolder(writable: false)
+        try requireLocal(day)
         guard fm.fileExists(atPath: url(for: day).path) else { return nil }
         let text: String
         do { text = try String(contentsOf: url(for: day), encoding: .utf8) } catch { throw LogError.io(error.localizedDescription) }
@@ -177,15 +191,15 @@ final class LogStore {
     }
     func documents(from: String, to: String) throws -> [String: DayDocument] {
         var out = [String: DayDocument]()
-        for d in try listDays() where d >= from && d <= to { if let e = try load(d) { out[d] = e } }
+        for d in try listDays() where d >= from && d <= to { if let e = try loadIfLocal(d) { out[d] = e } }
         return out
     }
-    func allDocuments() throws -> [DayDocument] { try listDays().compactMap { try load($0) } }
+    func allDocuments() throws -> [DayDocument] { try listDays().compactMap { try loadIfLocal($0) } }
 
     func folderSummary() throws -> FolderSummary {
         var s = FolderSummary()
         let f = try dayFiles(); s.unrecognized = f.other
-        for d in f.days { if let e = try load(d) { if e.isSkipped { s.skipped += 1 } else if e.hasContent { s.logs += 1 } } }
+        for d in f.days { if let e = try loadIfLocal(d) { if e.isSkipped { s.skipped += 1 } else if e.hasContent { s.logs += 1 } } }
         return s
     }
 
@@ -205,7 +219,9 @@ final class LogStore {
                     guard let key = LogStore.dayNumber(ofFileName: name) else { return }       // not YYYY-MM-DD.md: never even stat'ed
                     var st = stat()
                     guard fstatat(fd, name, &st, 0) == 0, (st.st_mode & S_IFMT) == S_IFREG else { return }
-                    rows.append((key, "\(String(cString: name)) \(st.st_mtimespec.tv_sec).\(st.st_mtimespec.tv_nsec) \(st.st_size)"))
+                    // a dataless file (its bytes arrive later from the cloud) gets a marker, so the arrival changes the stamp
+                    let cloud = (st.st_flags & CloudFile.datalessFlag) != 0 ? " dataless" : ""
+                    rows.append((key, "\(String(cString: name)) \(st.st_mtimespec.tv_sec).\(st.st_mtimespec.tv_nsec) \(st.st_size)\(cloud)"))
                 }
             }
         }
@@ -237,6 +253,7 @@ final class LogStore {
 
     private func write(_ text: String, day: String) throws {
         try checkFolder()
+        try requireLocal(day)
         sweepOnce()
         do { try AtomicFile.write(Data(text.utf8), to: url(for: day)) }
         catch let e as NSError {
@@ -251,6 +268,7 @@ final class LogStore {
     func save(day: String, body: String) throws -> SaveOutcome {
         try validate(day)
         try checkFolder()
+        try requireLocal(day)                // before anything is read, backed up, written or deleted
         let file = url(for: day)
         let exists = fm.fileExists(atPath: file.path)
         let oldData: Data? = exists ? (try? Data(contentsOf: file)) : nil
@@ -346,6 +364,7 @@ final class LogStore {
         do { text = try String(contentsOf: dayDir.appendingPathComponent(name), encoding: .utf8) }
         catch { throw LogError.io("Backup \(name) could not be read.") }
         try checkFolder()
+        try requireLocal(day)
         let file = url(for: day)
         let exists = fm.fileExists(atPath: file.path)
         let curData: Data? = exists ? (try? Data(contentsOf: file)) : nil
@@ -395,7 +414,7 @@ final class LogStore {
 
     func search(_ query: String, heading: String? = nil) throws -> [SearchHit] {
         var hits = [SearchHit]()
-        for d in try listDays() { if let e = try load(d) { hits += Search.hits(in: e, query: query, heading: heading) } }
+        for d in try listDays() { if let e = try loadIfLocal(d) { hits += Search.hits(in: e, query: query, heading: heading) } }
         return hits
     }
 }

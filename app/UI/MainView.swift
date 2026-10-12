@@ -40,6 +40,7 @@ struct MainView: View {
             case .onboarding: OnboardingView(model: model)
             case .whatsNew: WhatsNewSheet(model: model)
             case .restore(let day): RestoreVersionSheet(model: model, day: day)
+            case .conflicts: ConflictSheet(model: model)
             }
         }
     }
@@ -56,7 +57,9 @@ struct DetailRouter: View {
     @ObservedObject var model: AppModel
     var body: some View {
         switch model.selection {
-        case .day: DayPage(model: model, editor: model.editor)
+        case .day:
+            if model.editor.downloading { DownloadingPage(model: model, editor: model.editor) }     // M5b: the day is still in the cloud
+            else { DayPage(model: model, editor: model.editor) }
         case .catchUp: CatchUpView(model: model)
         case .week: WeeklyReviewView(model: model)
         case .search: SearchView(model: model)

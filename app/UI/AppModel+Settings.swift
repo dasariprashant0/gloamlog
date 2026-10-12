@@ -8,7 +8,7 @@ import Combine
 import ObjectiveC
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, reminders, page, storage, shortcuts, about
+    case general, reminders, page, storage, shortcuts, sources, about
     var id: String { rawValue }
 }
 
@@ -86,7 +86,7 @@ extension AppModel {
         case .general:
             showMenuBarItem = true
             if loginEnabled { setLogin(false) }
-        case .reminders, .page, .storage, .shortcuts, .about: break
+        case .reminders, .page, .storage, .shortcuts, .sources, .about: break
         }
         var s = settings                                  // after setLogin, which also edits `settings`
         switch pane {
@@ -98,7 +98,7 @@ extension AppModel {
         case .page:
             s.minWords = d.minWords; s.template = d.template; s.carryOverHeadings = d.carryOverHeadings
             s.catchUpWindowDays = d.catchUpWindowDays; s.logStartDate = d.logStartDate
-        case .storage, .shortcuts, .about: return
+        case .storage, .shortcuts, .sources, .about: return
         }
         if s != settings { settings = s }
     }

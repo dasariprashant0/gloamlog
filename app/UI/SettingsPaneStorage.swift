@@ -49,6 +49,8 @@ struct StorageSettings: View {
                 }
                 SettingsHelp("Before a page is overwritten, Gloamlog keeps up to \(LogStore.maxBackupsPerDay) earlier versions of it here, outside your log folder, so they never sync. To bring one back, open the page and choose Restore Previous Version… in the File menu, or in the page's … menu.")
             } header: { Text("Safety copies").font(Theme.font(13, .semibold)) }
+
+            SyncStorageSection(model: model)                            // M5b: folder kind, sync status, "Resolve conflicts"
         }
         .onAppear { model.refreshSummary() }
     }

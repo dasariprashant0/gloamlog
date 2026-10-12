@@ -27,6 +27,7 @@ enum AtomicFile {
                 try? fm.setAttributes([.posixPermissions: permissions], ofItemAtPath: tmp.path)
             }
             guard rename(tmp.path, dest.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+            OwnWrites.note(dest)                                  // the folder watcher ignores the echo of this write (Core/Sync/CloudFile.swift)
         } catch {
             try? fm.removeItem(at: tmp)
             throw error

@@ -24,9 +24,11 @@ struct DayPage: View {
         VStack(spacing: 0) {
             Column(top: 28, bottom: 0) {
                 if let s = model.session { SessionBar(model: model, session: s).padding(.bottom, Theme.s4) }
+                SyncBanners(model: model)                               // M5b: "1 conflict in ~/Gloamlog" (nothing while there is none)
                 PageNotices(model: model, editor: editor)
                 PageHeader(model: model, editor: editor)
                 if editor.showsEditor { FromYesterdayStrip(model: model, editor: editor) }
+                if editor.showsEditor { SuggestionsStrip(model: model, editor: editor) }
             }
             if editor.showsEditor {
                 if snapshot {

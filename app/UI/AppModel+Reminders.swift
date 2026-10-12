@@ -11,6 +11,7 @@ extension AppModel {
         activate(editor, replacing: nil, focus: sheet == nil)          // creates the editor host and loads today's page
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.tick() }
         timer?.tolerance = 5
+        sync.start()                                                   // M5b: watch the log folder, count days still in the cloud, find conflict copies
         let nc = NotificationCenter.default, ws = NSWorkspace.shared.notificationCenter
         for n in [Notification.Name.NSCalendarDayChanged, .NSSystemClockDidChange, .NSSystemTimeZoneDidChange] {
             nc.addObserver(forName: n, object: nil, queue: .main) { [weak self] _ in self?.refreshClock() }
