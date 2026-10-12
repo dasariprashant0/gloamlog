@@ -1,3 +1,5 @@
+> **Superseded.** This document describes the earlier five-box version (v0.1 and v0.2). The current plans are in [docs/v1/](v1/) (PRD_V1, UX_FLOWS, DESIGN_V4, TRD, ARCHITECTURE).
+
 # Gloamlog: Technical Requirements
 
 Status: describes the code as it exists in `app/Gloamlog.swift`, `app/build.sh`, `daily-log.sh`, `daily-log.py`. Nothing has been built or run yet; every claim below is from reading source, not from execution.

@@ -1,3 +1,5 @@
+> **Superseded.** This document describes the earlier five-box version (v0.1 and v0.2). The current plans are in [docs/v1/](v1/) (PRD_V1, UX_FLOWS, DESIGN_V4, TRD, ARCHITECTURE).
+
 # Gloamlog: Architecture
 
 All app code is in `app/Gloamlog.swift`. Local-only, no network. Nothing here has been executed yet; this reflects the source.

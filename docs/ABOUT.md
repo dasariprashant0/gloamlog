@@ -1,11 +1,16 @@
 # About
 
-Gloamlog is a small Mac app for one habit: writing up your working day before you leave it.
+Gloamlog is a private Mac work journal for the end of your day. One calm, Notion-style page per day, saved as a plain markdown file on your Mac. Nothing leaves your computer.
 
-Every weekday at your reminder time it asks five questions: what you did, what you finished, what you started, what's pending, and what needs doing next. You can't save until all five are answered, and if you close the window it comes back until today is logged.
+It is built around how a working day actually goes:
 
-**Why:** end-of-day notes are easy to skip and valuable later (standups, weekly updates, performance reviews, picking work back up on Monday). A tool that makes the habit hard to skip beats a good intention.
+- **Write once at the end of the day**, or **jot notes as things happen** and tidy up later.
+- **Catch up the next morning** for yesterday, or **backfill a whole week** in one sitting: any date opens, and a Catch up list shows what you missed.
+- **Look back**: search old entries, review a week, a month or a year, and copy or export a clean summary for a standup or a review.
+- **Stay on track without nagging**: a reminder at your end-of-day time (strict or gentle), skip days for holidays and leave, and a streak that forgives backfilled days.
 
-**What it is not:** a task manager, a time tracker, or a cloud service. Nothing leaves your Mac. Your logs are plain markdown files you own.
+**Why:** end-of-day notes are easy to skip and valuable later (standups, weekly updates, performance reviews, picking work back up on Monday). A tool that makes the habit easy, and hard to forget, beats a good intention.
 
-Made by Prashant Dasari as a personal tool, shared as-is.
+**What it is not:** a task manager, a time tracker, or a cloud service. Your logs are ordinary markdown files you own, and the app makes no network requests.
+
+Made by Prashant Dasari. MIT licensed. Not affiliated with Anthropic.

@@ -1,3 +1,5 @@
+> **Superseded.** This document describes the earlier five-box version (v0.1 and v0.2). The current plans are in [docs/v1/](v1/) (PRD_V1, UX_FLOWS, DESIGN_V4, TRD, ARCHITECTURE).
+
 # Roadmap: v0.3 and beyond
 
 This is a ranked list of bets, not a promise. Rank reflects value to people who already use Gloamlog divided by effort and risk, and every item keeps the core promise: local-only, plain markdown, no telemetry unless stated. Items move up when real usage or feedback supports them. Nothing here ships before v0.2 has been used for a few weeks.

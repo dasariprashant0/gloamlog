@@ -1,3 +1,5 @@
+> **Superseded.** This document describes the earlier five-box version (v0.1 and v0.2). The current plans are in [docs/v1/](v1/) (PRD_V1, UX_FLOWS, DESIGN_V4, TRD, ARCHITECTURE).
+
 # Gloamlog v0.2: UX Spec
 
 **Status**: Design, not built. Extends v1 (`docs/PRD.md`, `docs/DESIGN_SYSTEM.md`, `docs/ARCHITECTURE.md`, `app/Gloamlog.swift`).
