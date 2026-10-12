@@ -18,6 +18,7 @@ import {
   serializerCtx
 } from '@milkdown/kit/core'
 import { imageSchema, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
+import { closeHistory } from '@milkdown/kit/prose/history'
 import { InputRule } from '@milkdown/kit/prose/inputrules'
 import { Fragment } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey, Selection } from '@milkdown/kit/prose/state'
@@ -231,6 +232,36 @@ function asCodeBlock(text) {
   return `${fence}text\n${text}\n${fence}\n`
 }
 
+// ------------------------------------------------------------------ quick capture
+// Same rule as MarkdownBody.normalizeHeading on the Swift side: lowercase; letters, numbers and combining marks stay (variation
+// selectors do not), everything else (emoji, punctuation, spaces) is a single space between words.
+function normHeading(text) {
+  let out = ''
+  let gap = false
+  for (const ch of String(text)) {
+    const keep =
+      /[\p{L}\p{N}]/u.test(ch) || (/[\p{Mn}\p{Mc}]/u.test(ch) && !/[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u.test(ch))
+    if (keep) {
+      if (gap && out) out += ' '
+      gap = false
+      out += ch
+    } else gap = true
+  }
+  return out.toLowerCase()
+}
+const isEmptyParagraph = (n) => n.type.name === 'paragraph' && n.content.size === 0
+const sameItem = (a, b) => a.attrs.checked === b.attrs.checked && a.content.eq(b.content) // text, marks and checkbox; not list attrs
+
+// The first top-level block whose bottom is below the top of the viewport: where the reader is looking.
+function firstVisibleBlock() {
+  for (const el of view.dom.children) {
+    if (el.classList.contains('ProseMirror-widget') || el.classList.contains('prosemirror-virtual-cursor')) continue
+    const r = el.getBoundingClientRect()
+    if (r.bottom > 0) return { el, top: r.top }
+  }
+  return null
+}
+
 function flushChange() {
   clearTimeout(changeTimer)
   changeTimer = 0
@@ -244,10 +275,10 @@ function scheduleChange() {
   clearTimeout(changeTimer)
   changeTimer = setTimeout(flushChange, CHANGE_DEBOUNCE_MS)
 }
-function markSynced() {
+function markSynced(md = current()) {
   clearTimeout(changeTimer)
   changeTimer = 0
-  lastSent = current()
+  lastSent = md
 }
 
 // Notion types "[] " for a to-do; Milkdown only knows "[ ] " after "- ". Both end up as a "- [ ] " item.
@@ -368,6 +399,75 @@ const api = {
       silent = false
     }
     markSynced()
+  },
+  // Quick capture: ONE transaction on the live document, answered by an appendResult message (see docs/EDITOR_CONTRACT.md).
+  appendToSection(callId, token, heading, markdown, opts) {
+    const answer = (result, md) => post({ type: 'appendResult', id: callId, result, markdown: md })
+    // The page must still hold the document the host tagged with `token` (the host sets window.__dlDoc in the script that
+    // swaps the page), and it must be real text: the raw-text fallback is not a document we may add to.
+    if (rawFallback !== null || typeof token !== 'string' || window.__dlDoc !== token) return answer('stale', null)
+    const text = String(markdown == null ? '' : markdown)
+    const { state } = view
+    const { doc, schema } = state
+
+    // the note as a bullet list node (the host sends one list item line); anything else becomes one plain item
+    const parsed = builder.editor.action((ctx) => ctx.get(parserCtx)(text))
+    let list = parsed && parsed.childCount === 1 && parsed.firstChild.type.name === 'bullet_list' ? parsed.firstChild : null
+    if (!list) {
+      const plain = text.replace(/^\s*[-*+]\s+/, '').trim()
+      if (!plain) return answer('alreadyPresent', current())
+      const item = schema.nodes.list_item.create(null, schema.nodes.paragraph.create(null, schema.text(plain)))
+      list = schema.nodes.bullet_list.create(null, item)
+    }
+    const items = []
+    list.forEach((n) => items.push(n))
+
+    // the section: first top-level heading of any level that matches; it runs to the next heading of the same or a higher level
+    const want = normHeading(heading)
+    const pos = []
+    doc.forEach((n, p) => pos.push(p))
+    let at = -1
+    if (want) for (let i = 0; i < doc.childCount && at < 0; i++) if (doc.child(i).type.name === 'heading' && normHeading(doc.child(i).textContent) === want) at = i
+    let end = doc.childCount
+    if (at >= 0) for (let i = at + 1; i < doc.childCount; i++) if (doc.child(i).type.name === 'heading' && doc.child(i).attrs.level <= doc.child(at).attrs.level) { end = i; break }
+
+    let toAdd = items
+    if (opts && opts.unlessPresent && at >= 0) {
+      const existing = []
+      for (let i = at + 1; i < end; i++) doc.child(i).descendants((n) => { if (n.type.name === 'list_item') existing.push(n) })
+      toAdd = items.filter((it) => !existing.some((e) => sameItem(e, it)))
+      if (!toAdd.length) return answer('alreadyPresent', current())
+    }
+
+    const tr = closeHistory(state.tr) // its own undo step: ⌘Z removes the note and nothing typed before it
+    if (at < 0) {
+      const title = schema.text(String(heading).replace(/\s+/g, ' ').trim() || 'Jots')
+      tr.insert(doc.content.size, [schema.nodes.heading.create({ level: 2 }, title), schema.nodes.bullet_list.create(list.attrs, toAdd)])
+    } else {
+      // the last real block of the section; empty paragraphs (the editor's open lines) do not count
+      let last = end - 1
+      while (last > at && isEmptyParagraph(doc.child(last))) last--
+      if (last === at) tr.insert(pos[at] + doc.child(at).nodeSize, schema.nodes.bullet_list.create(list.attrs, toAdd))
+      else if (doc.child(last).type.name === 'bullet_list') tr.insert(pos[last] + doc.child(last).nodeSize - 1, toAdd) // join the list
+      else tr.insert(pos[last] + doc.child(last).nodeSize, schema.nodes.bullet_list.create(list.attrs, toAdd))
+    }
+    // No selection change, no scrollIntoView: the transaction maps the caret and selection by itself. WebKit has no scroll
+    // anchoring, so put the reader's block back where it was if the note was added above it.
+    const anchor = firstVisibleBlock()
+    silent = true
+    try {
+      view.dispatch(tr)
+      view.dispatch(closeHistory(view.state.tr)) // empty: whatever the user types next starts a new undo step
+    } finally {
+      silent = false
+    }
+    if (anchor) {
+      const shift = anchor.el.getBoundingClientRect().top - anchor.top
+      if (Math.abs(shift) > 0.5) window.scrollBy(0, shift)
+    }
+    const md = current()
+    markSynced(md) // the reply carries the whole text, typed-a-moment-ago included: the host saves it, no `change` for this
+    answer('appended', md)
   },
   _resolveUpload(id, path, err) {
     const u = uploads.get(id)

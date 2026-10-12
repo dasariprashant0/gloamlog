@@ -79,8 +79,8 @@ const pngFile = (name = 'shot.png', type = 'image/png') => new win.File([PNG], n
 const toastText = () => win.document.querySelector('.dl-toast')
 
 say('== contract surface')
-const want = ['_resolveUpload', 'focus', 'getMarkdown', 'insertMarkdown', 'isRawFallback', 'setMarkdown', 'setPlaceholder', 'setReadOnly', 'setTheme']
-check('window.DailyLogEditor has exactly the contract methods (+ isRawFallback)', JSON.stringify(Object.keys(api).sort()) === JSON.stringify(want))
+const want = ['_resolveUpload', 'appendToSection', 'focus', 'getMarkdown', 'insertMarkdown', 'isRawFallback', 'setMarkdown', 'setPlaceholder', 'setReadOnly', 'setTheme']
+check('window.DailyLogEditor has exactly the contract methods (+ isRawFallback, appendToSection)', JSON.stringify(Object.keys(api).sort()) === JSON.stringify(want))
 check('ready was posted once', msgs('ready').length === 1)
 check('default placeholder', (api.setMarkdown(''), win.document.querySelector('.crepe-placeholder')?.dataset.placeholder === 'Write about your day, or press / for commands'))
 
@@ -275,16 +275,31 @@ say('== keyboard')
 say('')
 say('== calls before ready are queued, not lost')
 {
-  const early = await mountEditor(document.getElementById('frame'))
-  while (!early.win.DailyLogEditor) await sleep(5)
-  early.win.DailyLogEditor.setMarkdown('Early text\n')
-  early.win.DailyLogEditor.setTheme('dark')
-  const before = early.win.DailyLogEditor.getMarkdown()
-  check('isRawFallback() before ready is false', early.win.DailyLogEditor.isRawFallback() === false)
+  // onApi runs synchronously when the bundle publishes window.DailyLogEditor: the editor exists but is not ready yet
+  const pre = {}
+  let published
+  const apiPublished = new Promise((resolve) => (published = resolve))
+  const early = await mountEditor(document.getElementById('frame'), {
+    onApi: (E) => {
+      E.setMarkdown('Early text\n')
+      E.setTheme('dark')
+      pre.markdown = E.getMarkdown()
+      pre.raw = E.isRawFallback()
+      E.appendToSection('early-1', 'x', 'Jots', '- 14:32 early note', {})
+      pre.answered = early.messages.length
+      published()
+    }
+  })
+  await apiPublished
+  check('isRawFallback() before ready is false', pre.raw === false)
+  check('nothing is answered before ready', pre.answered === 0)
   await early.ready
-  check('getMarkdown before ready returns what the host set (never an empty file)', before === 'Early text\n', JSON.stringify(before))
+  check('getMarkdown before ready returns what the host set (never an empty file)', pre.markdown === 'Early text\n', JSON.stringify(pre.markdown))
   check('queued setMarkdown/setTheme were applied after ready', early.api.getMarkdown() === 'Early text\n' && early.win.document.documentElement.dataset.theme === 'dark')
   check('queued calls emit no change', early.messages.filter((m) => m.type === 'change').length === 0)
+  const ar = early.messages.filter((m) => m.type === 'appendResult')
+  check('appendToSection before ready is queued and answered right after ready (stale: the page was not tagged)', ar.length === 1 && ar[0].id === 'early-1' && ar[0].result === 'stale' && ar[0].markdown === null && early.messages.indexOf(ar[0]) > early.messages.findIndex((m) => m.type === 'ready'), JSON.stringify(early.messages.map((m) => m.type)))
+  early.iframe.remove()
 }
 
 say('')
@@ -319,6 +334,315 @@ say('== layout: the first block sits at the top, focused or not (a widget div pr
   await sleep(200)
   probe('blurred again')
   fresh.iframe.remove()
+}
+
+say('')
+say('== quick capture: appendToSection (one transaction, answered by an appendResult message)')
+{
+  let seq = 0
+  const mac = /Mac|iPhone|iPad/.test(win.navigator.platform)
+  const key = (k, extra = {}) => view.dom.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true, ...extra }))
+  const undo = () => key('z')
+  const redo = () => key('z', { shiftKey: true })
+  const TS = view.state.selection.constructor
+  const load = (md, o) => { api.setMarkdown(md, o); win.__dlDoc = 'tok-' + (++seq); return win.__dlDoc } // what the host does: swap, then tag
+  const call = (token, item, { heading = 'Jots', opts = { unlessPresent: true } } = {}) => {
+    const id = 'call-' + (++seq)
+    const from = host.messages.length
+    api.appendToSection(id, token, heading, item, opts)
+    const replies = host.messages.slice(from).filter((m) => m.type === 'appendResult')
+    return { id, replies, reply: replies[0] }
+  }
+  const findText = (needle, offset = 0) => { let at = -1; view.state.doc.descendants((n, p) => { if (at < 0 && n.isText && n.text.includes(needle)) at = p + n.text.indexOf(needle) + offset }); return at }
+  const names = () => { const out = []; view.state.doc.forEach((n) => out.push(n.type.name + (n.type.name === 'paragraph' && !n.content.size ? '(empty)' : ''))); return out.join(',') }
+  const NOTE = '- 14:32 call with Sam about pricing'
+  const NOTE_MD = NOTE + '\n'
+  const template = await (await fetch('./fixtures/template.md')).text()
+  const normalised = async (name) => { api.setMarkdown(await (await fetch(`./fixtures/${name}.md`)).text()); return api.getMarkdown() }
+  const middle = await normalised('jots-middle')
+  const list = await normalised('jots-list')
+
+  // [label, page, note, expected markdown after, options]
+  const cases = [
+    ['under a heading whose section has no list yet', '## What I did\n\nWrote code.\n\n## Jots\n\nA stray paragraph.\n\n## To do next\n\n- Reply\n', NOTE, '## What I did\n\nWrote code.\n\n## Jots\n\nA stray paragraph.\n\n' + NOTE_MD + '\n## To do next\n\n- Reply\n'],
+    ['extends the last bullet list of the section', '## Jots\n\n- 09:01 first\n- 10:15 second\n\n## Next\n\ntext\n', NOTE, '## Jots\n\n- 09:01 first\n- 10:15 second\n' + NOTE_MD + '\n## Next\n\ntext\n'],
+    ['heading missing: ## Jots and the list go to the end', '## What I did\n\nStuff\n', NOTE, '## What I did\n\nStuff\n\n## Jots\n\n' + NOTE_MD],
+    ['empty document', '', NOTE, '## Jots\n\n' + NOTE_MD],
+    ['template page (headings only)', template, NOTE, template.replace(/\n$/, '') + '\n\n## Jots\n\n' + NOTE_MD],
+    ['a page that is only a Jots block', '## Jots\n\n- 14:32 call with Sam about pricing\n', '- 14:40 second', '## Jots\n\n- 14:32 call with Sam about pricing\n- 14:40 second\n'],
+    ['any heading level, emoji, case and punctuation are ignored', '### 📝 JOTS!\n\n- a\n\n## Next\n', NOTE, '### 📝 JOTS!\n\n- a\n' + NOTE_MD + '\n## Next\n'],
+    ['deeper sub-headings stay inside the section', '## Jots\n\n- a\n\n### Details\n\n- b\n\n## Next\n\nx\n', NOTE, '## Jots\n\n- a\n\n### Details\n\n- b\n' + NOTE_MD + '\n## Next\n\nx\n'],
+    ['a heading of the same level ends the section', '### Jots\n\n- a\n\n### Other\n\n- b\n', NOTE, '### Jots\n\n- a\n' + NOTE_MD + '\n### Other\n\n- b\n'],
+    ['a heading of a higher level ends the section', '## Jots\n\n- a\n\n# Top\n\n- b\n', NOTE, '## Jots\n\n- a\n' + NOTE_MD + '\n# Top\n\n- b\n'],
+    ['the first of two Jots headings is used', '## Jots\n\n- first block\n\n## Middle\n\n## Jots\n\n- second block\n', NOTE, '## Jots\n\n- first block\n' + NOTE_MD + '\n## Middle\n\n## Jots\n\n- second block\n'],
+    ['a section that is only its heading', '## Jots\n\n## Next\n\n- b\n', NOTE, '## Jots\n\n' + NOTE_MD + '\n## Next\n\n- b\n'],
+    ['the last block is an ordered list: a bullet list follows it', '## Jots\n\n1. one\n2. two\n', NOTE, '## Jots\n\n1. one\n2. two\n\n' + NOTE_MD],
+    ['the last block is a code block', '## Jots\n\n```\ncode\n```\n', NOTE, '## Jots\n\n```\ncode\n```\n\n' + NOTE_MD],
+    ['a to-do note joins a list of plain notes', '## Jots\n\n- 10:00 note\n', '- [ ] buy milk', '## Jots\n\n- 10:00 note\n- [ ] buy milk\n'],
+    ['a multi-line note keeps its continuation line', '## Jots\n', '- 14:32 line one\n  line two', '## Jots\n\n- 14:32 line one\n  line two\n'],
+    ['text that starts with a marker stays text', '## Jots\n', '- \\# starts with hash', '## Jots\n\n- \\# starts with hash\n'],
+    ['heading argument with emoji and other case', '## Jots\n\n- a\n', NOTE, '## Jots\n\n- a\n' + NOTE_MD, { heading: '📝 jots' }],
+    ['non-Latin heading', '## Журнал\n\n- а\n', NOTE, '## Журнал\n\n- а\n' + NOTE_MD, { heading: 'журнал' }],
+    ['a heading argument that is not in the page is created as written', 'Text\n', NOTE, 'Text\n\n## Quick notes\n\n' + NOTE_MD, { heading: 'Quick notes' }],
+    ['the page is the fixture jots-middle (### 🗒️ Jots, a deeper #### inside)', middle, NOTE, middle.replace('- 09:30 ask legal about the DPA\n', '- 09:30 ask legal about the DPA\n' + NOTE_MD)],
+    ['the page is the fixture jots-list (multi-line note last)', list, NOTE, list.replace('  second line of the same note\n', '  second line of the same note\n' + NOTE_MD)]
+  ]
+  for (const [label, page, note, want, o = {}] of cases) {
+    const t = load(page)
+    const { id, replies, reply } = call(t, note, o)
+    const got = api.getMarkdown()
+    api.setMarkdown(want)
+    const again = api.getMarkdown()
+    check(`append: ${label}`, replies.length === 1 && reply.result === 'appended' && reply.id === id && got === want && reply.markdown === got && again === want, JSON.stringify({ result: reply && reply.result, got, want, again: again === want }))
+  }
+
+  // order and volume
+  {
+    const t = load('## Jots\n')
+    for (const n of ['one', 'two', 'three']) call(t, '- ' + n)
+    check('several notes keep the order they were appended in', api.getMarkdown() === '## Jots\n\n- one\n- two\n- three\n', JSON.stringify(api.getMarkdown()))
+    const t0 = performance.now()
+    const t2 = load('## Jots\n')
+    const lap = []
+    let lapStart = performance.now()
+    for (let i = 0; i < 100; i++) {
+      call(t2, '- note ' + i)
+      if (i % 20 === 19) { lap.push(performance.now() - lapStart); lapStart = performance.now() }
+    }
+    const ms = Math.round(performance.now() - t0)
+    // wall-clock limits are useless on a busy machine; what matters is that an append does not get much slower as the list grows
+    check('100 appends into one list stay in order, and the last 20 are not far slower than the first 20', api.getMarkdown() === '## Jots\n\n' + Array.from({ length: 100 }, (_, i) => '- note ' + i).join('\n') + '\n' && lap[4] < lap[0] * 8 + 500, `${lap.map((x) => Math.round(x)).join('/')} ms per 20`)
+    say(`   info: 100 appendToSection calls into one growing list: ${ms} ms (${lap.map((x) => Math.round(x)).join('/')} per 20)`)
+  }
+
+  // unlessPresent
+  {
+    const page = '## Finished\n\n- 14:32 call with Sam about pricing\n\n## Jots\n\n- 14:32 call with Sam about pricing\n- [ ] ring Sam\n'
+    let t = load(page)
+    let r = call(t, NOTE)
+    check('unlessPresent: an identical item in the section -> alreadyPresent, nothing changes', r.reply.result === 'alreadyPresent' && api.getMarkdown() === page && r.reply.markdown === page && r.replies.length === 1, JSON.stringify(r.reply))
+    t = load(page)
+    r = call(t, '- [x] ring Sam')
+    check('unlessPresent: same text but a different checkbox state is a different item', r.reply.result === 'appended' && api.getMarkdown().endsWith('- [ ] ring Sam\n- [x] ring Sam\n'), JSON.stringify(api.getMarkdown()))
+    t = load('## Finished\n\n- 14:32 call with Sam about pricing\n\n## Jots\n\n- other\n')
+    r = call(t, NOTE)
+    check('unlessPresent: the same line in ANOTHER section does not count', r.reply.result === 'appended' && api.getMarkdown().endsWith('## Jots\n\n- other\n' + NOTE_MD), JSON.stringify(api.getMarkdown()))
+    t = load(page)
+    r = call(t, NOTE, { opts: {} })
+    check('without unlessPresent a duplicate is appended', r.reply.result === 'appended' && api.getMarkdown() === page.replace('- [ ] ring Sam\n', '- [ ] ring Sam\n' + NOTE_MD), JSON.stringify(api.getMarkdown()))
+    t = load('## Jots\n')
+    const first = call(t, NOTE)
+    const second = call(t, NOTE)
+    check('a replay of the same call is appended once, then alreadyPresent', first.reply.result === 'appended' && second.reply.result === 'alreadyPresent' && api.getMarkdown() === '## Jots\n\n' + NOTE_MD, JSON.stringify([first.reply.result, second.reply.result, api.getMarkdown()]))
+    t = load('Plain page\n')
+    r = call(t, NOTE)
+    check('unlessPresent with no such section appends', r.reply.result === 'appended' && api.getMarkdown().endsWith('## Jots\n\n' + NOTE_MD))
+    t = load('## Jots\n\n- a\n')
+    r = call(t, '- a\n- b')
+    check('several items: only the missing ones are added', r.reply.result === 'appended' && api.getMarkdown() === '## Jots\n\n- a\n- b\n', JSON.stringify(api.getMarkdown()))
+  }
+
+  // stale token: nothing may change, and nothing may be answered with page text
+  {
+    const page = '## Jots\n\n- keep me\n'
+    let t = load(page)
+    let r = call('some-other-token', NOTE)
+    check('stale: a token that is not the page\'s -> stale, markdown null, page untouched', r.replies.length === 1 && r.reply.result === 'stale' && r.reply.markdown === null && r.reply.id === r.id && api.getMarkdown() === page, JSON.stringify(r.reply))
+    const old = load('## Jots\n\n- day one\n')
+    const now = load('## Jots\n\n- day two\n')
+    r = call(old, NOTE)
+    check('stale: the token of the previous page after a swap', r.reply.result === 'stale' && api.getMarkdown() === '## Jots\n\n- day two\n')
+    r = call(now, NOTE)
+    check('...and the new page\'s token works', r.reply.result === 'appended' && api.getMarkdown() === '## Jots\n\n- day two\n' + NOTE_MD)
+    load(page)
+    delete win.__dlDoc
+    r = call('anything', NOTE)
+    check('stale: the page was never tagged', r.reply.result === 'stale' && api.getMarkdown() === page)
+    t = load(page)
+    check('stale: a token that is not a string', [undefined, null, 42, {}].every((bad) => { const x = call(bad, NOTE); return x.reply.result === 'stale' && x.reply.markdown === null }) && api.getMarkdown() === page)
+  }
+
+  // caret and selection
+  {
+    const sel = () => { const s = view.state.selection; return { from: s.from, to: s.to, parent: s.$from.parent.textContent, off: s.$from.parentOffset, text: view.state.doc.textBetween(s.from, s.to), anchorParent: s.$anchor.parent.textContent } }
+    const dom = () => { const d = win.getSelection(); return [d.anchorNode, d.anchorOffset, d.focusNode, d.focusOffset] }
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+    // Jots below the caret: positions do not move at all
+    let t = load('## What I did\n\nfirst paragraph text here\n\n## Jots\n\n- 09:00 a\n\n## After\n\nlast paragraph\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('paragraph text', 4))))
+    view.focus()
+    let before = sel(), beforeDom = dom()
+    call(t, NOTE)
+    await sleep(100) // Crepe re-places the caret in a rAF after a list item mounts: it must land where it was
+    check('caret: Jots below it -> same position, same DOM selection', same(before, sel()) && dom().every((v, i) => v === beforeDom[i]) && beforeDom[0] !== null, JSON.stringify([before, sel()]))
+    // a range selection
+    t = load('## What I did\n\nfirst paragraph text here\n\n## Jots\n\n- 09:00 a\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('paragraph text'), findText('paragraph text') + 'paragraph text'.length)))
+    view.focus()
+    before = sel(); beforeDom = dom()
+    call(t, NOTE)
+    await sleep(100)
+    check('selection: a range keeps its text and its DOM selection', same(before, sel()) && before.text === 'paragraph text' && dom().every((v, i) => v === beforeDom[i]), JSON.stringify([before, sel()]))
+    // Jots ABOVE the caret: the numbers shift, the place in the text does not
+    t = load('## Jots\n\n- 09:00 a\n\n## Later\n\nlater paragraph text\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('paragraph', 6))))
+    view.focus()
+    before = sel(); beforeDom = dom()
+    const fromBefore = view.state.selection.from
+    call(t, NOTE)
+    await sleep(100)
+    const after = sel()
+    check('caret: Jots above it -> the caret stays in the same words (positions shift, text offset does not)', before.parent === after.parent && before.off === after.off && after.from > fromBefore && dom().every((v, i) => v === beforeDom[i]), JSON.stringify([before, after]))
+    t = load('## Jots\n\n- 09:00 a\n\n## Later\n\nlater paragraph text\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('paragraph'), findText('paragraph') + 'paragraph text'.length)))
+    before = sel()
+    call(t, NOTE)
+    await sleep(100)
+    check('selection: a range below the Jots block still selects the same words', sel().text === 'paragraph text' && sel().anchorParent === before.anchorParent)
+    // the caret in the editor's open line under the Jots heading stays in that line, which is now below the list
+    t = load('## Jots\n')
+    view.dispatch(view.state.tr.insert(view.state.doc.content.size, view.state.schema.nodes.paragraph.create()))
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, view.state.doc.content.size - 1)))
+    view.focus()
+    check('open line: the page has an empty line under the heading', names() === 'heading,paragraph(empty)')
+    call(t, NOTE)
+    await sleep(100)
+    const s2 = view.state.selection
+    check('open line: the list goes in before the caret\'s line, the caret stays in it', names() === 'heading,bullet_list,paragraph(empty)' && s2.$from.parent.type.name === 'paragraph' && s2.$from.parent.content.size === 0 && s2.$from.index(0) === 2, names())
+    check('open line: nothing is written for the empty line', api.getMarkdown() === '## Jots\n\n' + NOTE_MD)
+    // a template page with an open line under every heading
+    t = load(template)
+    {
+      const tr = view.state.tr
+      view.state.doc.forEach((n, p) => { if (n.type.name === 'heading') tr.insert(tr.mapping.map(p + n.nodeSize), view.state.schema.nodes.paragraph.create()) })
+      view.dispatch(tr)
+    }
+    check('template page: five headings, each with an open line', names() === 'heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty)', names())
+    const r = call(t, NOTE)
+    check('template page with open lines: ## Jots and the note at the very end, same markdown as without the open lines', r.reply.result === 'appended' && api.getMarkdown() === template.replace(/\n$/, '') + '\n\n## Jots\n\n' + NOTE_MD && names().startsWith('heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty),heading,paragraph(empty),heading,bullet_list'), names())
+  }
+
+  // scroll position
+  {
+    const root = win.document.documentElement
+    root.style.overflowAnchor = 'none' // WebKit has none; switch Chromium's off so only our own correction can keep the reader in place
+    win.document.body.style.overflowAnchor = 'none'
+    const para = (n) => Array.from({ length: n }, (_, i) => `Paragraph ${i + 1} of a tall page with some words in it.`).join('\n\n')
+    const blockTop = (needle) => [...pm().children].find((el) => el.textContent.startsWith(needle)).getBoundingClientRect().top
+    let t = load(para(80) + '\n\n## Jots\n\n- 08:00 old\n')
+    win.scrollTo(0, 900)
+    await sleep(50)
+    let y = win.scrollY, top = blockTop('Paragraph 30 ')
+    call(t, NOTE)
+    await sleep(50)
+    check('scroll: a note added below the reader does not move the page', y > 0 && win.scrollY === y && Math.abs(blockTop('Paragraph 30 ') - top) < 1, `${y} -> ${win.scrollY}`)
+    t = load('## Jots\n\n- 08:00 old\n\n' + para(80))
+    win.scrollTo(0, 900)
+    await sleep(50)
+    y = win.scrollY; top = blockTop('Paragraph 30 ')
+    call(t, NOTE)
+    await sleep(50)
+    check('scroll: a note added ABOVE the reader leaves the words the reader looks at where they were', y > 0 && Math.abs(blockTop('Paragraph 30 ') - top) < 1, `before ${Math.round(top)}, after ${Math.round(blockTop('Paragraph 30 '))}, scrollY ${y} -> ${win.scrollY}`)
+    t = load('## Jots\n\n- 08:00 old\n\n' + para(80))
+    win.scrollTo(0, 0)
+    await sleep(50)
+    call(t, NOTE)
+    check('scroll: at the top of the page nothing moves', win.scrollY === 0)
+    root.style.overflowAnchor = ''
+    win.document.body.style.overflowAnchor = ''
+  }
+
+  // undo: the note is its own step, whatever was typed around it
+  {
+    const typed = 'Typing here\n\n## Jots\n\n- 09:00 a\n'
+    let t = load(typed)
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('Typing here', 'Typing here'.length))))
+    view.focus()
+    view.dispatch(view.state.tr.insertText('XYZ')) // a user edit a moment before the note
+    const afterTyping = api.getMarkdown()
+    call(t, NOTE)
+    const withNote = api.getMarkdown()
+    undo()
+    check('undo 1: removes the note only, the text typed a moment before stays', api.getMarkdown() === afterTyping && afterTyping.includes('Typing hereXYZ'), JSON.stringify(api.getMarkdown()))
+    undo()
+    check('undo 2: removes the typing', api.getMarkdown() === typed)
+    redo(); redo()
+    check('redo restores both', api.getMarkdown() === withNote)
+
+    t = load(typed)
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('Typing here', 'Typing here'.length))))
+    view.focus()
+    call(t, NOTE)
+    view.dispatch(view.state.tr.insertText('Q')) // a user edit a moment AFTER the note
+    undo()
+    check('undo 1: removes only what was typed after the note', api.getMarkdown() === withNote.replace('Typing hereXYZ', 'Typing here'), JSON.stringify(api.getMarkdown()))
+    undo()
+    check('undo 2: removes the note', api.getMarkdown() === typed)
+
+    t = load('Plain page\n')
+    call(t, NOTE)
+    undo()
+    check('undo: a note that created ## Jots removes the heading and the list in one step', api.getMarkdown() === 'Plain page\n', JSON.stringify(api.getMarkdown()))
+    redo()
+    check('...and redo brings both back', api.getMarkdown() === 'Plain page\n\n## Jots\n\n' + NOTE_MD)
+
+    t = load('## Jots\n\n- a\n')
+    view.focus()
+    call(t, NOTE)
+    const n0 = msgs('change').length
+    undo()
+    await sleep(500)
+    check('undoing the note is a user edit: a change is sent, without the note', msgs('change').length === n0 + 1 && lastChange().markdown === '## Jots\n\n- a\n', JSON.stringify(lastChange()))
+  }
+
+  // the call itself never sends `change`; the reply carries the text instead
+  {
+    let t = load('## Jots\n\n- a\n')
+    let n = msgs('change').length
+    call(t, NOTE)
+    await sleep(700)
+    check('no change message after an append', msgs('change').length === n)
+
+    t = load('Typing here\n\n## Jots\n\n- a\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('Typing here', 11))))
+    view.dispatch(view.state.tr.insertText('Z')) // pending user change (300 ms timer)
+    n = msgs('change').length
+    let r = call(t, NOTE)
+    await sleep(700)
+    check('typed just before: still no change message, and the reply holds the typed text and the note', msgs('change').length === n && r.reply.markdown.includes('Typing hereZ') && r.reply.markdown.includes(NOTE), JSON.stringify(r.reply))
+    view.dispatch(view.state.tr.insertText('W'))
+    await sleep(500)
+    check('a user edit after the note is reported against the new text', msgs('change').length === n + 1 && lastChange().markdown.includes('Typing hereZW') && lastChange().markdown.includes(NOTE))
+
+    t = load('Typing here\n\n## Jots\n\n' + NOTE_MD)
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('Typing here', 11))))
+    view.dispatch(view.state.tr.insertText('Y'))
+    n = msgs('change').length
+    r = call(t, NOTE)
+    await sleep(700)
+    check('alreadyPresent leaves a pending user change alone (it is still sent)', r.reply.result === 'alreadyPresent' && msgs('change').length === n + 1 && lastChange().markdown.includes('Typing hereY'))
+
+    t = load('Typing here\n\n## Jots\n')
+    view.dispatch(view.state.tr.setSelection(TS.create(view.state.doc, findText('Typing here', 11))))
+    view.dispatch(view.state.tr.insertText('V'))
+    n = msgs('change').length
+    r = call('wrong-token', NOTE)
+    await sleep(700)
+    check('stale leaves a pending user change alone (it is still sent)', r.reply.result === 'stale' && msgs('change').length === n + 1 && lastChange().markdown.includes('Typing hereV'))
+  }
+
+  // the rest of the contract
+  {
+    const t = load('## Jots\n\n- a\n')
+    api.setReadOnly(true)
+    const r = call(t, NOTE)
+    check('works while the page is read-only and keeps it read-only', r.reply.result === 'appended' && pm().getAttribute('contenteditable') === 'false' && api.getMarkdown().includes(NOTE))
+    api.setReadOnly(false)
+    check('the new item is rendered as a list item', [...pm().querySelectorAll('.milkdown-list-item-block')].some((el) => el.textContent.includes('call with Sam about pricing')))
+    load('## Jots\n\n- a\n')
+    check('the call returns nothing (the answer is the message)', api.appendToSection('c-ret', win.__dlDoc, 'Jots', NOTE, {}) === undefined)
+    check('...and the numeric callId comes back as given', (() => { const from = host.messages.length; api.appendToSection(7, win.__dlDoc, 'Jots', '- seven', {}); return host.messages.slice(from).some((m) => m.type === 'appendResult' && m.id === 7) })())
+  }
 }
 
 say('')
@@ -395,6 +719,11 @@ const safetyStart = host.messages.length
   check('a warn log was sent to the host as well', msgs('log').some((m) => m.level === 'warn' && /could not be parsed/.test(m.message)))
   api.setReadOnly(false)
   check('host cannot re-enable editing of the fallback view', pm().getAttribute('contenteditable') === 'false' && api.isRawFallback())
+  win.__dlDoc = 'raw-tok'
+  const fromRaw = host.messages.length
+  api.appendToSection('raw-1', 'raw-tok', 'Jots', '- 14:32 note', { unlessPresent: true })
+  const rawAnswers = host.messages.slice(fromRaw).filter((m) => m.type === 'appendResult')
+  check('appendToSection on the raw-text fallback: stale, markdown null, nothing changes', rawAnswers.length === 1 && rawAnswers[0].result === 'stale' && rawAnswers[0].markdown === null && api.getMarkdown() === raw && api.isRawFallback(), JSON.stringify(rawAnswers))
   check('no change was emitted', msgs('change').length === n)
   api.setMarkdown('Back to normal\n')
   check('next setMarkdown restores a normal editable doc', pm().getAttribute('contenteditable') === 'true' && api.getMarkdown() === 'Back to normal\n')
@@ -424,7 +753,7 @@ const res = win.performance.getEntriesByType('resource').map((r) => r.name)
 check('no network resources requested by the editor', res.length === 0, res.join(' | '))
 const bad = host.messages.filter((m, i) => m.type === 'log' && (i < safetyStart || i >= safetyEnd)) // the safety-net block logs on purpose
 check('no unexpected warn/error log messages', bad.length === 0, bad.map((l) => l.message).join(' | ').slice(0, 300))
-check('every posted message is one of the known types', host.messages.every((m) => ['ready', 'change', 'uploadImage', 'openLink', 'log', 'rawFallback'].includes(m.type)))
+check('every posted message is one of the known types', host.messages.every((m) => ['ready', 'change', 'uploadImage', 'openLink', 'log', 'rawFallback', 'appendResult'].includes(m.type)))
 
 say('')
 say('== placeholders and remote images')

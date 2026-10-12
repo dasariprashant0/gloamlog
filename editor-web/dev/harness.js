@@ -3,7 +3,7 @@
 // The mock is injected BEFORE the CSP <meta>, exactly like WebKit provides the handler before the page script runs.
 export const BUNDLE_URL = '/app/Resources/editor/index.html'
 
-export async function mountEditor(container, { onMessage = () => {}, upload = () => 'ok', debug = {} } = {}) {
+export async function mountEditor(container, { onMessage = () => {}, upload = () => 'ok', debug = {}, onApi = null } = {}) {
   const html = await (await fetch(BUNDLE_URL, { cache: 'no-store' })).text()
   const marker = '<meta http-equiv="Content-Security-Policy"'
   if (!html.includes(marker)) throw new Error('CSP meta not found in built index.html')
@@ -34,6 +34,7 @@ export async function mountEditor(container, { onMessage = () => {}, upload = ()
       // 'never': no answer, the editor must time out by itself
     }
   }
+  host.onApi = onApi // called synchronously the moment the bundle assigns window.DailyLogEditor, i.e. before the editor is ready
   host.handle = handle
   host.violate = (v) => host.violations.push(v)
   const idx = (window.__dlHosts = window.__dlHosts || []).push(host) - 1 // one mock bridge per editor iframe
@@ -43,6 +44,8 @@ export async function mountEditor(container, { onMessage = () => {}, upload = ()
     'window.__DL_DEBUG__=' + JSON.stringify(debug) + ';' + // test seams read by the bundle (view, uploadTimeoutMs)
     // simulate Safari < 16.4, where a regex with lookbehind throws when it is constructed
     (debug.noLookbehind ? '(function(){var B=/\\(\\?<[=!]/,fail=function(a){if(typeof a[0]==="string"&&B.test(a[0])&&a[0]!==' + JSON.stringify(debug.noLookbehind === 'blind' ? '(?<!a)b' : '') + ')throw new SyntaxError("Invalid regular expression (simulated old Safari)")};window.RegExp=new Proxy(RegExp,{construct:function(t,a,n){fail(a);return Reflect.construct(t,a,n)},apply:function(t,s,a){fail(a);return Reflect.apply(t,s,a)}})})();' : '') +
+    // tell the harness the instant the bundle publishes its API (a poll would be throttled in a hidden tab and miss the pre-ready window)
+    'var D;Object.defineProperty(window,"DailyLogEditor",{configurable:true,enumerable:true,get:function(){return D},set:function(v){D=v;var h=parent.__dlHosts[' + idx + '];if(h.onApi)h.onApi(v)}});' +
     (debug.noClipboard ? 'delete Navigator.prototype.clipboard;' : '') + // a non-secure page, like loadHTMLString may give
     // A hidden browser tab throttles requestAnimationFrame to ~1 Hz; a visible WKWebView runs it at 60 Hz. Crepe moves the
     // caret in a rAF after a list item mounts, so keep rAF timely here or fast scripted typing lands in the wrong place.

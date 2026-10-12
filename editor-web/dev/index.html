@@ -41,6 +41,7 @@
   <button id="ins-cursor">insert @cursor</button>
   <button id="ins-start">insert @start</button>
   <button id="ins-end">insert @end</button>
+  <button id="jot" title="appendToSection(Jots): what the quick-capture panel does to an open page">jot</button>
   <label>Placeholder <input type="text" id="ph" placeholder="custom text" size="16"></label>
   <button id="setph">Set</button>
   <button id="clear">Clear log</button>
@@ -69,6 +70,7 @@ function line(msg) {
   let text = msg.type
   if (msg.type === 'change') text += ` (${msg.markdown.length} chars)`
   else if (msg.type === 'uploadImage') text += ` ${msg.name} ${msg.mime} ${msg.dataBase64.length} b64 chars id=${msg.id}`
+  else if (msg.type === 'appendResult') text += ` ${msg.id} -> ${msg.result}` + (msg.markdown == null ? '' : ` (${msg.markdown.length} chars)`)
   else if (msg.type !== 'ready') text += ' ' + JSON.stringify({ ...msg, at: undefined })
   d.innerHTML = `<span class="t">+${Math.round(msg.at - t0)}ms</span> `
   d.append(text)
@@ -86,7 +88,9 @@ async function load() {
   const name = $('fixture').value
   const md = name === 'template' ? TEMPLATE : await (await fetch(`../test/fixtures/${name}.md`)).text()
   host.api.setMarkdown(md, { cursor: 'start', focus: true })
+  host.win.__dlDoc = 'dev-' + ++docSeq // what the host does after every swap: the token appendToSection checks
 }
+let docSeq = 0, jotSeq = 0
 $('fixture').add(new Option('template (default)', 'template'), 0)
 $('fixture').value = 'template'
 $('load').onclick = load
@@ -104,6 +108,10 @@ $('ins-cursor').onclick = () => host.api.insertMarkdown('- [ ] inserted at the c
 $('ins-start').onclick = () => host.api.insertMarkdown('> inserted at the start\n', 'start')
 $('ins-end').onclick = () => host.api.insertMarkdown('Inserted at the end.\n', 'end')
 $('setph').onclick = () => host.api.setPlaceholder($('ph').value)
+$('jot').onclick = () => {
+  const t = new Date().toTimeString().slice(0, 5)
+  host.api.appendToSection('dev-jot-' + ++jotSeq, host.win.__dlDoc, 'Jots', `- ${t} jot number ${jotSeq}`, { unlessPresent: true })
+}
 $('clear').onclick = () => (log.textContent = '')
 await load()
 </script>
