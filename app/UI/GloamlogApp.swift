@@ -23,6 +23,7 @@ struct GloamlogApp: App {
         .windowResizability(.contentMinSize)
         .commands { AppCommands(model: model) }
         .commands { SettingsCommands(model: model) }
+        .commands { ReviewCommands(model: model) }
 
         MenuBarExtra(isInserted: $showMenuBar) {
             MenuBarView(model: model)

@@ -2,7 +2,8 @@
 // Everything runs on the main thread by convention (no @MainActor: closures from Timer/NotificationCenter stay simple).
 // Extensions: +Editor (page switching, flush, bridge delegate), +Day (skip, carry-over, versions), +Reminders (timer,
 // notifications, window), +Storage (folder, login item), +Browse (search, weekly review), +Calendar (any-date navigation,
-// month grid, Go to date), +CatchUp (the unlogged-days list, the session, batch skip).
+// month grid, Go to date), +CatchUp (the unlogged-days list, the session, batch skip), +Capture (quick capture: the journal,
+// the writer, the global shortcut and the Jot panel).
 import SwiftUI
 import Combine
 import AppKit
@@ -32,7 +33,7 @@ enum NotifState { case unknown, allowed, denied }
 final class AppModel: ObservableObject {
     static let shared = AppModel()
     static let plannerKey = "dailylog.planner.v1"
-    static let whatsNewKey = "dailylog.whatsNew.0.3"
+    static let whatsNewKey = "dailylog.whatsNew.0.6"
     static let catchNoticeKey = "dailylog.catchNoticeDay"
     /// Safety copies live outside the storage folder so they never sync with the logs.
     static var defaultBackupDir: URL {
@@ -47,7 +48,20 @@ final class AppModel: ObservableObject {
     let live: Bool                       // false in the snapshot harness: no timers, web view, notifications or login item
     var clock: () -> Date
     let backupDir: URL
-    var store: LogStore
+    var store: LogStore { didSet { storeReplaced() } }
+    /// Quick capture (M2), see AppModel+Capture.swift. The journal lives beside the safety copies, outside the log folder.
+    let captureDir: URL
+    var journal: CaptureJournal
+    var writer: DayWriter!
+    /// Notes captured and not yet in a page's file (they are safe in the journal). Shown in the sidebar and the popover.
+    @Published var notesWaiting = 0
+    /// Why the Jot shortcut is not working (Settings > Shortcuts shows it), nil when it is.
+    @Published var hotKeyFailure: HotKeyFailure?
+    /// The real app's global shortcut; nil in every harness, so a check can never take the owner's real combination.
+    var hotKeys: HotKeyCenter?
+    lazy var jotPanel: JotPanelController = JotPanelController(model: self)
+    /// The Review screen's state and every copy and export of it (M3), see ReviewController.swift.
+    lazy var review = ReviewController(model: self)
 
     @Published var now: Date
     @Published var settings: Settings { didSet { settingsChanged(old: oldValue) } }
@@ -114,8 +128,13 @@ final class AppModel: ObservableObject {
     private(set) var reloadCount = 0
 
     init(defaults: UserDefaults = .standard, backupDir: URL = AppModel.defaultBackupDir, live: Bool = true,
-         clock: @escaping () -> Date = Date.init) {
+         clock: @escaping () -> Date = Date.init, captureDir: URL? = nil) {
         self.defaults = defaults; self.live = live; self.clock = clock; self.backupDir = backupDir
+        // The capture journal sits next to the safety copies (~/Library/Application Support/Gloamlog/capture), so a harness that
+        // gives its own backup folder gets its own journal and can never read or deliver the owner's real notes.
+        let capture = captureDir ?? backupDir.deletingLastPathComponent().appendingPathComponent("capture", isDirectory: true)
+        self.captureDir = capture
+        journal = CaptureJournal(dir: capture)
         // Once-only carry-over from the app's earlier name. Only for the real app (the standard defaults), never for the
         // test/snapshot harnesses, which pass their own throwaway suites and must not touch the user's real data.
         if live && defaults === UserDefaults.standard { LegacyMigration.run(into: defaults) }
@@ -137,11 +156,12 @@ final class AppModel: ObservableObject {
             planner = PlannerState.atLaunch(previous: p, now: n, calendar: cal)
         } else { planner = PlannerState.atLaunch(previous: nil, now: n, calendar: cal) }
         if !live { planner.graceUntil = nil }
+        installCapture()
         reload()
         editor = DayEditor(day: today, model: self)
         refreshCarry()
         bindSearch()
-        if live { decideFirstRun(isV1: isV1) }
+        if live { decideFirstRun(isV1: isV1); startCapture(realApp: defaults === UserDefaults.standard) }
     }
 
     static func makeStore(dir: URL, backupDir: URL) -> LogStore {
@@ -183,10 +203,12 @@ final class AppModel: ObservableObject {
     // MARK: data
     func reload() {
         reloadCount += 1
+        let hadProblem = folderProblem != nil
         do { try store.checkFolder(); folderProblem = nil }
         catch LogError.folderMissing(let p) { folderProblem = .missing(p) }
         catch LogError.folderNotWritable(let p) { folderProblem = .notWritable(p) }
         catch { }
+        if hadProblem && folderProblem == nil { replayCaptureSoon() }        // the folder is back: deliver the notes kept meanwhile
         let st = (try? store.fileStates(minWords: settings.minWords)) ?? [:]
         states = st
         var reasons = [String: String]()
@@ -206,6 +228,7 @@ final class AppModel: ObservableObject {
         catch { }
         let stamp = currentStamp()
         if problem != folderProblem || stamp == nil || stamp != lastStamp { reload() }
+        if notesWaiting > 0 { replayCaptureSoon() }          // a note that is waiting is retried on every tick, even if nobody noticed the folder blink
     }
 
     /// Streak, heatmap and the catch-up list from the in-memory states (no disk). Also used after a single day's save.
@@ -248,8 +271,14 @@ final class AppModel: ObservableObject {
         if old.weekdays != settings.weekdays || old.reminderMinutes != settings.reminderMinutes || old.minWords != settings.minWords { reload() }
         else if old.logStartDate != settings.logStartDate || old.catchUpWindowDays != settings.catchUpWindowDays || old.weekStart != settings.weekStart { recompute() }
         if old.carryOverHeadings != settings.carryOverHeadings { refreshCarry() }
-        // A page nobody has touched follows the template; a page with writing never does.
-        if old.template != settings.template, let e = editor, !e.userEdited, e.diskBody == nil, !e.isSkipped, case .day = selection {
+        if old.capture.hotKey != settings.capture.hotKey { applyHotKey() }
+        if old.capture.jotsHeading != settings.capture.jotsHeading || old.capture.jotsCountTowardLogged != settings.capture.jotsCountTowardLogged {
+            applyJotsRules(); reload()                    // what counts as a logged day changed: every status follows
+        }
+        // A page nobody has touched follows the template; a page with writing never does. A day with only jots counts as
+        // untouched too (its template is shown above the jots, editor-only).
+        if old.template != settings.template, let e = editor, !e.userEdited, !e.isSkipped, case .day = selection,
+           e.diskBody == nil || MarkdownBody.isJotsOnly(e.diskBody ?? "", jotsHeading: settings.capture.jotsHeading) {
             openDay(e.day, force: true)
         }
     }
@@ -284,8 +313,7 @@ final class AppModel: ObservableObject {
     func step(_ dir: Int) {
         switch selection {
         case .week:
-            guard dir < 0 || canShowNextWeek else { return }
-            weekDate = WeeklyReview.shift(weekDate, weeks: dir, calendar: cal); refreshWeek()
+            review.step(dir)                                 // the shown period (week, month, year or range) moves; it never goes into the future
         case .day(let cur):
             guard let next = DayKey.adding(cur, dir, cal), canOpen(next) else { return }
             openDay(next)

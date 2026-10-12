@@ -49,7 +49,7 @@ extension AppModel {
         ReminderSchedule.next(now: now, calendar: cal, weekdays: settings.weekdays, reminderMinutes: settings.reminderMinutes,
                               todayDone: todayStatus == .logged || todayStatus == .skipped)
     }
-    /// "Tomorrow, 4:55 pm" (while Gloamlog is running; closed-app reminders are a later milestone).
+    /// "Tomorrow, 4:55 pm": the short form for the menu-bar popover. Settings > Reminders shows `nextReminderText` ("Thu 8 Oct, 4:55 pm").
     var nextReminderLabel: String {
         guard let d = nextReminder else { return "none planned" }
         return ReminderSchedule.label(for: d, now: now, calendar: cal)
@@ -94,6 +94,7 @@ extension AppModel {
             s.appearance = d.appearance; s.weekStart = d.weekStart
         case .reminders:
             s.reminderMinutes = d.reminderMinutes; s.weekdays = d.weekdays; s.mode = d.mode; s.snoozeMinutes = d.snoozeMinutes
+            s.closedAppReminders = d.closedAppReminders
         case .page:
             s.minWords = d.minWords; s.template = d.template; s.carryOverHeadings = d.carryOverHeadings
             s.catchUpWindowDays = d.catchUpWindowDays; s.logStartDate = d.logStartDate

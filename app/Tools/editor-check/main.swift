@@ -240,7 +240,7 @@ check("3,000-paragraph page swaps in under 5 s", rb?.loaded != nil && dt < 5, St
 print(String(format: "     (took %.2fs)", dt))
 
 // ---- 9. the app layer on top (AppModel + DayEditor + LogStore + this same editor) ----
-if !CommandLine.arguments.contains("--bridge-only") { runAppScenarios(); runNavScenarios(); runSettingsScenarios() }
+if !CommandLine.arguments.contains("--bridge-only") { runAppScenarios(); runNavScenarios(); runSettingsScenarios(); runCaptureScenarios() }
 
 print("\n\(passes) passed, \(failures) failed")
 exit(failures == 0 ? 0 : 1)

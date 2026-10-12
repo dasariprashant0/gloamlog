@@ -66,16 +66,25 @@ struct DetailRouter: View {
 
 struct WhatsNewSheet: View {
     @ObservedObject var model: AppModel
+    /// What changed since 0.3, in the app's own plain voice. The Jot line names the shortcut the person really has.
+    private static let moreLines = ["Review any week, month, year or range, then copy it, save a PDF or export it with its images (⇧⌘E).",
+                                    "Reminders still arrive when Gloamlog is closed (Settings > Reminders)."]
+    private var lines: [String] {
+        let jot = model.settings.capture.hotKey.map { "Jot a note from any app with \($0.display). It lands under Jots on today's page." }
+            ?? "Jot a note from the menu bar. It lands under Jots on today's page."
+        return ["Open any day from the calendar, or press ⇧⌘T and type a date.",
+                "Catch up lists the days you haven't logged. Skip the ones you didn't work.",
+                jot] + WhatsNewSheet.moreLines + [
+                "Settings (⌘,) holds your reminders, page template, storage and shortcuts."]
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.s4) {
-            Text("What's new in 0.3").font(Theme.font(22, .semibold)).foregroundColor(Theme.textPrimary)
+            Text("What's new in 0.6").font(Theme.font(22, .semibold)).foregroundColor(Theme.textPrimary).accessibilityAddTraits(.isHeader)
             VStack(alignment: .leading, spacing: Theme.s2) {
-                ForEach(["One page per day: headings, lists, to-dos and images.", "It saves as you write. There is no Save button.",
-                         "Your five prompts are now a template you can edit in Settings.",
-                         "Earlier versions of each day are kept, so nothing is lost."], id: \.self) { s in
+                ForEach(lines, id: \.self) { s in
                     HStack(alignment: .firstTextBaseline, spacing: Theme.s2) {
                         Image(systemName: "checkmark").font(Theme.font(11, .bold)).foregroundColor(Theme.accent).accessibilityHidden(true)
-                        Text(s).font(Theme.font(13)).foregroundColor(Theme.textPrimary)
+                        Text(s).font(Theme.font(13)).foregroundColor(Theme.textPrimary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }

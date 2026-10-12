@@ -40,6 +40,18 @@ final class EditorWKWebView: WKWebView {
         appearanceChanged?()
     }
 
+    /// ⌘[ and ⌘] are the Go menu's Previous Day and Next Day. The page binds the same two keys to outdent and indent inside a
+    /// list item, a table cell and a code block, and WebKit hands it the key first, so there the day never changed. These two
+    /// key equivalents are offered to the main menu BEFORE the page. When the menu declines (a disabled item, such as ⌘] on
+    /// today) the page gets the key as it always did. Nothing else is touched: every other shortcut still goes to the page first.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown,
+           event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.capsLock, .numericPad, .function]) == .command,
+           let c = event.charactersIgnoringModifiers, c == "[" || c == "]",
+           NSApp.mainMenu?.performKeyEquivalent(with: event) == true { return true }
+        return super.performKeyEquivalent(with: event)
+    }
+
     /// The default context menu stays (copy, paste, spelling, look up), minus what would navigate or download: a reload
     /// would drop the page's unsaved state, and there is nowhere to download to.
     private static let removed: Set<String> = ["WKMenuItemIdentifierReload", "WKMenuItemIdentifierGoBack", "WKMenuItemIdentifierGoForward",

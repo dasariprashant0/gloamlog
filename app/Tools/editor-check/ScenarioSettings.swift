@@ -7,6 +7,17 @@
 // every model is `live: false` over a throwaway defaults suite and a temporary log folder.
 // What it cannot do: run the SwiftUI `App` lifecycle (GloamlogApp.swift is not compiled here), so the ⌘, menu command and the
 // real menu bar item are not exercised; their code paths end in the same AppModel.openSettings(pane:).
+//
+// Screen lock and focus: a locked screen (CGSSessionScreenIsLocked), or another app holding focus while the owner works, stops this
+// process from becoming the active app, so no window can be key and live clicks may not land. The scenario detects that (a control
+// window is tried first, so a real bug in OUR window is never mistaken for "no focus"):
+//   - checks whose point is a key window or a live click are SKIPPED, printed `skip  <name>  (reason)`, counted separately and never
+//     counted as passes (a last line `N passed, M failed, K skipped (reason)` is added when any were skipped);
+//   - when the window server cannot draw for us (locked, or a blank picture) windows are drawn offscreen instead
+//     (cacheDisplay of the window's frame view, no session needed) and read with the same text recognition; those pictures are saved
+//     under <EC_SETTINGS_SHOTS>/offscreen so the real window-server screenshots of an unlocked run are never overwritten.
+// With focus and an unlocked screen nothing is skipped and every check runs as before. EC_FORCE_LOCKED=1 makes an unlocked run behave
+// as locked (decisions only: skipping and offscreen pictures), to test that path.
 import AppKit
 import SwiftUI
 import Vision
@@ -26,8 +37,100 @@ private func pumpEvents(_ seconds: TimeInterval, until cond: () -> Bool = { fals
 @discardableResult
 private func waitEvents(_ seconds: TimeInterval, until cond: () -> Bool) -> Bool { pumpEvents(seconds, until: cond); return cond() }
 
-private func windowImage(_ w: NSWindow) -> CGImage? {
-    CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.boundsIgnoreFraming, .bestResolution])
+// MARK: session: screen lock, focus, skipping
+
+/// True while the screen is locked (or this is not the console session): no window can become key and the window server draws
+/// nothing for us.
+private func screenIsLocked() -> Bool {
+    if ProcessInfo.processInfo.environment["EC_FORCE_LOCKED"] == "1" { return true }      // test of the locked path on an unlocked Mac
+    let d = (CGSessionCopyCurrentDictionary() as? [String: Any]) ?? [:]
+    let locked = (d["CGSSessionScreenIsLocked"] as? Bool) ?? ((d["CGSSessionScreenIsLocked"] as? NSNumber)?.boolValue ?? false)
+    let onConsole = (d["kCGSSessionOnConsoleKey"] as? Bool) ?? ((d["kCGSSessionOnConsoleKey"] as? NSNumber)?.boolValue ?? true)
+    return locked || !onConsole
+}
+
+/// Control experiment: can THIS process make a plain borderless window key right now? If it cannot, an app window that is not key
+/// says nothing about our code (screen locked, or the owner is working in another app and macOS refuses the activation).
+private func focusProbe() -> Bool {
+    let p = KeyableWindow(contentRect: NSRect(x: 8, y: 8, width: 24, height: 24), styleMask: [.borderless], backing: .buffered, defer: false)
+    p.isReleasedWhenClosed = false; p.alphaValue = 0.01
+    p.makeKeyAndOrderFront(nil)
+    NSApp.activate(ignoringOtherApps: true)
+    let ok = waitEvents(1.0) { p.isKeyWindow }
+    p.orderOut(nil)
+    return ok
+}
+/// nil when this process can take focus; else the reason.
+private func noFocusReason() -> String? {
+    if screenIsLocked() { return "screen locked" }
+    return focusProbe() ? nil : "another app has focus"
+}
+
+private var skipCounts: [String: Int] = [:]
+private func skipCheck(_ name: String, _ why: String, note: String = "") {
+    skipCounts[why, default: 0] += 1
+    print("  skip  \(name)  (\(why)\(note))")
+}
+
+/// A check that needs real focus (`needsKey`: a key window) or a live click to land. `ok` is the full original condition (it may wait).
+/// Focus available: exactly the original check, pass or FAIL. No focus: SKIPPED (never passed), and `without` may assert the part
+/// that does not need focus. A check that fails while a control window CAN take focus is a real failure.
+private func focusCheck(_ name: String, needsKey: Bool, ok: () -> Bool, detail: @autoclosure () -> String = "", without: (() -> Void)? = nil) {
+    var why: String? = (needsKey && screenIsLocked()) ? "screen locked" : nil
+    if why == nil {
+        if ok() { check(name, true); return }
+        why = noFocusReason()
+        if why == nil { check(name, false, detail()); return }
+    }
+    skipCheck(name, why ?? "no focus")
+    without?()
+}
+
+/// Clicks `needle`, read from the window as drawn, and checks the effect. Without focus the click may not land: skipped then.
+private func clickCheck(_ name: String, needle: String, in win: NSWindow, recognised: Bool, needsKey: Bool = false, detail: @autoclosure () -> String = "",
+                        without: (() -> Void)? = nil, effect: () -> Bool) {
+    guard recognised, let pic = windowPicture(win), let obs = recognise(pic.image), let p = locate(needle, in: obs, of: win) else {
+        if let why = noFocusReason() { skipCheck(name, why, note: "; could not read the window") } else { check(name, false, "could not find '\(needle)' in the picture") }
+        return
+    }
+    mouseClick(at: p, in: win)
+    focusCheck(name, needsKey: needsKey, ok: { waitEvents(1.0, until: effect) }, detail: detail(), without: without)
+}
+
+// MARK: pictures of windows
+
+private struct Picture { var image: CGImage; var offscreen: Bool }
+
+/// True when a window-server capture drew nothing (all transparent, or one flat colour).
+private func looksBlank(_ cg: CGImage) -> Bool {
+    let n = 24
+    var px = [UInt8](repeating: 0, count: n * n * 4)
+    px.withUnsafeMutableBytes { raw in
+        guard let ctx = CGContext(data: raw.baseAddress, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        ctx.interpolationQuality = .low
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
+    }
+    var lo = [Int](repeating: 255, count: 4), hi = [Int](repeating: 0, count: 4)
+    for i in stride(from: 0, to: px.count, by: 4) { for c in 0..<4 { lo[c] = min(lo[c], Int(px[i + c])); hi[c] = max(hi[c], Int(px[i + c])) } }
+    return hi[3] == 0 || (0..<3).allSatisfy { hi[$0] - lo[$0] < 4 }
+}
+
+/// The window drawn without the window server: its frame view (title bar and toolbar included), no session needed.
+private func offscreenPicture(_ w: NSWindow) -> CGImage? {
+    guard let v = w.contentView?.superview ?? w.contentView else { return nil }
+    v.layoutSubtreeIfNeeded()
+    guard let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return nil }
+    v.cacheDisplay(in: v.bounds, to: rep)
+    return rep.cgImage
+}
+
+/// What the window really shows: the window server's picture when it can draw for us (the real thing), else drawn offscreen.
+private func windowPicture(_ w: NSWindow) -> Picture? {
+    if !screenIsLocked(),
+       let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.boundsIgnoreFraming, .bestResolution]),
+       !looksBlank(cg) { return Picture(image: cg, offscreen: false) }
+    return offscreenPicture(w).map { Picture(image: $0, offscreen: true) }
 }
 @discardableResult
 private func savePNG(_ cg: CGImage, to url: URL) -> Bool {
@@ -97,6 +200,15 @@ private func hostWindow<V: View>(_ v: V, width: CGFloat, height: CGFloat? = nil)
 
 func runSettingsScenarios() {
     print("11. Settings window, entry points, effects (real NSWindow, real events)")
+    let passes0 = passes, failures0 = failures
+    let lockedAtStart = screenIsLocked()
+    let focusAtStart = !lockedAtStart && focusProbe()
+    print("   session: screen \(lockedAtStart ? (ProcessInfo.processInfo.environment["EC_FORCE_LOCKED"] == "1" ? "LOCKED (forced by EC_FORCE_LOCKED=1)" : "LOCKED") : "unlocked"); focus \(focusAtStart ? "available (nothing is skipped)" : "NOT available: checks that need a key window or a live click are skipped, never passed; windows are drawn offscreen when the window server cannot")")
+    // main.swift prints `N passed, M failed`; when something was skipped, add the skip count to the last line of the run.
+    _ = atexit {
+        let n = skipCounts.values.reduce(0, +)
+        if n > 0 { print("\(passes) passed, \(failures) failed, \(n) skipped (\(skipCounts.keys.sorted().joined(separator: "; ")))") }
+    }
     let env = ProcessInfo.processInfo.environment
     let base = URL(fileURLWithPath: env["EC_TMP"] ?? NSTemporaryDirectory()).appendingPathComponent("dl-editor-check-settings")
     let logs = base.appendingPathComponent("logs"), backups = base.appendingPathComponent("backups")
@@ -104,6 +216,11 @@ func runSettingsScenarios() {
     let shots = URL(fileURLWithPath: env["EC_SETTINGS_SHOTS"] ?? base.appendingPathComponent("shots").path)
     try? FileManager.default.removeItem(at: base)
     for u in [logs, backups, otherDir, emptyDir, shots] { try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true) }
+    /// Real window-server screenshots go to `shots`; pictures drawn offscreen (locked screen) go to `shots/offscreen`, never over them.
+    func shotsDir(_ offscreen: Bool) -> URL {
+        guard offscreen else { return shots }
+        let d = shots.appendingPathComponent("offscreen"); try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true); return d
+    }
 
     // Fixture: 60 days before Wed 7 Oct 2026 with writing, a few holidays and a few unwritten workdays.
     let cal = Calendar.current
@@ -139,10 +256,16 @@ func runSettingsScenarios() {
     let cold = SettingsWindowController()
     let tc = Date()
     cold.show(model: model, pane: .reminders)
-    let coldKey = waitEvents(3.0) { cold.window?.isKeyWindow == true }
-    let coldMs = Date().timeIntervalSince(tc) * 1000
-    check("cold open (window built on demand) is key within 3 s", coldKey && coldMs < 3000, String(format: "%.0f ms", coldMs))
-    print(String(format: "     (cold build and show: key after %.0f ms)", coldMs))
+    let coldShownMs = Date().timeIntervalSince(tc) * 1000
+    var coldMs = coldShownMs
+    focusCheck("cold open (window built on demand) is key within 3 s", needsKey: true, ok: {
+        let key = waitEvents(3.0) { cold.window?.isKeyWindow == true }
+        coldMs = Date().timeIntervalSince(tc) * 1000
+        return key && coldMs < 3000
+    }, detail: String(format: "%.0f ms", coldMs), without: {
+        check("cold open (window built on demand) shows the window within 3 s", cold.window?.isVisible == true && coldShownMs < 3000, String(format: "%.0f ms", coldShownMs))
+    })
+    print(String(format: "     (cold build and show returned after %.0f ms; key after %.0f ms if it took focus)", coldShownMs, coldMs))
     cold.window?.close()
     // What the app does: build the window hidden after launch (prewarm), then show it on demand.
     controller.prewarm(model: model)
@@ -151,11 +274,16 @@ func runSettingsScenarios() {
     let t0 = Date()
     model.openSettings(pane: .reminders)
     let returned = Date().timeIntervalSince(t0) * 1000
-    let keyed = waitEvents(1.0) { controller.window?.isKeyWindow == true }
-    let elapsed = Date().timeIntervalSince(t0) * 1000
     guard let w = controller.window else { check("openSettings creates the Settings window", false); return }
-    check("openSettings(pane: .reminders) opens the window and it is key within 1 s", keyed && w.isVisible && elapsed < 1000, String(format: "%.0f ms, key=%@ visible=%@", elapsed, "\(keyed)", "\(w.isVisible)"))
-    print(String(format: "     (prewarmed: openSettings returned after %.0f ms, key after %.0f ms)", returned, elapsed))
+    var keyed = false, elapsed = returned
+    focusCheck("openSettings(pane: .reminders) opens the window and it is key within 1 s", needsKey: true, ok: {
+        keyed = waitEvents(1.0) { controller.window?.isKeyWindow == true }
+        elapsed = Date().timeIntervalSince(t0) * 1000
+        return keyed && w.isVisible && elapsed < 1000
+    }, detail: String(format: "%.0f ms, key=%@ visible=%@", elapsed, "\(keyed)", "\(w.isVisible)"), without: {
+        check("openSettings(pane: .reminders) shows the window within 1 s", w.isVisible && returned < 1000, String(format: "%.0f ms", returned))
+    })
+    print(String(format: "     (prewarmed: openSettings returned after %.0f ms%@)", returned, keyed ? String(format: ", key after %.0f ms", elapsed) : "; no focus, so key was not reached"))
     check("it is on the Reminders pane: title, selected tab and state agree",
           w.title == "Reminders" && w.toolbar?.selectedItemIdentifier?.rawValue == "reminders" && controller.nav.pane == .reminders)
     check("it is the front window of the app", NSApp.orderedWindows.first === w)
@@ -174,12 +302,19 @@ func runSettingsScenarios() {
     w.performClose(nil); pumpEvents(0.3)
     check("closing the window (⌘W) hides it", !w.isVisible)
     let t1 = Date(); model.openSettings(pane: .general)
-    let again = waitEvents(1.0) { w.isKeyWindow }
-    check("reopening is just as fast and shows the pane asked for", again && w.title == "General" && Date().timeIntervalSince(t1) < 1.0 && settingsWindows().count == 1)
+    let reopenedIn = Date().timeIntervalSince(t1)
+    focusCheck("reopening is just as fast and shows the pane asked for", needsKey: true, ok: {
+        let again = waitEvents(1.0) { w.isKeyWindow }
+        return again && w.title == "General" && Date().timeIntervalSince(t1) < 1.0 && settingsWindows().count == 1
+    }, without: {
+        check("reopening shows the pane asked for, in one window, within 1 s", w.isVisible && w.title == "General" && reopenedIn < 1.0 && settingsWindows().count == 1)
+    })
 
     w.orderOut(nil)
     let sent = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-    check("the old showSettingsWindow: selector (What's new, older callers) still opens our window", sent && waitEvents(1.0) { w.isKeyWindow })
+    focusCheck("the old showSettingsWindow: selector (What's new, older callers) still opens our window", needsKey: true,
+               ok: { sent && waitEvents(1.0) { w.isKeyWindow } },
+               without: { check("the old showSettingsWindow: selector shows our window", sent && w.isVisible) })
 
     // keyboard: arrows move between panes, never past the ends, and never steal arrows from a text field
     model.openSettings(pane: .storage)
@@ -187,10 +322,11 @@ func runSettingsScenarios() {
     arrowKey(124, in: w); let r2 = controller.nav.pane
     arrowKey(124, in: w); let r3 = controller.nav.pane
     arrowKey(123, in: w); let l1 = controller.nav.pane
-    check("→ and ← change pane and stop at the ends", r1 == .shortcuts && r2 == .about && r3 == .about && l1 == .shortcuts, "\(r1) \(r2) \(r3) \(l1)")
-    check("the title and tab followed the arrows", w.title == "Shortcuts" && w.toolbar?.selectedItemIdentifier?.rawValue == "shortcuts")
+    focusCheck("→ and ← change pane and stop at the ends", needsKey: false, ok: { r1 == .shortcuts && r2 == .about && r3 == .about && l1 == .shortcuts }, detail: "\(r1) \(r2) \(r3) \(l1)")
+    focusCheck("the title and tab followed the arrows", needsKey: false, ok: { w.title == "Shortcuts" && w.toolbar?.selectedItemIdentifier?.rawValue == "shortcuts" })
 
     // the pane is remembered (in the model's defaults) and a new model reopens on it
+    if controller.nav.pane != .shortcuts { controller.nav.pane = .shortcuts }       // (arrows that did not land must not hide this check)
     check("the last pane is stored in the defaults", suite.string(forKey: SettingsNav.paneKey) == "shortcuts")
     let model2 = makeModel(); model2.installSettingsEffects()
     controller.nav.pane = .general                      // (stores "general" too, so put the remembered pane back by hand)
@@ -216,23 +352,25 @@ func runSettingsScenarios() {
         let tag = appearance == .dark ? "dark" : "light"
         for pane in SettingsPane.allCases {
             model.openSettings(pane: pane)
-            waitEvents(1.5) { w.isKeyWindow && abs(contentSize(w).height - expectedHeight(pane)) < 1 }
+            waitEvents(1.5) { (!focusAtStart || w.isKeyWindow) && abs(contentSize(w).height - expectedHeight(pane)) < 1 }
             pumpEvents(0.7)                                  // the form lays out, the toolbar tab settles
             if pane == .page, let doc = w.contentView, let sc = firstScrollView(in: doc) {
                 waitEvents(1.0) { sc.contentView.bounds.origin.y == 0 }
                 check("Page (\(tag)) opens scrolled to its top, with no text field grabbing focus",
                       sc.contentView.bounds.origin.y == 0 && !(w.firstResponder is NSText), "scrollY=\(sc.contentView.bounds.origin.y) firstResponder=\(String(describing: w.firstResponder))")
             }
-            guard let img = windowImage(w) else { check("screenshot \(pane.rawValue) \(tag)", false, "no window image"); continue }
-            let file = shots.appendingPathComponent("settings-\(pane.rawValue)-\(tag).png")
+            guard let pic = windowPicture(w) else { check("screenshot \(pane.rawValue) \(tag)", false, "no window image"); continue }
+            let img = pic.image
+            let file = shotsDir(pic.offscreen).appendingPathComponent("settings-\(pane.rawValue)-\(tag).png")
             check("screenshot saved: settings-\(pane.rawValue)-\(tag).png", savePNG(img, to: file) && img.width > 800)
             if pane == .page, let doc = w.contentView, let scroll = firstScrollView(in: doc) {
                 // the Page form is longer than the window: also show its end (template, carried-over headings)
                 scroll.contentView.scroll(to: NSPoint(x: 0, y: max(0, (scroll.documentView?.bounds.height ?? 0) - scroll.contentView.bounds.height)))
                 scroll.reflectScrolledClipView(scroll.contentView)
                 pumpEvents(0.5)
-                if let end = windowImage(w) {
-                    savePNG(end, to: shots.appendingPathComponent("settings-page-end-\(tag).png"))
+                if let endPic = windowPicture(w) {
+                    let end = endPic.image
+                    savePNG(end, to: shotsDir(endPic.offscreen).appendingPathComponent("settings-page-end-\(tag).png"))
                     if recognitionWorks, let obs = recognise(end) {
                         let text = allText(obs)
                         check("Page (\(tag)), scrolled to its end, shows the template and the carried-over headings", text.contains("carriedoverfromyesterday") && text.contains("addheading"), String(text.suffix(160)))
@@ -249,59 +387,57 @@ func runSettingsScenarios() {
         }
     }
     if !recognitionWorks { print("     (text recognition unavailable here: pane text was not checked, screenshots were saved)") }
+    // The path used while the screen is locked is exercised on every run: draw a pane offscreen and read it with the same recognition.
+    model.settings.appearance = .light; pumpEvents(0.4)
+    model.openSettings(pane: .reminders)
+    waitEvents(1.5) { abs(contentSize(w).height - expectedHeight(.reminders)) < 1 }; pumpEvents(0.7)
+    if recognitionWorks {
+        if let off = offscreenPicture(w), let obs = recognise(off) {
+            let text = allText(obs)
+            let missing = (expected[.reminders] ?? []).filter { !text.contains(squash($0)) }
+            check("drawn offscreen (the path used while the screen is locked), the Reminders pane reads the same", missing.isEmpty && off.width > 800, "missing: \(missing) width: \(off.width)")
+        } else { check("drawn offscreen (the path used while the screen is locked), the Reminders pane reads the same", false, "no offscreen picture") }
+    }
     model.settings.appearance = .system
     pumpEvents(0.3)
 
     // ---- S3: real clicks reach the model (the controls are wired), changes apply at once
     print("   S3 controls, effects and persistence")
-    model.openSettings(pane: .general)
-    waitEvents(1.5) { w.isKeyWindow }; pumpEvents(0.6)
-    if recognitionWorks, let img = windowImage(w), let obs = recognise(img), let p = locate("Dark", in: obs, of: w) {
-        mouseClick(at: p, in: w)
-        check("clicking 'Dark' in the Appearance control sets Dark, and the whole app turns dark at once",
-              model.settings.appearance == .dark && NSApp.appearance?.name == .darkAqua && w.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
-    } else { check("clicking 'Dark' in the Appearance control", false, "could not find the control in the picture") }
+    func settle(_ pane: SettingsPane) {
+        model.openSettings(pane: pane)
+        waitEvents(1.5) { (!focusAtStart || w.isKeyWindow) && abs(contentSize(w).height - expectedHeight(pane)) < 1 }; pumpEvents(0.6)
+    }
+    settle(.general)
+    clickCheck("clicking 'Dark' in the Appearance control sets Dark, and the whole app turns dark at once", needle: "Dark", in: w, recognised: recognitionWorks) {
+        model.settings.appearance == .dark && NSApp.appearance?.name == .darkAqua && w.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
     model.settings.appearance = .light; pumpEvents(0.2)
     check("Light pins the app light", NSApp.appearance?.name == .aqua)
     model.settings.appearance = .system; pumpEvents(0.2)
     check("System follows macOS again (no override)", NSApp.appearance == nil)
 
-    model.openSettings(pane: .reminders)
-    waitEvents(1.5) { abs(contentSize(w).height - expectedHeight(.reminders)) < 1 }; pumpEvents(0.6)
-    if recognitionWorks, let img = windowImage(w), let obs = recognise(img), let p = locate("Gentle", in: obs, of: w) {
-        mouseClick(at: p, in: w)
-        check("clicking 'Gentle' sets the reminder style", model.settings.mode == .gentle)
-    } else { check("clicking 'Gentle' sets the reminder style", false, "could not find the control in the picture") }
+    settle(.reminders)
+    clickCheck("clicking 'Gentle' sets the reminder style", needle: "Gentle", in: w, recognised: recognitionWorks) { model.settings.mode == .gentle }
     model.settings.mode = .strict
 
-    model.openSettings(pane: .page)
-    waitEvents(1.5) { abs(contentSize(w).height - expectedHeight(.page)) < 1 }; pumpEvents(0.6)
-    if recognitionWorks, let img = windowImage(w), let obs = recognise(img), let p = locate("Start from today", in: obs, of: w) {
-        mouseClick(at: p, in: w)
-        check("'Start from today' sets the log start to today", model.settings.logStartDate == "2026-10-07", String(describing: model.settings.logStartDate))
-        pumpEvents(0.3)
-        if let img2 = windowImage(w), let obs2 = recognise(img2), let q = locate("Use first log", in: obs2, of: w) {
-            mouseClick(at: q, in: w)
-            check("'Use first log' returns to following the first page", model.settings.logStartDate == nil, String(describing: model.settings.logStartDate))
-        } else { check("'Use first log' returns to following the first page", false, "button not found") }
-    } else { check("'Start from today' sets the log start to today", false, "could not find the button in the picture") }
+    settle(.page)
+    clickCheck("'Start from today' sets the log start to today", needle: "Start from today", in: w, recognised: recognitionWorks,
+               detail: String(describing: model.settings.logStartDate)) { model.settings.logStartDate == "2026-10-07" }
+    pumpEvents(0.3)
+    if model.settings.logStartDate == nil { model.settings.logStartDate = "2026-10-07" }      // (a click that did not land must not hide the next check)
+    clickCheck("'Use first log' returns to following the first page", needle: "Use first log", in: w, recognised: recognitionWorks,
+               detail: String(describing: model.settings.logStartDate)) { model.settings.logStartDate == nil }
+    model.settings.logStartDate = nil
 
-    model.openSettings(pane: .about)
-    waitEvents(1.5) { abs(contentSize(w).height - expectedHeight(.about)) < 1 }; pumpEvents(0.6)
-    if recognitionWorks, let img = windowImage(w), let obs = recognise(img), let p = locate("Run setup again", in: obs, of: w) {
-        mouseClick(at: p, in: w)
-        check("'Run setup again…' opens the setup sheet", waitEvents(1.0) { model.sheet == .onboarding })
-        model.sheet = nil
-    } else { check("'Run setup again…' opens the setup sheet", false, "could not find the button in the picture") }
+    settle(.about)
+    clickCheck("'Run setup again…' opens the setup sheet", needle: "Run setup again", in: w, recognised: recognitionWorks) { model.sheet == .onboarding }
+    model.sheet = nil
 
     // a real click on a toolbar tab (the way a person changes pane)
-    model.openSettings(pane: .general)
-    waitEvents(1.5) { abs(contentSize(w).height - expectedHeight(.general)) < 1 }; pumpEvents(0.6)
-    if recognitionWorks, let img = windowImage(w), let obs = recognise(img), let p = locate("Storage and backups", in: obs, of: w) {
-        mouseClick(at: p, in: w)
-        check("clicking the 'Storage and backups' tab opens that pane (title, tab, height)",
-              waitEvents(1.0) { controller.nav.pane == .storage } && w.title == "Storage and backups" && w.toolbar?.selectedItemIdentifier?.rawValue == "storage")
-    } else { check("clicking a toolbar tab", false, "could not find the tab in the picture") }
+    settle(.general)
+    clickCheck("clicking the 'Storage and backups' tab opens that pane (title, tab, height)", needle: "Storage and backups", in: w, recognised: recognitionWorks) {
+        controller.nav.pane == .storage && w.title == "Storage and backups" && w.toolbar?.selectedItemIdentifier?.rawValue == "storage"
+    }
     if let item = w.toolbar?.items.first(where: { $0.itemIdentifier.rawValue == "reminders" }), let action = item.action {
         NSApp.sendAction(action, to: item.target, from: item)
         check("a tab's action selects its pane", controller.nav.pane == .reminders && w.title == "Reminders")
@@ -384,21 +520,21 @@ func runSettingsScenarios() {
     model.settings.appearance = .light; pumpEvents(0.3)
     let popover = hostWindow(MenuBarView(model: model), width: 300)
     pumpEvents(0.8)
-    if let img = windowImage(popover) {
-        savePNG(img, to: shots.appendingPathComponent("menubar-popover-light.png"))
-        if recognitionWorks, let obs = recognise(img) {
+    if let pic = windowPicture(popover) {
+        savePNG(pic.image, to: shotsDir(pic.offscreen).appendingPathComponent("menubar-popover-light.png"))
+        if recognitionWorks, let obs = recognise(pic.image) {
             let text = allText(obs)
             check("the popover (as drawn) shows the next reminder with the new time", text.contains("nextreminder") && text.contains(squash(clock)), String(text.prefix(200)))
             check("the popover offers Settings", text.contains("settings"))
-            w.orderOut(nil)
-            if let p = locate("Settings", in: obs, of: popover) {
-                mouseClick(at: p, in: popover)
-                check("clicking Settings… in the popover opens the Settings window in front (key within 1 s)", waitEvents(1.0) { w.isKeyWindow })
-            } else { check("clicking Settings… in the popover", false, "row not found") }
         }
     }
+    w.orderOut(nil)
+    clickCheck("clicking Settings… in the popover opens the Settings window in front (key within 1 s)", needle: "Settings", in: popover, recognised: recognitionWorks, needsKey: true,
+               without: {
+                   focusCheck("clicking Settings… in the popover shows the Settings window", needsKey: false, ok: { waitEvents(1.0) { w.isVisible } })
+               }) { w.isKeyWindow }
     model.settings.appearance = .dark; pumpEvents(0.5)
-    if let img = windowImage(popover) { savePNG(img, to: shots.appendingPathComponent("menubar-popover-dark.png")) }
+    if let pic = windowPicture(popover) { savePNG(pic.image, to: shotsDir(pic.offscreen).appendingPathComponent("menubar-popover-dark.png")) }
     popover.orderOut(nil)
 
     // reset to defaults, per pane
@@ -472,15 +608,15 @@ func runSettingsScenarios() {
         let prepared = OnboardingState(Settings()); prepared.choice = .custom; prepared.customURL = freshDir; prepared.step = 3
         let firstWin = hostWindow(OnboardingView(model: firstModel, startStep: 3, state: prepared), width: 600, height: 520)
         pumpEvents(0.8)
-        if let img = windowImage(firstWin) { savePNG(img, to: shots.appendingPathComponent("onboarding-existing-logs-\(tag).png")) }
-        if !dark, recognitionWorks, let img = windowImage(firstWin), let obs = recognise(img) {
+        if let pic = windowPicture(firstWin) { savePNG(pic.image, to: shotsDir(pic.offscreen).appendingPathComponent("onboarding-existing-logs-\(tag).png")) }
+        if !dark, recognitionWorks, let pic = windowPicture(firstWin), let obs = recognise(pic.image) {
             let text = allText(obs)
             check("onboarding step 3 (as drawn) says where Settings lives and offers 'Log starts' for existing logs", text.contains("livesinsettings") && text.contains("logstarts") && text.contains("found3logs"), String(text.suffix(260)))
         }
         firstWin.orderOut(nil)
         let rerunWin = hostWindow(OnboardingView(model: model, startStep: 1), width: 600, height: 520)
         pumpEvents(0.8)
-        if let img = windowImage(rerunWin) { savePNG(img, to: shots.appendingPathComponent("onboarding-run-again-\(tag).png")) }
+        if let pic = windowPicture(rerunWin) { savePNG(pic.image, to: shotsDir(pic.offscreen).appendingPathComponent("onboarding-run-again-\(tag).png")) }
         rerunWin.orderOut(nil)
     }
 
@@ -489,6 +625,8 @@ func runSettingsScenarios() {
     check("the app is left on the system appearance", NSApp.appearance == nil)
     w.orderOut(nil)
     for name in [suiteName, suiteName + ".first"] { UserDefaults(suiteName: name)?.removePersistentDomain(forName: name) }
+    let skippedHere = skipCounts.values.reduce(0, +)
+    print("   settings scenarios: \(passes - passes0) passed, \(failures - failures0) failed, \(skippedHere) skipped\(skippedHere > 0 ? " (" + skipCounts.keys.sorted().joined(separator: "; ") + ")" : "")")
     print("   (settings scenarios done; screenshots in \(shots.path))")
     _ = now; now = now.addingTimeInterval(1)
 }

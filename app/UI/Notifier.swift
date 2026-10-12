@@ -8,9 +8,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Notifier()
     private weak var model: AppModel?
     private let id = "dailylog.reminder"       // one notification, replaced not stacked
-    private var center: UNUserNotificationCenter? {
+    /// nil in a bare binary (no bundle): every call below degrades to nothing. Also used by ClosedAppReminders.
+    var center: UNUserNotificationCenter? {
         Bundle.main.bundleIdentifier == nil || Bundle.main.bundlePath.hasSuffix(".app") == false ? nil : UNUserNotificationCenter.current()
     }
+    /// The last request for permission was answered with no (or could not be asked at all, as an ad-hoc build may find).
+    private var refused = false
 
     func setup(model: AppModel) {
         self.model = model
@@ -18,22 +21,24 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         c.delegate = self
         let open = UNNotificationAction(identifier: "open", title: "Open", options: [.foreground])
         let snooze = UNNotificationAction(identifier: "snooze", title: "Snooze \(model.settings.snoozeMinutes) min", options: [])
-        c.setNotificationCategories([UNNotificationCategory(identifier: "reminder", actions: [open, snooze], intentIdentifiers: [], options: [])])
+        let skip = UNNotificationAction(identifier: "skip", title: "Skip today", options: [])
+        c.setNotificationCategories([UNNotificationCategory(identifier: ReminderScheduler.category, actions: [open, snooze, skip],
+                                                            intentIdentifiers: [], options: [])])
     }
 
     func requestAuthorization(_ done: @escaping (Bool) -> Void = { _ in }) {
         guard let c = center else { done(false); return }
-        c.requestAuthorization(options: [.alert]) { ok, _ in DispatchQueue.main.async { done(ok) } }
+        c.requestAuthorization(options: [.alert]) { [weak self] ok, _ in DispatchQueue.main.async { self?.refused = !ok; done(ok) } }
     }
 
     func refreshState(_ done: @escaping (NotifState) -> Void) {
         guard let c = center else { done(.unknown); return }
-        c.getNotificationSettings { s in
+        c.getNotificationSettings { [weak self] s in
             DispatchQueue.main.async {
                 switch s.authorizationStatus {
                 case .denied: done(.denied)
                 case .authorized, .provisional: done(.allowed)
-                default: done(.unknown)
+                default: done(self?.refused == true ? .denied : .unknown)       // asked, and macOS (or an ad-hoc build) said no
                 }
             }
         }
@@ -43,8 +48,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func post(title: String, body: String, snoozeMinutes: Int) {
         guard let c = center else { return }
         let content = UNMutableNotificationContent()
-        content.title = title; content.body = body; content.categoryIdentifier = "reminder"
-        c.add(UNNotificationRequest(identifier: id, content: content, trigger: nil)) { _ in }
+        content.title = title; content.body = body; content.categoryIdentifier = ReminderScheduler.category
+        // One notification a day: if macOS just delivered the scheduled one, that one stands (ClosedAppReminders.postInApp).
+        ClosedAppReminders.shared.postInApp(UNNotificationRequest(identifier: id, content: content, trigger: nil), center: c)
     }
 
     func cancelAll() {
@@ -57,10 +63,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler done: @escaping () -> Void) {
-        let action = response.actionIdentifier
+        let action = response.actionIdentifier, info = response.notification.request.content.userInfo
         DispatchQueue.main.async { [weak self] in
-            if action == "snooze" { self?.model?.snooze() }
-            else if let m = self?.model { m.showMainWindow(activate: true); m.openDay(m.today, focus: true) }
+            // Open, Snooze, Skip today and a click on the banner (also the one that launched the app): ClosedAppReminders.handle.
+            if let m = self?.model { ClosedAppReminders.shared.handle(action: action, userInfo: info, model: m) }
             done()
         }
     }

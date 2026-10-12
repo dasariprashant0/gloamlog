@@ -7,6 +7,7 @@ extension AppModel {
         guard live else { return }
         Notifier.shared.setup(model: self)
         Notifier.shared.refreshState { [weak self] s in self?.notifState = s }
+        ClosedAppReminders.shared.install(model: self)                 // M5a: macOS holds the next 14 reminders (re-plans itself on every change)
         activate(editor, replacing: nil, focus: sheet == nil)          // creates the editor host and loads today's page
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.tick() }
         timer?.tolerance = 5

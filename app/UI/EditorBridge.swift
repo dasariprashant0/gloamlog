@@ -28,6 +28,8 @@ final class EditorBridge: NSObject {
     /// Swaps issued but not yet answered. Change events that arrive meanwhile are ambiguous and are dropped by the model
     /// (the old page's final text comes back inside the swap result).
     private(set) var swapsInFlight = 0
+    /// appendToSection calls waiting for the page's `appendResult` (EditorBridge+Capture.swift), by call id.
+    var pendingAppends = [String: (AppendOutcome) -> Void]()
     private var queue = [() -> Void]()
     var allowInitialLoad = false
     private let assetHandler = AssetSchemeHandler()
@@ -82,6 +84,7 @@ final class EditorBridge: NSObject {
     /// the new `ready`), then tell the delegate.
     func processTerminated() {
         isReady = false; swapsInFlight = 0
+        failPendingAppends()
         loadEditor()
         delegate?.editorProcessDidTerminate()
     }
@@ -90,7 +93,7 @@ final class EditorBridge: NSObject {
         if isReady { block() } else { queue.append(block) }
     }
 
-    private func run(_ script: String, _ done: ((Any?) -> Void)? = nil) {
+    func run(_ script: String, _ done: ((Any?) -> Void)? = nil) {
         webView.evaluateJavaScript(script) { result, error in
             if let e = error { NSLog("Gloamlog editor script failed: %@", e.localizedDescription) }
             done?(error == nil ? result : nil)
@@ -235,7 +238,7 @@ final class EditorBridge: NSObject {
             // A second `ready` means the page reloaded: everything it held is gone and must be loaded again (contract).
             let reloaded = isReady
             isReady = true; readyTimer?.cancel()
-            if reloaded { swapsInFlight = 0 }
+            if reloaded { swapsInFlight = 0; failPendingAppends() }
             pushTheme()
             delegate?.editorBecameReady()
             if reloaded { delegate?.editorProcessDidTerminate() }
@@ -243,6 +246,8 @@ final class EditorBridge: NSObject {
             q.forEach { $0() }
         case "change":
             if let md = m["markdown"] as? String { delegate?.editorDidChange(markdown: md) }
+        case "appendResult":
+            handleAppendResult(m)
         case "uploadImage":
             handleUpload(m)
         case "openLink":

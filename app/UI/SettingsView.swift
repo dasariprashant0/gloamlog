@@ -13,7 +13,7 @@ struct SettingsView: View {
             case .reminders: RemindersSettings(model: model)
             case .page: PageSettings(model: model)
             case .storage: StorageSettings(model: model)
-            case .shortcuts: ShortcutsSettings()
+            case .shortcuts: ShortcutsSettings(model: model)
             case .about: AboutSettings(model: model)
             }
         }

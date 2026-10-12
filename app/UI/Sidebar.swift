@@ -133,7 +133,7 @@ struct ReviewRow: View {
     var body: some View {
         SidebarRow(symbol: "doc.richtext", color: Theme.textSecondary, title: "Review", selected: model.selection == .week,
                    label: "Review, weekly review") { model.select(.week) }
-            .help("Week review (⌘3)")
+            .help("Review: week, month, year or range (⌘3)")
     }
 }
 
@@ -195,28 +195,49 @@ struct SidebarFooter: View {
     @StateObject private var open = Box(false)
     var body: some View {
         let n = model.streak.current
-        HStack(spacing: Theme.s2) {
-            Button { open.value.toggle() } label: {
-                Text(n == 0 ? "No streak yet" : "\(n) day streak")
-                    .font(Theme.font(13, .semibold)).monospacedDigit().foregroundColor(Theme.textPrimary)
-                    .frame(height: 28, alignment: .leading).contentShape(Rectangle())
+        VStack(spacing: 0) {
+            if model.notesWaiting > 0 { JotsWaitingRow(model: model) }
+            HStack(spacing: Theme.s2) {
+                Button { open.value.toggle() } label: {
+                    Text(n == 0 ? "No streak yet" : "\(n) day streak")
+                        .font(Theme.font(13, .semibold)).monospacedDigit().foregroundColor(Theme.textPrimary)
+                        .frame(height: 28, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Your streak and the last 12 weeks")
+                .accessibilityLabel(n == 0 ? "No streak yet" : "\(n) day streak. Best \(model.streak.best).")
+                .accessibilityHint("Shows the last 12 weeks")
+                .popover(isPresented: Binding(get: { open.value }, set: { open.value = $0 }), arrowEdge: .top) {
+                    StreakPopover(model: model) { day in open.value = false; model.select(.day(day)) }
+                }
+                Spacer()
+                Button { model.openSettings() } label: {
+                    Image(systemName: "gearshape").font(Theme.font(14)).foregroundColor(Theme.textSecondary)
+                        .frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).help("Settings (⌘,)").accessibilityLabel("Settings")
             }
-            .buttonStyle(.plain)
-            .help("Your streak and the last 12 weeks")
-            .accessibilityLabel(n == 0 ? "No streak yet" : "\(n) day streak. Best \(model.streak.best).")
-            .accessibilityHint("Shows the last 12 weeks")
-            .popover(isPresented: Binding(get: { open.value }, set: { open.value = $0 }), arrowEdge: .top) {
-                StreakPopover(model: model) { day in open.value = false; model.select(.day(day)) }
-            }
-            Spacer()
-            Button { model.openSettings() } label: {
-                Image(systemName: "gearshape").font(Theme.font(14)).foregroundColor(Theme.textSecondary)
-                    .frame(width: 28, height: 28).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).help("Settings (⌘,)").accessibilityLabel("Settings")
+            .padding(.horizontal, Theme.s3).frame(height: 40)
         }
-        .padding(.horizontal, Theme.s3).frame(height: 40)
         .overlay(Rectangle().fill(Theme.border).frame(height: 1), alignment: .top)
+    }
+}
+
+/// "2 jots waiting": notes that are safe on this Mac (the capture journal) but not in a page yet, because the log folder was
+/// unavailable. Quiet by design (one line, no colour); it goes away by itself when the folder returns and the notes land.
+struct JotsWaitingRow: View {
+    @ObservedObject var model: AppModel
+    var body: some View {
+        HStack(spacing: Theme.s2) {
+            Image(systemName: "tray.full").font(Theme.font(12)).foregroundColor(Theme.textSecondary).accessibilityHidden(true)
+            Text(model.notesWaitingLabel).font(Theme.font(12)).foregroundColor(Theme.textSecondary).lineLimit(1)
+            Spacer(minLength: Theme.s1)
+            Button("Try now") { model.replayCapture(); model.retryFolder() }.buttonStyle(TextButtonStyle())
+                .accessibilityLabel("Try adding the waiting jots now")
+        }
+        .padding(.horizontal, Theme.s3).frame(height: 28)
+        .help("Saved on this Mac. They are added to today's page when your log folder is back.")
+        .accessibilityElement(children: .contain)
     }
 }
 

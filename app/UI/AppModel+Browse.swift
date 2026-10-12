@@ -53,11 +53,10 @@ extension AppModel {
         let probe = WeeklyReview.summary(weekContaining: weekDate, documents: [:], states: states, settings: settings, calendar: cal, now: now)
         let docs = (try? store.documents(from: probe.weekStart, to: probe.weekEnd)) ?? [:]
         week = WeeklyReview.summary(weekContaining: weekDate, documents: docs, states: states, settings: settings, calendar: cal, now: now)
+        review.rebuild()                                     // the Review (any scale) follows the same data and the same anchor date
     }
-    var canShowNextWeek: Bool {
-        let next = WeeklyReview.shift(weekDate, weeks: 1, calendar: cal)
-        return (cal.dateInterval(of: .weekOfYear, for: next)?.start ?? next) <= now
-    }
+    /// The next period of the shown scale is not in the future (the week review's ›, ⌘]).
+    var canShowNextWeek: Bool { review.canStep(1) }
     var isCurrentWeek: Bool { cal.isDate(weekDate, equalTo: now, toGranularity: .weekOfYear) }
     func goThisWeek() { weekDate = now; refreshWeek() }
 
@@ -65,11 +64,10 @@ extension AppModel {
         guard let w = week else { return "" }
         return WeeklyReview.markdown(for: w, grouping: weekGrouping, calendar: cal)
     }
+    /// ⇧⌘C on the Review: Markdown of exactly what is shown (any scale, with the Skipped days and Jots choices); the week's is the v0.3 copy.
     func copyWeek() {
         guard week != nil else { return }
-        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(weekMarkdown(), forType: .string)
-        copiedFlash = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.copiedFlash = false }
+        review.copy(.markdown)
     }
     func weekTitle(_ w: WeekSummary) -> String {
         let sameMonth = w.weekStart.prefix(7) == w.weekEnd.prefix(7), sameYear = w.weekStart.prefix(4) == w.weekEnd.prefix(4)

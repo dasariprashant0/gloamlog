@@ -45,8 +45,10 @@ extension AppModel {
             self.retiredMarkdown = prev
             guard let loaded = loaded else { if e.showsEditor { e.markLoadFailed() }; return }
             if e.showsEditor { e.didLoad(markdown: loaded, stable: stable) } else { e.markNotLoaded() }
-            // A page that is only the template's headings gets an empty line under each one to type into (not an edit).
-            if e.isPristineTemplate { self.bridge.openTemplateLines(token: e.token) }
+            // A page that is only the template's headings (or the template above a day's jots) gets an empty line under each
+            // heading to type into (not an edit).
+            if e.isPristineTemplate || e.isTemplateOverJots { self.bridge.openTemplateLines(token: e.token) }
+            self.captureEditorLoaded(e)                 // notes that were waiting for this page can go in now
         }
     }
 
@@ -95,7 +97,7 @@ extension AppModel {
     /// Pages that could not be written, as markdown with a "# day" heading each (for "Copy my text").
     func copyUnsavedText() {
         var parts = [String]()
-        for e in ([editor].compactMap { $0 } + orphans) where e.hasUnsavedEdits { parts.append("# \(e.day)\n\n\(DayEditor.writable(e.latest))") }
+        for e in ([editor].compactMap { $0 } + orphans) where e.hasUnsavedEdits { parts.append("# \(e.day)\n\n\(e.writableLatest)") }
         if parts.isEmpty { editor?.copyLatest(); return }
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(parts.joined(separator: "\n\n"), forType: .string)
     }

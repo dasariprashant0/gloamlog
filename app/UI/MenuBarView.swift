@@ -1,4 +1,5 @@
-// MenuBarView.swift - MenuBarExtra popover (.window style): state, next reminder, streak, last 7 days, actions, Settings.
+// MenuBarView.swift - MenuBarExtra popover (.window style): state, next reminder, a one-line Jot field, streak, last 7 days,
+// actions, Settings. The Jot field adds a note to today's page like the global shortcut does (M2, docs/v1/DESIGN_V4.md section 8).
 import SwiftUI
 
 extension AppModel {
@@ -30,17 +31,21 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Today · \(DayKey.format(model.today, "EEE d MMM", model.cal))").font(Theme.font(11)).foregroundColor(Theme.textSecondary)
-                HStack(spacing: 6) {
-                    Image(systemName: model.menuIcon.symbol).font(Theme.font(14)).foregroundColor(model.folderProblem != nil ? Theme.danger : (model.todayStatus == .logged ? Theme.accent : Theme.textPrimary))
-                        .accessibilityHidden(true)
-                    Text(model.menuStateLine).font(Theme.font(14, .semibold)).foregroundColor(Theme.textPrimary)
+            VStack(alignment: .leading, spacing: Theme.s3) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Today · \(DayKey.format(model.today, "EEE d MMM", model.cal))").font(Theme.font(11)).foregroundColor(Theme.textSecondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: model.menuIcon.symbol).font(Theme.font(14)).foregroundColor(model.folderProblem != nil ? Theme.danger : (model.todayStatus == .logged ? Theme.accent : Theme.textPrimary))
+                            .accessibilityHidden(true)
+                        Text(model.menuStateLine).font(Theme.font(14, .semibold)).foregroundColor(Theme.textPrimary)
+                    }
+                    Text(model.menuReminderLine)
+                        .font(Theme.font(12)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Text(model.menuReminderLine)
-                    .font(Theme.font(12)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+                .accessibilityElement(children: .combine)
+                PopoverJotField(model: model)
             }
-            .accessibilityElement(children: .combine).padding(Theme.s3)
+            .padding(Theme.s3)
             divider
             VStack(alignment: .leading, spacing: Theme.s2) {
                 StreakLine(model: model)
@@ -49,6 +54,8 @@ struct MenuBarView: View {
             divider
             VStack(spacing: 2) {
                 MenuButton(title: "Open Gloamlog", shortcut: "⌘O", primary: true) { open() }.keyboardShortcut("o")
+                MenuButton(title: "Jot…", shortcut: model.settings.capture.hotKey?.display) { model.showJotPanel(source: "menu") }
+                MenuButton(title: "Copy this week's summary") { model.review.copyThisWeekSummary() }
                 if model.isDue { MenuButton(title: model.snoozeLabel, disabled: !model.canSnooze) { model.snooze() } }
                 MenuButton(title: model.canSkipToday ? "Skip today…" : "Today is already logged", disabled: !model.canSkipToday) {
                     open(); model.requestSkip(day: model.today)
@@ -91,5 +98,99 @@ struct MenuButton: View {
                 .contentShape(Rectangle())
             }.buttonStyle(.plain).disabled(disabled)
         }
+    }
+}
+
+// MARK: - the Jot field
+
+/// What the popover's Jot field is doing: its text, and the short confirmation after Return.
+final class PopoverJotState: ObservableObject {
+    enum Flash: Equatable { case none, added, kept, failed }
+    @Published var text = ""
+    @Published private(set) var flash = Flash.none
+    private var work: DispatchWorkItem?
+
+    func show(_ f: Flash, for seconds: TimeInterval) {
+        work?.cancel()
+        flash = f
+        let w = DispatchWorkItem { [weak self] in self?.flash = .none }
+        work = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: w)
+    }
+}
+
+/// A 32 pt line at the top of the popover: type, Return adds a note to today's page, "Added" shows for 600 ms and the field is
+/// ready for the next one. It is the keyboard route to Jot when the global shortcut is off or taken.
+struct PopoverJotField: View {
+    @ObservedObject var model: AppModel
+    @StateObject private var state = PopoverJotState()
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                TextField(JotCopy.placeholder, text: $state.text)
+                    .textFieldStyle(.plain).font(Theme.font(13)).focused($focused)
+                    .onSubmit { submit() }
+                    .accessibilityLabel("Jot a line for today")
+                    .accessibilityHint("Press Return to add it to today's page")
+                trailing
+            }
+            .padding(.horizontal, 10).frame(height: 32)
+            .background(Theme.rect().fill(Theme.surface))
+            .overlay(Theme.rect().stroke(focused ? Theme.accent : Theme.border, lineWidth: focused ? 1.5 : 1))
+            if model.notesWaiting > 0 { waiting }
+        }
+        .onAppear { DispatchQueue.main.async { focused = true } }
+    }
+
+    @ViewBuilder private var trailing: some View {
+        switch state.flash {
+        case .added:
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark").font(Theme.font(11, .bold)).accessibilityHidden(true)
+                Text("Added").font(Theme.font(12, .semibold))
+            }.foregroundColor(Theme.accentText).accessibilityLabel(JotCopy.addedSpoken)
+        case .kept:
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle").font(Theme.font(12)).accessibilityHidden(true)
+                Text("Kept on this Mac").font(Theme.font(12))
+            }.foregroundColor(Theme.textSecondary).accessibilityLabel(JotCopy.keptSpoken)
+        case .failed:
+            Text("Not saved").font(Theme.font(12, .semibold)).foregroundColor(Theme.danger).accessibilityLabel(JotCopy.failed)
+        case .none:
+            if !state.text.isEmpty {
+                Image(systemName: "return").font(Theme.font(12)).foregroundColor(Theme.textSecondary).accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var waiting: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "tray.full").font(Theme.font(12)).accessibilityHidden(true)
+            Text(model.notesWaitingLabel).font(Theme.font(12))
+            Spacer(minLength: Theme.s2)
+            Button("Try now") { model.replayCapture(); model.retryFolder() }.buttonStyle(TextButtonStyle())
+                .font(Theme.font(12, .semibold))
+        }
+        .foregroundColor(Theme.textSecondary)
+        .help("Saved on this Mac. \(Fmt.plural(model.notesWaiting, "jot")) will be added to your page when your log folder is back.")
+    }
+
+    private func submit() {
+        let t = state.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty || t == "[]" { return }
+        switch model.jotOutcome(text: state.text, source: "menubar") {
+        case .added:
+            state.text = ""; state.show(.added, for: JotMetrics.addedHold)
+            if model.live { UIAnnounce.say(JotCopy.addedSpoken) }
+        case .kept:
+            state.text = ""; state.show(.kept, for: JotMetrics.keptHold)
+            if model.live { UIAnnounce.say(JotCopy.keptSpoken) }
+        case .failed:
+            state.show(.failed, for: 3)                         // the text stays in the field
+            if model.live { UIAnnounce.say(JotCopy.failed, assertive: true) }
+        }
+        focused = true
     }
 }

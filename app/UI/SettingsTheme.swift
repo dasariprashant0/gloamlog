@@ -40,7 +40,7 @@ extension SettingsPane {
         case .reminders: return 600
         case .page: return 640
         case .storage: return 440
-        case .shortcuts: return 500
+        case .shortcuts: return 640
         case .about: return 380
         }
     }

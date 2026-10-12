@@ -77,28 +77,33 @@ struct StreakPopover: View {
     }
 }
 
-/// "12 words. Counts as logged at 20." until the page has enough words, then "Logged, 63 words". No quota framing.
+/// "12 words. Counts as logged at 20." until the page has enough words, then "Logged, 63 words". No quota framing. Jots are
+/// notes, not words (unless Settings says otherwise), so a day with only jots reads "0 words" and "3 jots": started, not logged.
 struct WordProgress: View {
     @ObservedObject var model: AppModel
     @ObservedObject var editor: DayEditor
+    private var jots: String? { editor.showsEditor && editor.jotCount > 0 ? Fmt.plural(editor.jotCount, "jot") : nil }
     var body: some View {
         let min = model.minWords
-        Group {
-            if !editor.showsEditor {
-                Text("Skipped" + (editor.skipReason.isEmpty ? "" : " · \(editor.skipReason)")).foregroundColor(Theme.textSecondary)
-            } else if editor.isLogged {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark").font(Theme.font(11, .bold)).accessibilityHidden(true)
-                    Text("Logged, \(Fmt.plural(editor.words, "word"))").fontWeight(.semibold)
-                }.foregroundColor(Theme.accentText)
-            } else {
-                Text("\(Fmt.plural(editor.words, "word")). Counts as logged at \(min).").foregroundColor(Theme.textSecondary)
+        HStack(spacing: 6) {
+            Group {
+                if !editor.showsEditor {
+                    Text("Skipped" + (editor.skipReason.isEmpty ? "" : " · \(editor.skipReason)")).foregroundColor(Theme.textSecondary)
+                } else if editor.isLogged {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark").font(Theme.font(11, .bold)).accessibilityHidden(true)
+                        Text("Logged, \(Fmt.plural(editor.words, "word"))").fontWeight(.semibold)
+                    }.foregroundColor(Theme.accentText)
+                } else {
+                    Text("\(Fmt.plural(editor.words, "word")). Counts as logged at \(min).").foregroundColor(Theme.textSecondary)
+                }
             }
+            if let j = jots { Text("· \(j)").foregroundColor(Theme.textSecondary) }
         }
         .font(Theme.font(13)).monospacedDigit()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(!editor.showsEditor ? "Skipped" : editor.isLogged ? "Logged, \(Fmt.plural(editor.words, "word"))."
-                            : "\(Fmt.plural(editor.words, "word")). Counts as logged at \(min).")
+        .accessibilityLabel((!editor.showsEditor ? "Skipped" : editor.isLogged ? "Logged, \(Fmt.plural(editor.words, "word"))."
+                             : "\(Fmt.plural(editor.words, "word")). Counts as logged at \(min).") + (jots.map { " \($0)." } ?? ""))
     }
 }
 
@@ -125,6 +130,8 @@ struct PageMenu: View {
         Menu {
             Button("Skip day…") { model.requestSkip(day: editor.day) }.disabled(model.states[editor.day] == .logged)
             Button("Copy page as markdown") { model.copyPageMarkdown() }
+            Button("Copy page as plain text") { model.review.copyPage(.plain) }
+            Button("Copy page as rich text") { model.review.copyPage(.rich) }
             Button("Open folder") { model.revealPageInFinder() }
             Divider()
             Button("Go to date…") { model.goToDateOpen = true }
