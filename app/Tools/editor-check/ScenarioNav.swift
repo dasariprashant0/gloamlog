@@ -448,7 +448,7 @@ private func navWeek() {
     capture(w, "week-full-light")
     // R9: copy as markdown
     NSPasteboard.general.clearContents()
-    axPress(w.win, "Copy as markdown")
+    m.copyWeek(); spin(0.4)           // the old 'Copy as markdown' button is now the Export menu; copyWeek() is the same command as ⇧⌘C
     let md = NSPasteboard.general.string(forType: .string) ?? ""
     check("R9: Copy as markdown puts a week on the clipboard", m.copiedFlash && md.hasPrefix("# Week of 28 Sep"), String(md.prefix(60)))
     check("R9: it holds what was written, each day under its date", workdays.allSatisfy { md.contains("Day \($0): Wrote up the notes") } && md.contains("## Mon 28 Sep") && md.contains("## Fri 2 Oct"), String(md.prefix(300)))
