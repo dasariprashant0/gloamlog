@@ -17,6 +17,7 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .appInfo) {
             Button("About Gloamlog") { AppDelegate.showAbout() }
             Button("Check for Updates…") { Updater.shared.check() }
+            Button("Save Layout Report") { AppDelegate.writeLayoutReport() }
         }
         CommandGroup(replacing: .saveItem) {
             // Autosave is always on; ⌘S just flushes right now, as people expect.

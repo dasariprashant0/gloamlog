@@ -9,6 +9,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `gloamlog://refresh`: Claude Code's hook says a session ended, so today's lines are looked for now (a no-op unless "Add them for me" is on).
     func application(_ app: NSApplication, open urls: [URL]) {
         if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "refresh" }) { AppModel.shared.sources.autoTick(force: true) }
+        if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "layout" }) { AppDelegate.writeLayoutReport() }
+    }
+
+    /// Diagnostic for "the window is drawn wrong": writes /tmp/gloamlog-layout.txt (window and view frames, scroll offsets, safe areas) and
+    /// /tmp/gloamlog-layout.png (the window's SwiftUI content; the web editor does not show in it). Run `open gloamlog://layout` or use
+    /// Gloamlog > Save Layout Report while it looks wrong. Nothing is sent anywhere.
+    static func writeLayoutReport() {
+        guard let w = NSApp.windows.first(where: { $0.isVisible && $0.title == "Gloamlog" }) ?? NSApp.keyWindow, let cv = w.contentView else { return }
+        var lines = ["window frame \(w.frame) contentLayoutRect \(w.contentLayoutRect) visibleScreen \(w.screen?.visibleFrame ?? .zero)",
+                     "styleMask \(w.styleMask.rawValue) titleVisibility \(w.titleVisibility.rawValue) toolbarVisible \(w.toolbar?.isVisible ?? false) fullScreen \(w.styleMask.contains(.fullScreen))",
+                     "contentView frame \(cv.frame) bounds \(cv.bounds) fitting \(cv.fittingSize) safeArea \(cv.safeAreaInsets)"]
+        func dump(_ v: NSView, _ depth: Int) {
+            guard depth < 14 else { return }
+            var l = String(repeating: "  ", count: depth) + "\(type(of: v)) frame=\(v.frame.integral)"
+            if let sc = v as? NSScrollView { l += " SCROLL offsetY=\(Int(sc.contentView.bounds.origin.y)) docH=\(Int(sc.documentView?.frame.height ?? 0))" }
+            if v.safeAreaInsets.top != 0 { l += " safeTop=\(v.safeAreaInsets.top)" }
+            lines.append(l)
+            v.subviews.forEach { dump($0, depth + 1) }
+        }
+        dump(cv.superview ?? cv, 0)
+        try? lines.joined(separator: "\n").write(toFile: "/tmp/gloamlog-layout.txt", atomically: true, encoding: .utf8)
+        if let rep = cv.bitmapImageRepForCachingDisplay(in: cv.bounds) {
+            cv.cacheDisplay(in: cv.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/gloamlog-layout.png"))
+        }
     }
 
     /// Quit: ask the editor for its final text and save it first (async, with a 1.5 s ceiling). If the text cannot be
