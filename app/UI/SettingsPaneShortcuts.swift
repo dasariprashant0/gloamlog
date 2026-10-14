@@ -67,6 +67,18 @@ struct ShortcutsSettings: View {
                 Divider().padding(.horizontal, Theme.s3)
                 toggleRow("Jots count toward logging a day", help: "Off: a day with only jots still reads as started.",
                           isOn: $model.settings.capture.jotsCountTowardLogged)
+                Divider().padding(.horizontal, Theme.s3)
+                HStack(spacing: Theme.s3) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Jots go under").font(Theme.font(13)).foregroundColor(Theme.textPrimary)
+                        Text("The heading quick notes and Claude's entries are added under. Type What I did to keep them with the rest of your day.")
+                            .font(Theme.font(12)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: Theme.s3)
+                    TextField("Jots", text: $model.settings.capture.jotsHeading).textFieldStyle(.roundedBorder)
+                        .frame(width: 160).multilineTextAlignment(.trailing).accessibilityLabel("Jots go under this heading")
+                }
+                .padding(.horizontal, Theme.s3).padding(.vertical, Theme.s2)
             }
             .background(Theme.rect(Theme.radiusLg).fill(Color.primary.opacity(0.05)))
         }
