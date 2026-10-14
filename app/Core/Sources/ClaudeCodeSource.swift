@@ -107,7 +107,10 @@ enum ClaudeText {
     }
 
     /// The commit message's first line, from `-m "..."`, `-m '...'`, `-am` or a heredoc; nil when the command does not carry one.
-    static func commitSubject(_ command: String) -> String? {
+    static func commitSubject(_ whole: String) -> String? {
+        // Only the text from `git commit` on: an earlier heredoc (a script piped into python, say) is not the message.
+        let at = gitCommit?.firstMatch(in: whole, range: NSRange(location: 0, length: (whole as NSString).length))?.range.location ?? 0
+        let command = (whole as NSString).substring(from: at)
         let ns = command as NSString, all = NSRange(location: 0, length: ns.length)
         func firstLine(_ s: String) -> String? { s.components(separatedBy: .newlines).map { $0.dlTrimmed }.first(where: { !$0.isEmpty }).map(collapse) }
         if let m = heredoc?.firstMatch(in: command, range: all), m.numberOfRanges > 2, let l = firstLine(ns.substring(with: m.range(at: 2))) { return l }

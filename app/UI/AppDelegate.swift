@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// `gloamlog://refresh`: Claude Code's hook says a session ended, so today's lines are looked for now (a no-op unless "Add them for me" is on).
     func application(_ app: NSApplication, open urls: [URL]) {
-        if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "refresh" }) { AppModel.shared.sources.autoTick(force: true) }
+        if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "refresh" }) { AppModel.shared.sources.autoTick(force: true); AppModel.shared.drainInbox() }
         if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "layout" }) { AppDelegate.writeLayoutReport() }
     }
 
@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func showAbout() {
         let info = Bundle.main.infoDictionary
-        let v = info?["CFBundleShortVersionString"] as? String ?? "0.6.2"
+        let v = info?["CFBundleShortVersionString"] as? String ?? "0.6.3"
         let credits = NSAttributedString(
             string: "A calm end-of-day log. Plain markdown files on your Mac. No account, no tracking. The only network request is the update check you ask for.",
             attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])

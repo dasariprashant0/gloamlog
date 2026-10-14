@@ -24,6 +24,7 @@ swiftc -O -parse-as-library -swift-version 5 -module-cache-path "$CLANG_MODULE_C
 
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp -R Resources/editor "$APP/Contents/Resources/editor"
+cp -R Resources/claude "$APP/Contents/Resources/claude"
 [ -f ../THIRD_PARTY_LICENSES.md ] && cp ../THIRD_PARTY_LICENSES.md "$APP/Contents/Resources/THIRD_PARTY_LICENSES.md"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -36,9 +37,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>Gloamlog</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.6.2</string>
+<key>CFBundleShortVersionString</key><string>0.6.3</string>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Gloamlog</string><key>CFBundleURLSchemes</key><array><string>gloamlog</string></array></dict></array>
-<key>CFBundleVersion</key><string>0.6.2</string>
+<key>CFBundleVersion</key><string>0.6.3</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>

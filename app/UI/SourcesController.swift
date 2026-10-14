@@ -207,7 +207,8 @@ final class SourcesController: ObservableObject {
     // MARK: auto-add
     // While "Add them for me" is on, today's lines go onto today's page by themselves: every 2 minutes, when Claude Code says a
     // session ended (the hook runs `open -g gloamlog://refresh`), and at launch. It reads every session and tab, not only the
-    // folder in front of you. The session summary line is left out of today (its time and count would be stale the moment it is written).
+    // folder in front of you. Only what really happened goes in: commits and pull requests. Session counts and the first line of a prompt are
+    // not a log (the strip still offers them to insert by hand), and what the work was about comes from Claude itself (Inbox).
     // An open page takes the lines through the editor; a day nobody has open is written to its file, once per line; a page that is
     // open but not ready is skipped until the next look.
     private var autoBusy = false
@@ -231,7 +232,7 @@ final class SourcesController: ObservableObject {
             DispatchQueue.main.async {
                 guard let s = self else { return }
                 s.autoBusy = false
-                s.autoWrite(day: day, bullets: digest.bullets.filter { $0.kind != .session })
+                s.autoWrite(day: day, bullets: digest.bullets.filter { $0.kind == .commit || $0.kind == .pullRequest })
             }
         }
     }
@@ -255,6 +256,22 @@ final class SourcesController: ObservableObject {
             body = CapturePlacement.apply(item, to: body, jotsHeading: prefs.headingText)
         }
         if (try? model.store.save(day: day, body: body)) != nil { model.fileChangedUnderneath(day) }
+    }
+
+    /// What to run once so Claude Code can write entries into Gloamlog (the helper ships inside the app).
+    func copySetupCommand() {
+        let script = Bundle.main.bundlePath + "/Contents/Resources/claude/gloamlog-mcp.py"
+        let cmd = "claude mcp add --scope user gloamlog -- python3 \"\(script)\""
+        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(cmd, forType: .string)
+    }
+
+    /// Text for ~/.claude/CLAUDE.md so Claude knows when to write an entry.
+    func copyClaudeInstructions() {
+        let text = """
+        ## Gloamlog work log
+        When a meaningful piece of work is finished in a session (a problem solved, a deliverable done, a decision made, or I say I'm done), call the gloamlog `log_work` tool once with 1-3 plain sentences: the problem I was solving, what was done, and what is still open. Not after every step. No secrets, customer data or code.
+        """
+        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string)
     }
 
     /// The Claude Code Stop hook as settings.json wants it; only runs when Gloamlog is open.

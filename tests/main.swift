@@ -2489,6 +2489,26 @@ test("UpdateCheck: versions, release JSON, checksum, trusted hosts") {
            && !UpdateCheck.isTrusted(URL(string: "https://evilgithub.com/x")!) && !UpdateCheck.isTrusted(URL(string: "https://github.com.evil.io/x")!), "only https github.com")
 }
 
+test("Sources: a heredoc before git commit is not the commit message") {
+    let cmd = "python3 - <<'EOF'\np=\"CHANGELOG.md\"\nEOF\ngit add -A && git commit -q -m \"fix: real subject\" && git push"
+    expect(ClaudeText.commitSubject(cmd) == "fix: real subject", "subject comes from the commit, not the script")
+    expect(ClaudeText.commitSubject("git commit -F - <<'EOF'\nfeat: from heredoc\n\nbody\nEOF") == "feat: from heredoc", "a heredoc after git commit still works")
+}
+
+test("Inbox: entries are read oldest first; junk is skipped; an emoji heading takes jots") {
+    let d = freshDir("inbox")
+    try "{\"text\":\"  Fixed the cards.  \"}".write(to: d.appendingPathComponent("1.json"), atomically: true, encoding: .utf8)
+    try "not json".write(to: d.appendingPathComponent("2.json"), atomically: true, encoding: .utf8)
+    try "{\"text\":\"  \"}".write(to: d.appendingPathComponent("3.json"), atomically: true, encoding: .utf8)
+    try "{\"text\":\"hidden\"}".write(to: d.appendingPathComponent(".4.json"), atomically: true, encoding: .utf8)
+    expect(Inbox.pending(in: d).map { $0.text } == ["Fixed the cards."], "one good entry, trimmed")
+    expect(Inbox.pending(in: d.appendingPathComponent("nope")).isEmpty, "no folder, no entries")
+    let item = CaptureItem(id: "x", ts: mk(2026, 10, 14), day: "2026-10-14", text: "Fixed the cards.", stamp: "14:35", todo: false, source: "claude")
+    let page = "## \u{1F4DD} What I did\n\n- earlier\n\n## Finished"
+    let out = CapturePlacement.apply(item, to: page, jotsHeading: "What I did")
+    expect(out == "## \u{1F4DD} What I did\n\n- earlier\n- 14:35 Fixed the cards.\n\n## Finished", "added under the emoji heading, no new Jots section: \(out)")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

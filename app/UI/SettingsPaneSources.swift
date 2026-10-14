@@ -38,7 +38,10 @@ struct SourcesSettings: View {
                 SettingsRow("Every session and tab", help: "Reads all your Claude Code sessions, in every folder and tab, without ticking projects. Use the list below to skip a project.") {
                     Toggle("Every session and tab", isOn: Binding(get: { model.settings.sources.allProjects }, set: { model.settings.sources.allProjects = $0; model.settings.sources.allowed = [] })).labelsHidden().toggleStyle(.switch)
                 }
-                SettingsRow("Add them for me", help: "Writes today's lines into your page by themselves as you work, about every 2 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line.") {
+                SettingsRow("Claude writes my log", help: "Lets Claude Code write a short entry (the problem, what it did, what is left) into today's page when a piece of work is done. Step 1: copy the setup command and run it once in a terminal. Step 2: copy the instructions into ~/.claude/CLAUDE.md. Entries land under the Jots heading (Settings > Page); set that heading to \"What I did\" to keep them there.") {
+                    HStack { Button("1 Copy setup command") { sources.copySetupCommand() }; Button("2 Copy instructions") { sources.copyClaudeInstructions() } }
+                }
+                SettingsRow("Add commits for me", help: "Writes today's commits and pull requests into your page by themselves as you work, about every 2 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line.") {
                     Toggle("Add them for me", isOn: Binding(get: { model.settings.sources.autoAdd }, set: { model.settings.sources.autoAdd = $0 })).labelsHidden().toggleStyle(.switch)
                 }
                 SettingsRow("Instant update", help: "Optional. Add this hook to ~/.claude/settings.json so Gloamlog updates the moment a Claude Code session ends, instead of waiting up to 2 minutes.") {

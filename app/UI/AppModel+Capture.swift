@@ -70,12 +70,26 @@ extension AppModel {
     func startCapture(realApp: Bool) {
         refreshNotesWaiting()
         let nc = NotificationCenter.default, ws = NSWorkspace.shared.notificationCenter
-        nc.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.replayCapture() }
+        nc.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.replayCapture(); self?.drainInbox() }
         ws.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) { self?.replayCapture() }       // let the disk or network volume settle
         }
-        if realApp { installHotKeys(HotKeyCenter.shared) }
+        if realApp {
+            installHotKeys(HotKeyCenter.shared)
+            Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.drainInbox() }
+        }
         replayCaptureSoon()
+        DispatchQueue.main.async { [weak self] in self?.drainInbox() }
+    }
+
+    /// Entries other programs left in the inbox (Claude Code's `log_work`) become jots, then their files are deleted. The jot is durable
+    /// (journal first) before the file goes, so an entry is never lost between the two.
+    func drainInbox() {
+        guard live else { return }
+        for e in Inbox.pending() {
+            _ = jot(text: e.text, source: "claude")
+            try? FileManager.default.removeItem(at: e.url)
+        }
     }
 
     /// Makes `center` the model's global shortcut: its press opens the panel, and it holds the shortcut from Settings. The real

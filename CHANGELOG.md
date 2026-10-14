@@ -2,6 +2,11 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.6.3
+- Claude writes your log: a small Claude Code helper (`log_work`) drops an entry in an inbox and Gloamlog adds it to today's page, so the log says what you were solving and what you did instead of session names. Set up from Settings > Sources.
+- Auto-add now only writes commits and pull requests. Session counts and prompt snippets are no longer added by themselves.
+- Fix: a script heredoc earlier in a command was read as the commit message.
+
 ## 0.6.2
 - Fix: a tall header or suggestions list made the page ask for more height than a laptop window has, so the whole window was drawn too tall with its top cut off. The header area now scrolls instead.
 
