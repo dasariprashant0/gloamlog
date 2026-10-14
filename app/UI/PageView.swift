@@ -15,31 +15,50 @@ struct Column<Content: View>: View {
     }
 }
 
+/// The height the header and strips of a day page want, measured so the scroll view around them can be exactly that tall.
+private struct TopHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private final class TopHeight: ObservableObject { @Published var value: CGFloat = .infinity }
+
 struct DayPage: View {
     @ObservedObject var model: AppModel
     @ObservedObject var editor: DayEditor
     @Environment(\.snapshotMode) private var snapshot
+    @StateObject private var top = TopHeight()
 
     var body: some View {
-        VStack(spacing: 0) {
-            Column(top: 28, bottom: 0) {
-                if let s = model.session { SessionBar(model: model, session: s).padding(.bottom, Theme.s4) }
-                SyncBanners(model: model)                               // M5b: "1 conflict in ~/Gloamlog" (nothing while there is none)
-                PageNotices(model: model, editor: editor)
-                PageHeader(model: model, editor: editor)
-                if editor.showsEditor { FromYesterdayStrip(model: model, editor: editor) }
-                if editor.showsEditor { SuggestionsStrip(model: model, editor: editor) }
-            }
-            if editor.showsEditor {
-                if snapshot {
-                    SnapshotEditorStub(markdown: editor.initialBody, store: model.store.assets)
-                } else {
-                    EditorWebView(bridge: model.bridge).padding(.top, Theme.s2)
-                        .accessibilityLabel("Page for \(model.spokenDate(editor.day))")
+        // The header and strips scroll when they are taller than half the window. Without that a long strip (a list of suggestions, an
+        // open "From yesterday") made the page ask for more height than a laptop window has, and the whole window was drawn too tall
+        // with its top cut off.
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    Column(top: 28, bottom: 0) {
+                        if let s = model.session { SessionBar(model: model, session: s).padding(.bottom, Theme.s4) }
+                        SyncBanners(model: model)                               // M5b: "1 conflict in ~/Gloamlog" (nothing while there is none)
+                        PageNotices(model: model, editor: editor)
+                        PageHeader(model: model, editor: editor)
+                        if editor.showsEditor { FromYesterdayStrip(model: model, editor: editor) }
+                        if editor.showsEditor { SuggestionsStrip(model: model, editor: editor) }
+                    }
+                    .background(GeometryReader { Color.clear.preference(key: TopHeightKey.self, value: $0.size.height) })
                 }
-            } else {
-                Column(top: Theme.s6, bottom: Theme.s6) { SkippedBody(model: model, editor: editor) }
-                Spacer(minLength: 0)
+                .frame(height: min(top.value, geo.size.height * 0.5))
+                .onPreferenceChange(TopHeightKey.self) { h in if abs(top.value - h) > 0.5 { DispatchQueue.main.async { top.value = h } } }
+                if editor.showsEditor {
+                    if snapshot {
+                        SnapshotEditorStub(markdown: editor.initialBody, store: model.store.assets)
+                    } else {
+                        EditorWebView(bridge: model.bridge).padding(.top, Theme.s2)
+                            .accessibilityLabel("Page for \(model.spokenDate(editor.day))")
+                    }
+                } else {
+                    Column(top: Theme.s6, bottom: Theme.s6) { SkippedBody(model: model, editor: editor) }
+                    Spacer(minLength: 0)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

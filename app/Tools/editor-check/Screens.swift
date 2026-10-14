@@ -146,4 +146,17 @@ func runScreenshots(_ outDir: String) {
     host.rootView = AnyView(MainView(model: model).frame(width: 1000, height: 760))
     spin(1.5)
     capture("real-6-mainview")
+    // 7. Sources on (every session and tab): how tall do the sidebar, the page and the whole window insist on being?
+    var withSources = model.settings
+    withSources.sources.claude = true; withSources.sources.consented = true; withSources.sources.allProjects = true
+    model.settings = withSources
+    model.openDay(model.today); _ = wait(8) { model.editor.day == model.today && model.editor.loaded }
+    spin(4)
+    func fit<V: View>(_ name: String, _ v: V, width: CGFloat) {
+        let size = NSHostingController(rootView: v).sizeThatFits(in: CGSize(width: width, height: 100))        // the least height this view needs at that width
+        print("   fit \(name): min height \(Int(size.height)) at width \(Int(width))")
+    }
+    fit("sidebar", SidebarView(model: model), width: 260)
+    fit("page", DetailRouter(model: model), width: 1180)
+    fit("window", MainView(model: model), width: 1440)
 }

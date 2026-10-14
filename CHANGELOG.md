@@ -2,6 +2,9 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.6.2
+- Fix: a tall header or suggestions list made the page ask for more height than a laptop window has, so the whole window was drawn too tall with its top cut off. The header area now scrolls instead.
+
 ## 0.6.1
 - Check for Updates… (Gloamlog menu): looks at the latest GitHub release and, on a click, downloads it, checks its SHA-256, swaps the app in and relaunches. The only network request in the app, and only when you click. Releases come from `scripts/release.sh`.
 - Sources: "Every session and tab" mode (no per-project ticking, with a skip list), "Add them for me" (auto-writes today's lines), `gloamlog://refresh` URL for a Claude Code Stop hook, and system-generated prompts are no longer listed as work.
