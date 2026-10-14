@@ -5,3 +5,4 @@ app/Gloamlog.zip
 .build/
 app/Resources/AppIcon.iconset/
 app/Tools/.build/
+dist/
