@@ -10,7 +10,7 @@ Text with an inline image ![](assets/inline.gif) in the middle.
 
 ## Links
 
-A [plain link](https://example.com), a [link with a title](https://example.com/page "Example page"), and <https://zuddl.com> as an autolink.
+A [plain link](https://example.com), a [link with a title](https://example.com/page "Example page"), and <https://example.org> as an autolink.
 
 Mail [me](mailto:me@example.com) or see the [docs](https://example.com/docs?a=1&b=2#section).
 

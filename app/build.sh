@@ -19,8 +19,20 @@ APP="Gloamlog.app"
 rm -rf "$APP" Gloamlog.zip
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-swiftc -O -parse-as-library -swift-version 5 -module-cache-path "$CLANG_MODULE_CACHE_PATH" \
-  -target "$(uname -m)-apple-macos13.0" $(find Core UI -name '*.swift' | sort) -o "$APP/Contents/MacOS/Gloamlog"   # recursive: subfolders like Core/Calendar are included (no spaces in source paths)
+# A universal binary (Apple silicon and Intel): one compile per architecture, in parallel, then lipo. The sources are recursive, so
+# subfolders like Core/Calendar are included (no spaces in source paths).
+SRC=$(find Core UI -name '*.swift' | sort)
+ARCHS="arm64 x86_64"; [ "${GLOAMLOG_NATIVE:-}" = 1 ] && ARCHS="$(uname -m)"      # GLOAMLOG_NATIVE=1: this Mac's architecture only, about twice as fast
+for A in $ARCHS; do
+  mkdir -p "$CLANG_MODULE_CACHE_PATH-$A"
+  swiftc -O -parse-as-library -swift-version 5 -module-cache-path "$CLANG_MODULE_CACHE_PATH-$A" \
+    -target "$A-apple-macos13.0" $SRC -o "$APP/Contents/MacOS/Gloamlog-$A" &
+done
+wait
+PARTS=""
+for A in $ARCHS; do [ -f "$APP/Contents/MacOS/Gloamlog-$A" ] || { echo "build failed for $A" >&2; exit 1; }; PARTS="$PARTS $APP/Contents/MacOS/Gloamlog-$A"; done
+lipo -create $PARTS -output "$APP/Contents/MacOS/Gloamlog"
+rm $PARTS
 
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp -R Resources/editor "$APP/Contents/Resources/editor"

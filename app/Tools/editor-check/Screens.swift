@@ -146,17 +146,33 @@ func runScreenshots(_ outDir: String) {
     host.rootView = AnyView(MainView(model: model).frame(width: 1000, height: 760))
     spin(1.5)
     capture("real-6-mainview")
-    // 7. Sources on (every session and tab): how tall do the sidebar, the page and the whole window insist on being?
-    var withSources = model.settings
-    withSources.sources.claude = true; withSources.sources.consented = true; withSources.sources.allProjects = true
-    model.settings = withSources
-    model.openDay(model.today); _ = wait(8) { model.editor.day == model.today && model.editor.loaded }
-    spin(4)
-    func fit<V: View>(_ name: String, _ v: V, width: CGFloat) {
-        let size = NSHostingController(rootView: v).sizeThatFits(in: CGSize(width: width, height: 100))        // the least height this view needs at that width
-        print("   fit \(name): min height \(Int(size.height)) at width \(Int(width))")
-    }
-    fit("sidebar", SidebarView(model: model), width: 260)
-    fit("page", DetailRouter(model: model), width: 1180)
-    fit("window", MainView(model: model), width: 1440)
+    // 8. README hero: a day with entries Claude wrote through log_work, a commit line, and a few lines typed by hand (made-up content)
+    page("2026-10-04", """
+    ## What I did
+
+    - 10:12 Fixed the invoice export showing yesterday's date. The cause was a time-zone off-by-one in the date formatter; added a test for it. Still open: the CSV import has the same pattern.
+    - 11:40 Wrote the migration plan for the settings page and got it reviewed. Decided to ship it in two steps.
+    - 14:05 Committed: Add retry with backoff to the sync worker (sync-service 3f2a9c1)
+    - 16:30 Tracked down why the nightly job was slow: one query was missing an index. Added it; the job went from 40 minutes to 3.
+
+    ## Finished
+
+    - Invoice export date fix
+    - Settings page migration plan
+
+    ## Pending / blocked
+
+    - CSV import time-zone bug, same pattern as the export
+
+    ## To do next
+
+    - [ ] Check the CSV import
+    - [ ] Start the settings page migration
+    """)
+    model.openDay("2026-10-04"); _ = wait(8) { model.editor.day == "2026-10-04" && model.editor.loaded }
+    host.rootView = AnyView(MainView(model: model).frame(width: 1000, height: 760))
+    spin(3)
+    _ = wait(8) { model.editor.loaded }
+    model.focusEditor(); spin(1.5)
+    capture("real-8-hero")
 }

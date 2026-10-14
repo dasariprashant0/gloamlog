@@ -15,6 +15,6 @@
 - Settings: stored by macOS for the app. Nothing is sent anywhere.
 
 ## Good to know
-- Everything is local: no account, no sync service, no network access.
+- Everything is local: no account, no sync service. The only network request is Check for Updates, when you click it.
 - To stop the app: ⌘Q. Remove it from System Settings > General > Login Items if you enabled "Open at login".
 - The app is not notarised yet, so the first launch needs System Settings > Privacy & Security > Open Anyway (or build it from source, which needs no approval).

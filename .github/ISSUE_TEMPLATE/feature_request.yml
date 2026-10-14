@@ -2,6 +2,10 @@ name: Feature request
 description: Suggest an improvement
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Gloamlog is small on purpose: local-only, plain markdown files, no accounts, no third-party dependencies. Ideas that fit that are most likely to be accepted. Please do not paste personal notes into this issue.
   - type: textarea
     id: problem
     attributes:
@@ -26,3 +30,7 @@ body:
       options:
         - label: It works without network access or telemetry
           required: true
+        - label: It keeps notes as plain markdown files in the user's folder
+          required: true
+        - label: I would be willing to help build or test it
+          required: false

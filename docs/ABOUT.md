@@ -11,6 +11,6 @@ It is built around how a working day actually goes:
 
 **Why:** end-of-day notes are easy to skip and valuable later (standups, weekly updates, performance reviews, picking work back up on Monday). A tool that makes the habit easy, and hard to forget, beats a good intention.
 
-**What it is not:** a task manager, a time tracker, or a cloud service. Your logs are ordinary markdown files you own, and the app makes no network requests.
+**What it is not:** a task manager, a time tracker, or a cloud service. Your logs are ordinary markdown files you own, and the only network request the app can make is the Check for Updates menu item, when you click it.
 
 Made by Prashant Dasari. MIT licensed. Not affiliated with Anthropic.
