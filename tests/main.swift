@@ -2509,6 +2509,19 @@ test("Inbox: entries are read oldest first; junk is skipped; an emoji heading ta
     expect(out == "## \u{1F4DD} What I did\n\n- earlier\n- 14:35 Fixed the cards.\n\n## Finished", "added under the emoji heading, no new Jots section: \(out)")
 }
 
+test("ClaudeMd: add, replace, remove, keep a hand-written section") {
+    let base = "# Notes\n\nSome rule.\n"
+    let on = ClaudeMd.apply(to: base)
+    expect(on.hasPrefix(base.trimmingCharacters(in: .whitespacesAndNewlines)) && on.contains(ClaudeMd.begin) && on.hasSuffix(ClaudeMd.end + "\n"), "added at the end")
+    expect(ClaudeMd.apply(to: on) == on, "applying twice changes nothing")
+    expect(ClaudeMd.remove(from: on) == base, "removing restores the file exactly: \(ClaudeMd.remove(from: on).debugDescription)")
+    expect(ClaudeMd.apply(to: "") == ClaudeMd.block + "\n" && ClaudeMd.remove(from: ClaudeMd.block + "\n") == "", "empty file")
+    let hand = "## Gloamlog work log\ncall the gloamlog `log_work` tool\n"
+    expect(ClaudeMd.apply(to: hand) == hand && ClaudeMd.remove(from: hand) == hand && ClaudeMd.isPresent(in: hand), "a hand-written section is kept")
+    let stale = base + "\n" + ClaudeMd.begin + "\nold text\n" + ClaudeMd.end + "\n\n## After\n"
+    expect(ClaudeMd.apply(to: stale).contains("old text") == false && ClaudeMd.apply(to: stale).hasSuffix("## After\n"), "a stale block is replaced in place")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

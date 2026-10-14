@@ -6,10 +6,33 @@ import SwiftUI
 struct SourcesSettings: View {
     @ObservedObject var model: AppModel
     @ObservedObject var sources: SourcesController
+    @ObservedObject var claude: ClaudeSetup
 
     init(model: AppModel) {
         self.model = model
         _sources = ObservedObject(wrappedValue: model.sources)
+        _claude = ObservedObject(wrappedValue: model.claudeSetup)
+    }
+
+    @ViewBuilder private var claudeControl: some View {
+        switch claude.state {
+        case .unknown, .checking, .working:
+            ProgressView().controlSize(.small)
+        case .connected:
+            HStack(spacing: Theme.s2) {
+                Label("Connected", systemImage: "checkmark.circle.fill").font(Theme.font(13)).foregroundColor(Theme.accentText)
+                Button("Disconnect") { claude.disconnect() }
+            }
+        case .moved:
+            HStack(spacing: Theme.s2) {
+                Text("Needs reconnecting").font(Theme.font(13)).foregroundColor(Theme.textSecondary)
+                Button("Reconnect") { claude.connect() }.buttonStyle(PrimaryButtonStyle())
+            }
+        case .notConnected:
+            Button("Connect Claude Code") { claude.connect() }.buttonStyle(PrimaryButtonStyle())
+        case .noClaude:
+            Text("Claude Code not found").font(Theme.font(13)).foregroundColor(Theme.textSecondary)
+        }
     }
 
     private var prefs: SourcesPrefs { model.settings.sources }
@@ -38,9 +61,10 @@ struct SourcesSettings: View {
                 SettingsRow("Every session and tab", help: "Reads all your Claude Code sessions, in every folder and tab, without ticking projects. Use the list below to skip a project.") {
                     Toggle("Every session and tab", isOn: Binding(get: { model.settings.sources.allProjects }, set: { model.settings.sources.allProjects = $0; model.settings.sources.allowed = [] })).labelsHidden().toggleStyle(.switch)
                 }
-                SettingsRow("Claude writes my log", help: "Lets Claude Code write a short entry (the problem, what it did, what is left) into today's page when a piece of work is done. Step 1: copy the setup command and run it once in a terminal. Step 2: copy the instructions into ~/.claude/CLAUDE.md. Entries land under the Jots heading (Settings > Shortcuts > Jots go under); type \"What I did\" there to keep them with your day.") {
-                    HStack { Button("1 Copy setup command") { sources.copySetupCommand() }; Button("2 Copy instructions") { sources.copyClaudeInstructions() } }
+                SettingsRow("Claude writes my log", help: "Lets Claude Code add a short entry (the problem, what it did, what is left) to today's page when a piece of work is done. One click sets it up: it registers Gloamlog's helper with Claude Code and adds a short section to ~/.claude/CLAUDE.md. Start a new Claude Code session afterwards.") {
+                    claudeControl
                 }
+                if let m = claude.message { SettingsHelp(m) }
                 SettingsRow("Add commits for me", help: "Writes today's commits and pull requests into your page by themselves as you work, about every 2 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line.") {
                     Toggle("Add them for me", isOn: Binding(get: { model.settings.sources.autoAdd }, set: { model.settings.sources.autoAdd = $0 })).labelsHidden().toggleStyle(.switch)
                 }
@@ -82,7 +106,7 @@ struct SourcesSettings: View {
                 if let l = sources.lastScanLine, prefs.anyOn { SettingsHelp(l) }
             } header: { Text("Projects").font(Theme.font(13, .semibold)) }
         }
-        .onAppear { sources.paneAppeared() }
+        .onAppear { sources.paneAppeared(); claude.refresh() }
         .onDisappear { sources.paneDisappeared() }
         .sheet(item: consent) { _ in
             SourcesConsentSheet(onAccept: { sources.acceptConsent() }, onDecline: { sources.declineConsent() })

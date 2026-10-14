@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export TMPDIR="${TMPDIR:-/tmp/claude}"; export CLANG_MODULE_CACHE_PATH="$TMPDIR/mc"
 mkdir -p "$TMPDIR/mc" Resources
-W="$(mktemp -d "$TMPDIR/icon.XXXXXX")"
+W="$(mktemp -d "$TMPDIR/icon.XXXXXX")"; trap 'rm -rf "$W"' EXIT
 swiftc -O Tools/make-icon.swift -o "$W/make-icon"
 "$W/make-icon" Resources/AppIcon-1024.png
 IS="$W/AppIcon.iconset"; mkdir "$IS"
@@ -16,5 +16,4 @@ for s in 16 32 128 256 512; do
 done
 mkdir -p Resources/AppIcon.iconset && cp "$IS"/*.png Resources/AppIcon.iconset/
 iconutil -c icns "$IS" -o Resources/AppIcon.icns
-cp "$IS/icon_32x32.png" "$W/../icon-32-preview.png"
 echo "ok: Resources/AppIcon.icns"

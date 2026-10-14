@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func showAbout() {
         let info = Bundle.main.infoDictionary
-        let v = info?["CFBundleShortVersionString"] as? String ?? "0.6.4"
+        let v = info?["CFBundleShortVersionString"] as? String ?? "0.6.5"
         let credits = NSAttributedString(
             string: "A calm end-of-day log. Plain markdown files on your Mac. No account, no tracking. The only network request is the update check you ask for.",
             attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])

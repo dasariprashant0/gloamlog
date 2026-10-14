@@ -2,6 +2,10 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.6.5
+- Connect Claude Code in one click (Settings > Sources): registers the helper, adds a short section to ~/.claude/CLAUDE.md and sets Jots go under to What I did, after a confirmation that lists exactly what changes. Disconnect undoes it.
+- New app icon: a sun setting over three journal lines.
+
 ## 0.6.4
 - Settings > Shortcuts > Jots go under: the heading that quick notes and Claude's entries are added under (it had no field before).
 

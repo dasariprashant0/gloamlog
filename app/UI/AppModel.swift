@@ -65,6 +65,7 @@ final class AppModel: ObservableObject {
     lazy var review = ReviewController(model: self)
     /// "Suggested from your work" (M6): what Claude Code and Git say you did on the open day, and the Sources settings. See SourcesController.swift.
     lazy var sources = SourcesController(model: self)
+    lazy var claudeSetup = ClaudeSetup(model: self)
     /// Sync through a shared folder (M5b): the folder watcher, days still in the cloud, conflict copies. See SyncController.swift.
     lazy var sync = SyncController(model: self)
 

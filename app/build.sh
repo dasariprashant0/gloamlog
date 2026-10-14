@@ -37,9 +37,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>Gloamlog</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.6.4</string>
+<key>CFBundleShortVersionString</key><string>0.6.5</string>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Gloamlog</string><key>CFBundleURLSchemes</key><array><string>gloamlog</string></array></dict></array>
-<key>CFBundleVersion</key><string>0.6.4</string>
+<key>CFBundleVersion</key><string>0.6.5</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
