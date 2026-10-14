@@ -8,11 +8,8 @@ app/Tools/.build/
 dist/
 demo-video/node_modules/
 demo-video/out/
-demo-video/public/voice/
-demo-video/public/today.png
-demo-video/public/review.png
-demo-video/public/icon-512.png
 app/Gloamlog.zip.sha256
 .claude/launch.json
 .tap-update.*/
 demo-video/.venv/
+demo-video/public/
