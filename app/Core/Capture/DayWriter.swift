@@ -23,7 +23,8 @@
 //     live page owns the text. Only a day with no page at all goes through LogStore, one load + one save per day for all its pending notes
 //     in capture order, so a replay of a backlog makes one backup, not one per note.
 //   * A capture routes ALL pending notes in order, not only the new one: notes that waited for the folder arrive before newer ones.
-//   * Idempotent delivery: the file path checks CapturePlacement.contains before it adds a line, and acknowledges after a successful save
+//   * Idempotent delivery: the file path checks CapturePlacement.contains (or the note's line as the page editor spelled it when it took the
+//     note, `editorKeys`: a bare link comes back as <https://...>) before it adds a line, and acknowledges after a successful save
 //     even when the page could not show the line, so a replay can never add a note twice. The editor path sends every note with the editor's
 //     own "unless present" rule. A skipped day (marker file) is written over, exactly like "write a log anyway": the note is never kept
 //     out of the page.
@@ -49,6 +50,7 @@ final class DayWriter {
     private var loaded = false
     private var unjournaled = Set<String>()             // ids whose journal write failed
     private var sent = [String: Sent]()
+    private var editorKeys = [String: String]()         // note id -> its line as the page editor wrote it (it may spell it differently from `render`)
     private var staleRetried = Set<String>()
     private var routing = false, again = false, needsRetry = false, retryScheduled = false, compacted = false
     private var autoRetries = 0
@@ -97,7 +99,14 @@ final class DayWriter {
         let mine = queue.filter { $0.day == day }
         guard !mine.isEmpty else { return }
         let keys = CapturePlacement.jotKeys(in: body, jotsHeading: prefs().jotsHeading)
-        for item in mine where keys.contains(CapturePlacement.key(of: CapturePlacement.render(item))) { ack(item) }
+        for item in mine where holds(item, keys) { ack(item) }
+    }
+
+    /// True when `keys` (the jot keys of a page or a file) hold the note: as `render` wrote it, or as the page editor spelled it when it
+    /// took the note (a link it writes as <https://...>, for one, which `render` never produces). Without the second form such a note
+    /// would never be acknowledged, stay "waiting" for ever and be added a second time when it is next delivered through the file.
+    private func holds(_ item: CaptureItem, _ keys: Set<String>) -> Bool {
+        keys.contains(CapturePlacement.key(of: CapturePlacement.render(item))) || (editorKeys[item.id].map { keys.contains($0) } ?? false)
     }
 
     /// True while the note sits in a live editor page that has accepted it and will save it: it is not in the file yet, but it is not
@@ -144,6 +153,7 @@ final class DayWriter {
     private func ack(_ item: CaptureItem) {
         queue.removeAll { $0.id == item.id }
         sent[item.id] = nil
+        editorKeys[item.id] = nil
         staleRetried.remove(item.id)
         if unjournaled.remove(item.id) == nil { try? journal.ack(item.id) }
     }
@@ -199,7 +209,8 @@ final class DayWriter {
     private func completed(_ item: CaptureItem, page: PageHandle?, _ result: JotAppendResult) {
         guard isPending(item.id) else { sent[item.id] = nil; return }                   // acknowledged while the call was in flight
         switch result {
-        case .appended:
+        case .appended(let md):
+            if let k = CapturePlacement.lastJotKey(in: md, jotsHeading: prefs().jotsHeading) { editorKeys[item.id] = k }   // the note is the last item of that section
             sent[item.id] = Sent(page: page, at: clock(), confirmed: true)               // the editor's autosave writes it; acknowledgeSaved acks it
         case .alreadyPresent:
             if fileHolds(item) { ack(item) } else { sent[item.id] = Sent(page: page, at: clock(), confirmed: true) }
@@ -215,7 +226,7 @@ final class DayWriter {
     /// True when the day's file already holds the note's line (never for a skipped day or an unreadable file).
     private func fileHolds(_ item: CaptureItem) -> Bool {
         guard let doc = try? store.load(item.day), !doc.isSkipped else { return false }
-        return CapturePlacement.contains(item, in: doc.body, jotsHeading: prefs().jotsHeading)
+        return holds(item, CapturePlacement.jotKeys(in: doc.body, jotsHeading: prefs().jotsHeading))
     }
 
     /// The file path: nobody has this day open. Load once, add every pending note that is not in the page yet, save once, acknowledge.
@@ -226,7 +237,7 @@ final class DayWriter {
             var body = doc?.body ?? ""                                                   // a skip marker has an empty body: it is written over
             var changed = false
             for item in items where isPending(item.id) {
-                if CapturePlacement.contains(item, in: body, jotsHeading: heading) { continue }
+                if holds(item, CapturePlacement.jotKeys(in: body, jotsHeading: heading)) { continue }
                 body = CapturePlacement.apply(item, to: body, jotsHeading: heading)
                 changed = true
             }

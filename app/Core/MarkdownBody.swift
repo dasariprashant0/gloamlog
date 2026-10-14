@@ -82,7 +82,10 @@ enum MarkdownBody {
             if inComment {
                 if let r = s.range(of: "-->") { s = s[r.upperBound...]; inComment = false } else { s = "" }
             } else if let r = s.range(of: "<!--") {
-                out += s[..<r.lowerBound]; s = s[r.upperBound...]; inComment = true
+                // A backslash before the "<" makes it plain text, and that is how the page editor writes a typed "<!--" ("\<!--"): it
+                // opens no comment. Reading it as one hid the rest of the page (later jots, words, headings) from every scanner.
+                if line[..<r.lowerBound].reversed().prefix(while: { $0 == "\\" }).count % 2 == 1 { out += s[..<r.upperBound]; s = s[r.upperBound...] }
+                else { out += s[..<r.lowerBound]; s = s[r.upperBound...]; inComment = true }
             } else { out += s; s = "" }
         }
         return out

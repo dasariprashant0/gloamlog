@@ -124,17 +124,31 @@ enum CapturePlacement {
     static func jotKeys(in body: String, jotsHeading: String) -> Set<String> {
         let scanned = MarkdownBody.scan(body)
         var keys = Set<String>()
-        for b in MarkdownBody.jotsBlocks(in: scanned, jotsHeading: jotsHeading) {
-            var item: [String]?
-            func flush() { if let lines = item { keys.insert(key(of: lines.joined(separator: "\n"))) }; item = nil }
-            for i in (b.heading + 1)..<b.end {
-                let l = scanned[i]
-                guard l.kind == .text else { flush(); continue }
-                if let indent = MarkdownBody.listItemIndent(l.text), indent < 2 { flush(); item = [l.text] }
-                else if item != nil { item?.append(l.text) }
-            }
-            flush()
+        for b in MarkdownBody.jotsBlocks(in: scanned, jotsHeading: jotsHeading) { keys.formUnion(itemKeys(scanned, b)) }
+        return keys
+    }
+
+    /// The key of the last top-level list item of the FIRST Jots block: where the page editor puts the note it just appended, in the
+    /// editor's own spelling. The editor does not write every note the way `render` did (a bare link becomes <https://...>, a www address
+    /// a link, a doubled code span a single one, an entity its character), so the writer keeps this key next to the note and accepts it
+    /// as proof that the page holds the note. nil when there is no Jots block or no item in it.
+    static func lastJotKey(in body: String, jotsHeading: String) -> String? {
+        let scanned = MarkdownBody.scan(body)
+        guard let b = MarkdownBody.jotsBlocks(in: scanned, jotsHeading: jotsHeading).first else { return nil }
+        return itemKeys(scanned, b).last
+    }
+
+    private static func itemKeys(_ scanned: [MarkdownBody.ScannedLine], _ b: MarkdownBody.JotsBlock) -> [String] {
+        var keys = [String]()
+        var item: [String]?
+        func flush() { if let lines = item { keys.append(key(of: lines.joined(separator: "\n"))) }; item = nil }
+        for i in (b.heading + 1)..<b.end {
+            let l = scanned[i]
+            guard l.kind == .text else { flush(); continue }
+            if let indent = MarkdownBody.listItemIndent(l.text), indent < 2 { flush(); item = [l.text] }
+            else if item != nil { item?.append(l.text) }
         }
+        flush()
         return keys
     }
 

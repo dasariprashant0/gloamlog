@@ -34,6 +34,24 @@ if let i = CommandLine.arguments.firstIndex(of: "--screenshots"), i + 1 < Comman
     exit(0)
 }
 
+// Subset mode (debugging ONE area while its checks are written; not part of the normal run): EC_ONLY=capture,sync
+// (also app, nav, settings). The bridge sections 1-8 are skipped. EC_HEADLESS=1 also skips the checks that need a visible window.
+if let only = ProcessInfo.processInfo.environment["EC_ONLY"] {
+    _ = NSApplication.shared
+    NSApp.setActivationPolicy(.accessory)
+    let html = CommandLine.arguments.count > 1 && !CommandLine.arguments[1].hasPrefix("--") ? CommandLine.arguments[1] : "app/Resources/editor/index.html"
+    EditorBridge.htmlURL = { URL(fileURLWithPath: html) }
+    EditorBridge.opener = { _ in }
+    let wanted = Set(only.split(separator: ",").map { String($0) })
+    if wanted.contains("app") { runAppScenarios() }
+    if wanted.contains("nav") { runNavScenarios() }
+    if wanted.contains("settings") { runSettingsScenarios() }
+    runCaptureScenarios(); runSyncScenarios()    // each one checks QA.wants(...)
+    if QA.skipTotal > 0 { print("   (\(QA.skipTotal) qa checks skipped: no focus)") }
+    print("\n\(passes) passed, \(failures) failed")
+    exit(failures == 0 ? 0 : 1)
+}
+
 // ---- host ----
 let base = ProcessInfo.processInfo.environment["EC_TMP"] ?? NSTemporaryDirectory()
 let root = URL(fileURLWithPath: base).appendingPathComponent("dl-editor-check")
@@ -240,7 +258,12 @@ check("3,000-paragraph page swaps in under 5 s", rb?.loaded != nil && dt < 5, St
 print(String(format: "     (took %.2fs)", dt))
 
 // ---- 9. the app layer on top (AppModel + DayEditor + LogStore + this same editor) ----
-if !CommandLine.arguments.contains("--bridge-only") { runAppScenarios(); runNavScenarios(); runSettingsScenarios(); runCaptureScenarios() }
+if !CommandLine.arguments.contains("--bridge-only") {
+    runAppScenarios(); runNavScenarios(); runSettingsScenarios()
+    runCaptureScenarios()          // quick capture: hotkey, Jot panel, open page, journal, Shortcuts pane, markdown-looking notes
+    runSyncScenarios()             // conflict copies, iCloud placeholders, external writes to the open page
+    if QA.skipTotal > 0 { print("   (\(QA.skipTotal) qa checks skipped: no focus)") }
+}
 
 print("\n\(passes) passed, \(failures) failed")
 exit(failures == 0 ? 0 : 1)
