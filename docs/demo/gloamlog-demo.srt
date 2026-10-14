@@ -1,0 +1,27 @@
+1
+00:00:00,400 --> 00:00:04,070
+Gloamlog is a free, open-source work journal for your Mac.
+
+2
+00:00:04,900 --> 00:00:11,440
+One page a day, saved as a plain markdown file in a folder you choose. No account, no cloud.
+
+3
+00:00:12,433 --> 00:00:21,153
+Connect Claude Code, and when a piece of work is done, Claude adds a short entry: what you were solving, what got done, and what is still open.
+
+4
+00:00:22,167 --> 00:00:25,907
+Turn on Git, and your commits and pull requests show up too.
+
+5
+00:00:26,500 --> 00:00:31,370
+At the end of the week, review it, and export it as Markdown or PDF.
+
+6
+00:00:31,967 --> 00:00:37,137
+Everything stays on your Mac. The only network request is the update check you click.
+
+7
+00:00:37,733 --> 00:00:43,403
+Install with one command, or build it from source. Free, and open source on GitHub.

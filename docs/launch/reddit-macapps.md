@@ -15,13 +15,13 @@ I kept skipping the end-of-day note, so I built a Mac app that makes it light. E
 
 What is different: if you use Claude Code, a "Connect Claude Code" button in Settings > Sources registers a small helper so Claude adds a short "what I solved / what I did / what's open" entry to today's page when it finishes a piece of work. Sources can also add your Git commits and pull requests. All of it is optional and off until you turn it on, and it stays on your Mac. The one network request in the app is "Check for Updates…" when you click it.
 
-Install: `curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh | bash`, or the zip from the Releases page, or build from source (`bash app/build.sh`, Command Line Tools only).
+Install: `curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh | bash`, or `brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog`, or the zip from the Releases page, or build from source (`bash app/build.sh`, Command Line Tools only). Site with a 45-second demo: https://dasariprashant0.github.io/gloamlog/
 
 What's rough:
 
 - Alpha (0.6.5). Some newer features have had little real-world use.
 - Not notarised (no paid Apple account). The installer and the in-app updater avoid the Gatekeeper prompt; a browser download needs System Settings > Privacy & Security > Open Anyway once.
-- The release build is Apple silicon only, macOS 13 or later.
+- macOS 13 or later. The release is a universal binary, but I have only run it on Apple silicon.
 - Search is slow for a decade of logs.
 
 Repo, screenshots and docs: https://github.com/dasariprashant0/gloamlog

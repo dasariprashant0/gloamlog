@@ -2,7 +2,9 @@
 
 Gloamlog is a free, open-source work journal for macOS that keeps one plain markdown file per day, and can have your log written for you from Claude Code and Git while everything stays on your Mac.
 
-![Today's page in Gloamlog](docs/screenshots/today.png)
+![Gloamlog demo: the title, today's page, and a Claude-written entry being highlighted](docs/demo/gloamlog-demo.gif)
+
+[Watch the 45-second demo with narration (MP4)](https://github.com/dasariprashant0/gloamlog/releases/download/v0.6.5/gloamlog-demo.mp4) · [Website](https://dasariprashant0.github.io/gloamlog/)
 
 > **Alpha (v0.6.5).** It works and the core logic has automated tests, but several newer features have had little use on real Macs. Expect rough edges and please [report them](https://github.com/dasariprashant0/gloamlog/issues/new/choose). The release is a universal binary (Apple silicon and Intel; the Intel half has not been run on a real Intel Mac), requires macOS 13 or later, and is **not notarised** (see [docs/INSTALL.md](docs/INSTALL.md) for why and what that means on first launch).
 
@@ -22,9 +24,15 @@ curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/insta
 
 Prefer to read it first? Download it, open it, then run it: `curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh -o install.sh`, then `bash install.sh`. To remove the app later: `bash install.sh --uninstall`. That removes the app and never your notes.
 
-**2. Manual download.** Get `Gloamlog.zip` from the [latest release](https://github.com/dasariprashant0/gloamlog/releases/latest), unzip it, and drag `Gloamlog.app` to `/Applications`. Because the app is not notarised, macOS blocks the first launch of a browser-downloaded copy; the steps to allow it, and how to check the checksum by hand, are in [docs/INSTALL.md](docs/INSTALL.md).
+**2. Homebrew.** From the project's own tap (not the main Homebrew cask list, which needs notarised apps). `--no-quarantine` skips the first-launch warning; without it, approve the app once in System Settings > Privacy & Security.
 
-**3. Build from source.** Needs macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`). Full Xcode is not required.
+```bash
+brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog
+```
+
+**3. Manual download.** Get `Gloamlog.zip` from the [latest release](https://github.com/dasariprashant0/gloamlog/releases/latest), unzip it, and drag `Gloamlog.app` to `/Applications`. Because the app is not notarised, macOS blocks the first launch of a browser-downloaded copy; the steps to allow it, and how to check the checksum by hand, are in [docs/INSTALL.md](docs/INSTALL.md).
+
+**4. Build from source.** Needs macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`). Full Xcode is not required.
 
 ```bash
 git clone https://github.com/dasariprashant0/gloamlog.git
@@ -37,11 +45,13 @@ Once installed, "Check for Updates…" in the Gloamlog menu fetches newer releas
 
 ## What it does
 
-![A weekly review](docs/screenshots/review.png)
+![Today's page in Gloamlog](docs/screenshots/today.png)
 
 - **A page per day.** Headings, bullets, to-dos, quotes, code, tables, links and images; type `/` for the block menu. It autosaves and keeps versioned safety copies you can restore. New days can start from a template of headings you control. A day counts as "logged" once you write enough words (you set the number).
 - **Any date, and catch-up.** A month calendar opens any day. `⇧⌘T` jumps by typing `last fri`, `2 oct` or `-3`. Catch Up lists the workdays you missed and walks you through them; you can skip holidays or leave in bulk, with undo.
 - **Quick capture.** Press `⌃⌥J` in any app, type a line, press Return. It lands as a time-stamped bullet on today's page, even if that page is open. A write-ahead journal means a note is not lost if the app is closed or crashes. You can change or turn off the shortcut in Settings > Shortcuts.
+![A weekly review](docs/screenshots/review.png)
+
 - **Reviews and export.** Review a week, month, year or any date range. Copy it as Markdown, plain text or rich text, save it as PDF, or export Markdown with only the images you used.
 - **Reminders.** A strict or gentle end-of-day reminder with snooze, delivered as system notifications.
 - **Folder sync.** Point the log folder at iCloud Drive or Dropbox and use two Macs. Gloamlog watches the folder, does not treat a not-yet-downloaded day as empty, and resolves "conflicted copy" files with Keep mine, Take theirs or Keep both. It does not delete either copy.

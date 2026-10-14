@@ -1,0 +1,16 @@
+{
+  "name": "gloamlog-demo-video",
+  "private": true,
+  "description": "Renders the Gloamlog demo video from real app screenshots and a macOS text-to-speech voiceover. Not part of the app.",
+  "scripts": {
+    "render": "remotion render src/index.ts GloamlogDemo out/gloamlog-demo.mp4 --codec h264 --crf 20",
+    "preview": "remotion studio src/index.ts"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/transitions": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  }
+}

@@ -2,7 +2,7 @@
 
 Gloamlog needs macOS 13 or later. The release download is a universal binary (Apple silicon and Intel). It has only been run on Apple silicon, so please report anything odd on an Intel Mac.
 
-There are three ways to install it. The installer is the easiest because it avoids the first-launch warning described below.
+There are four ways to install it. The installer is the easiest because it avoids the first-launch warning described below.
 
 ## 1. The installer
 
@@ -22,7 +22,15 @@ bash install.sh
 
 To update later, use **Gloamlog > Check for Updates…** in the app, or run the installer again.
 
-## 2. Manual download
+## 2. Homebrew
+
+```bash
+brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog
+```
+
+The cask lives in the project's own tap, [dasariprashant0/homebrew-gloamlog](https://github.com/dasariprashant0/homebrew-gloamlog), because the main Homebrew cask list only accepts notarised apps. Homebrew checks the download against the SHA-256 in the cask. `--no-quarantine` skips the first-launch warning described below; leave it out and you approve the app once instead. Update with `brew upgrade --cask gloamlog` or from the app's Check for Updates…; remove with `brew uninstall --cask gloamlog` (your notes are never touched).
+
+## 3. Manual download
 
 1. Download `Gloamlog.zip` from the [latest release](https://github.com/dasariprashant0/gloamlog/releases/latest).
 2. Unzip it and drag `Gloamlog.app` into `/Applications`.
@@ -44,7 +52,7 @@ You only do this once. The wording of these dialogs changes between macOS releas
 
 The warning is triggered by the quarantine flag, and browsers are what set it. `curl` does not set it, and neither does the app's own downloader, so a copy fetched either way is not quarantined. The installer and the updater also remove the flag from the app they install, explicitly, and only from that app. Both check the download's SHA-256 against the checksum file published in the same release before installing. Gloamlog's own signature is "ad-hoc" (it has no developer identity), and the updater also checks that the new app has the same bundle identifier and the expected version and that its signature verifies.
 
-## 3. Build from source
+## 4. Build from source
 
 You need the Xcode Command Line Tools (`xcode-select --install`). You do not need Xcode.
 

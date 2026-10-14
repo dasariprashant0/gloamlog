@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gloamlog, a work journal for your Mac</title>
+  <meta name="description" content="Gloamlog is a free, open-source work journal for macOS: one markdown file per day, which it can write for you from Claude Code and Git while everything stays on your Mac.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9faf9">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141716">
+  <link rel="canonical" href="https://dasariprashant0.github.io/gloamlog/">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Gloamlog">
+  <meta property="og:title" content="Gloamlog, a work journal for your Mac">
+  <meta property="og:description" content="A free, open-source work journal for macOS. One markdown file per day, written for you from Claude Code and Git while everything stays on your Mac.">
+  <meta property="og:url" content="https://dasariprashant0.github.io/gloamlog/">
+  <meta property="og:image" content="https://dasariprashant0.github.io/gloamlog/assets/social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="The Gloamlog icon, a sun setting over three journal lines, beside the name and the tagline on a dusk-green background.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gloamlog, a work journal for your Mac">
+  <meta name="twitter:description" content="A free, open-source work journal for macOS. One markdown file per day, written for you from Claude Code and Git while everything stays on your Mac.">
+  <meta name="twitter:image" content="https://dasariprashant0.github.io/gloamlog/assets/social.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="#top"><img src="assets/icon-192.png" alt="" width="28" height="28">Gloamlog</a>
+      <nav aria-label="Site">
+        <a href="#install">Install</a>
+        <a href="https://github.com/dasariprashant0/gloamlog">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap" id="top" aria-labelledby="name">
+      <div class="hero-head">
+        <img class="app-icon" src="assets/icon-512.png" width="112" height="112" alt="The Gloamlog app icon: a sun setting over three journal lines.">
+        <h1 id="name">Gloamlog</h1>
+      </div>
+      <p class="lede">A work journal for your Mac that can write itself from Claude Code and Git, while everything stays on your Mac.</p>
+
+      <div class="install" id="install">
+        <div class="cmd">
+          <pre><code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh | bash</code></pre>
+          <button type="button" class="copy" data-copy="install-cmd" hidden>Copy</button>
+        </div>
+        <div class="hero-links">
+          <a class="button secondary" href="https://github.com/dasariprashant0/gloamlog">View on GitHub</a>
+        </div>
+        <p class="note">The script downloads the latest GitHub release, verifies the published SHA-256, installs to <code>/Applications</code> and removes the quarantine flag from that app only. Prefer to <a href="https://github.com/dasariprashant0/gloamlog/blob/main/install.sh">read it first</a>? Or get <a href="https://github.com/dasariprashant0/gloamlog/releases/latest">Gloamlog.zip from the latest release</a>, unzip it, and drag Gloamlog.app to <code>/Applications</code>. Homebrew: <code>brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog</code>.</p>
+        <p class="note"><strong>Alpha (v0.6.5).</strong> Mac only: macOS 13 or later, Apple silicon and Intel. Open source under the <a href="https://github.com/dasariprashant0/gloamlog/blob/main/LICENSE">MIT licence</a>. Not notarised, so the first launch of a browser-downloaded copy needs an extra approval; <a href="https://github.com/dasariprashant0/gloamlog/blob/main/docs/INSTALL.md">the install guide explains what that means</a>. Several newer features have had little use on real Macs, so expect rough edges and please <a href="https://github.com/dasariprashant0/gloamlog/issues/new/choose">report them</a>.</p>
+      </div>
+    </section>
+
+    <figure class="stage wrap">
+      <div class="stage-inner">
+        <img src="assets/today.webp" width="1600" height="1216" fetchpriority="high" alt="Gloamlog showing Sunday 4 October. The sidebar has a search field, Today, Catch up with 7 days waiting, Review, a month calendar with dots on logged days, and a list of recent days. The page has the headings What I did, Finished, Pending / blocked and To do next, with time-stamped bullets under What I did and two unchecked to-dos at the end. The footer of the sidebar reads 2 day streak.">
+      </div>
+      <figcaption>Today&rsquo;s page. One markdown file per day, in a folder you choose.</figcaption>
+    </figure>
+
+    <section class="demo wrap" aria-labelledby="demo-h">
+      <h2 id="demo-h">See it in 45 seconds</h2>
+      <video class="demo-video" controls preload="none" playsinline poster="assets/demo-poster.webp" width="1920" height="1080" src="https://github.com/dasariprashant0/gloamlog/releases/download/v0.6.5/gloamlog-demo.mp4">
+        Your browser does not play MP4 video. <a href="https://github.com/dasariprashant0/gloamlog/releases/download/v0.6.5/gloamlog-demo.mp4">Download the demo (MP4, 14 MB)</a>.
+      </video>
+      <p class="note">Captions are part of the picture. The video is served from this project&rsquo;s GitHub release and loads only when you press play.</p>
+    </section>
+
+    <section class="why wrap" aria-labelledby="why-h">
+      <h2 id="why-h">Why Gloamlog</h2>
+      <div class="three">
+        <div>
+          <h3>The end-of-day note is the one nobody writes.</h3>
+          <p>Standups, weekly updates, performance reviews and &ldquo;what was I doing on Friday?&rdquo; all need it. Gloamlog makes it one quiet page a day, with a reminder, a catch-up list for days you missed, and a streak that forgives backfilled days.</p>
+        </div>
+        <div>
+          <h3>Your notes are just files.</h3>
+          <p>One markdown file per day in a folder you choose. No database, no account, no export step. Open them in any editor, sync them with iCloud Drive or Dropbox, keep them in git.</p>
+        </div>
+        <div>
+          <h3>The log can write itself, locally.</h3>
+          <p>Connect Claude Code and it adds a short &ldquo;what I solved, what I did, what&rsquo;s open&rdquo; entry to today&rsquo;s page when a piece of work is done. Turn on Git and your commits and pull requests show up too. Nothing is uploaded anywhere by Gloamlog.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="claude wrap" aria-labelledby="claude-h">
+      <div class="claude-text">
+        <h2 id="claude-h">Let Claude write your log</h2>
+        <p class="lead">Settings &gt; Sources &gt; <strong>Connect Claude Code</strong> sets up a small helper so that Claude Code can add a short entry to today&rsquo;s page when a meaningful piece of work is finished: the problem it was solving, what it did, what is still open.</p>
+        <p>The helper is one Python file using only the standard library (it needs <code>python3</code>, which the Command Line Tools provide). It has one tool, <code>log_work</code>, which writes a small JSON file to <code>~/Library/Application&nbsp;Support/Gloamlog/inbox</code>. Gloamlog picks it up (while it is running, about every 15 seconds, or at launch) and adds it to today&rsquo;s page. The helper makes no network requests. Claude writes the sentence, so read what it adds and edit it like any other line.</p>
+        <p>To undo it, click Disconnect in Settings &gt; Sources.</p>
+        <p><strong>Git and commits.</strong> Also in Sources, and off by default: turn on Claude Code or Git reading and Gloamlog can list what you worked on from your Claude Code session files and <code>git log</code>, for the projects you tick. &ldquo;Add commits for me&rdquo; writes today&rsquo;s commits and pull requests into your page as you work.</p>
+      </div>
+      <div class="steps">
+        <p class="steps-lead">What the button changes, after showing you a confirmation that lists it:</p>
+        <ol>
+          <li>Registers the helper with Claude Code for all your projects. This is the same as running <code>claude mcp add --scope user gloamlog -- python3 &lt;path to the helper in the app&gt;</code>.</li>
+          <li>Adds a short section to <code>~/.claude/CLAUDE.md</code>, between <code>&lt;!-- gloamlog:begin --&gt;</code> and <code>&lt;!-- gloamlog:end --&gt;</code>, that tells Claude when to write an entry. If your file already mentions <code>log_work</code>, it is left alone.</li>
+          <li>Sets &ldquo;Jots go under&rdquo; to &ldquo;What I did&rdquo; if it still has its default, so entries sit with the rest of your day.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="does wrap" aria-labelledby="does-h">
+      <h2 id="does-h">What it does</h2>
+      <dl class="features">
+        <div>
+          <dt>A page per day</dt>
+          <dd>Headings, bullets, to-dos, quotes, code, tables, links and images; type <kbd>/</kbd> for the block menu. It autosaves and keeps versioned safety copies you can restore. New days can start from a template of headings you control. A day counts as &ldquo;logged&rdquo; once you write enough words (you set the number).</dd>
+        </div>
+        <div>
+          <dt>Any date, and catch-up</dt>
+          <dd>A month calendar opens any day. <kbd>&#8679;&#8984;T</kbd> jumps by typing <code>last fri</code>, <code>2 oct</code> or <code>-3</code>. Catch Up lists the workdays you missed and walks you through them; you can skip holidays or leave in bulk, with undo.</dd>
+        </div>
+        <div>
+          <dt>Quick capture</dt>
+          <dd>Press <kbd>&#8963;&#8997;J</kbd> in any app, type a line, press Return. It lands as a time-stamped bullet on today&rsquo;s page, even if that page is open. A write-ahead journal means a note is not lost if the app is closed or crashes.</dd>
+        </div>
+        <div>
+          <dt>Reviews and export</dt>
+          <dd>Review a week, month, year or any date range. Copy it as Markdown, plain text or rich text, save it as PDF, or export Markdown with only the images you used.</dd>
+        </div>
+        <div>
+          <dt>Reminders</dt>
+          <dd>A strict or gentle end-of-day reminder with snooze, delivered as system notifications.</dd>
+        </div>
+        <div>
+          <dt>Folder sync</dt>
+          <dd>Point the log folder at iCloud Drive or Dropbox and use two Macs. Gloamlog watches the folder, does not treat a not-yet-downloaded day as empty, and resolves &ldquo;conflicted copy&rdquo; files with Keep mine, Take theirs or Keep both. It does not delete either copy.</dd>
+        </div>
+      </dl>
+      <figure class="shot">
+        <img src="assets/review.webp" width="1600" height="1216" loading="lazy" decoding="async" alt="Gloamlog's Review view for the week of 4 to 10 October 2026, with Week, Month, Year and Range tabs, an Export button, Last week and This month shortcuts, a Skipped days checkbox, a Group by Day or Section switch, a row of seven day tiles with word counts, and expanded entries for Monday 5 and Tuesday 6 October under the heading What I did.">
+        <figcaption>A weekly review. Reviews cover a week, month, year or any date range.</figcaption>
+      </figure>
+    </section>
+
+    <section class="privacy" aria-labelledby="privacy-h">
+      <div class="wrap privacy-grid">
+        <div>
+          <h2 id="privacy-h">Privacy</h2>
+          <p class="lead">Nothing is uploaded anywhere by Gloamlog.</p>
+          <p>Full detail in <a href="https://github.com/dasariprashant0/gloamlog/blob/main/PRIVACY.md">PRIVACY.md</a>.</p>
+        </div>
+        <ul class="facts">
+          <li>No account, no analytics, no telemetry, no crash reporting.</li>
+          <li>The one network request the app can make is <strong>Check for Updates&hellip;</strong>, and only when you click it: it asks <code>api.github.com</code> for the latest release and, if you accept, downloads the zip and its checksum from <code>github.com</code>. Nothing about you is sent.</li>
+          <li>The page editor is bundled in the app and runs under a Content-Security-Policy that blocks network access.</li>
+          <li>Reading Claude Code sessions and Git is off until you turn it on, is read-only, redacts secrets, and stores nothing from what it reads.</li>
+          <li>Your notes are <code>~/Gloamlog/YYYY-MM-DD.md</code>, one file per day, in a folder you can change in Settings &gt; Storage. Safety copies, the quick-capture journal and the Claude inbox live in <code>~/Library/Application&nbsp;Support/Gloamlog/</code>, outside your notes folder so they never sync with it.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot wrap">
+    <nav aria-label="Project links">
+      <a href="https://github.com/dasariprashant0/gloamlog">GitHub</a>
+      <a href="https://github.com/dasariprashant0/gloamlog/releases">Releases</a>
+      <a href="https://github.com/dasariprashant0/gloamlog/blob/main/docs/INSTALL.md">Install guide</a>
+      <a href="https://github.com/dasariprashant0/gloamlog/blob/main/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/dasariprashant0/gloamlog/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/dasariprashant0/gloamlog/blob/main/LICENSE">MIT licence</a>
+    </nav>
+    <p>Not affiliated with Anthropic.</p>
+  </footer>
+
+  <span class="sr-only" aria-live="polite" id="copy-status"></span>
+  <script>
+    // The copy button is only shown when the Clipboard API exists, so it is never a dead control.
+    (function () {
+      if (!navigator.clipboard) { return; }
+      var live = document.getElementById('copy-status');
+      document.querySelectorAll('button[data-copy]').forEach(function (b) {
+        b.hidden = false;
+        b.addEventListener('click', function () {
+          var text = document.getElementById(b.dataset.copy).textContent.trim();
+          navigator.clipboard.writeText(text).then(function () {
+            b.textContent = 'Copied';
+            live.textContent = 'Install command copied to the clipboard';
+          }, function () {
+            b.textContent = 'Select it instead';
+          });
+          setTimeout(function () { b.textContent = 'Copy'; live.textContent = ''; }, 1800);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

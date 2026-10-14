@@ -22,6 +22,6 @@ What's rough:
 
 - Alpha (0.6.5). The entries depend on Claude following the instruction, so some sessions will write none and some will write too much. I'd like to hear how it behaves for you.
 - The session-file reading depends on a Claude Code file format that is not documented and could change.
-- Not notarised (no paid Apple account): use the installer one-liner in the README, or build from source. macOS 13+, release build is Apple silicon only.
+- Not notarised (no paid Apple account): use the installer one-liner in the README, or build from source. macOS 13+; the release is universal but only run on Apple silicon so far.
 
 Repo: https://github.com/dasariprashant0/gloamlog (the helper is `app/Resources/claude/gloamlog-mcp.py`)
