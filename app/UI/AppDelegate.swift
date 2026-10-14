@@ -4,7 +4,12 @@ import AppKit
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ n: Notification) { AppModel.shared.start() }
+    func applicationDidFinishLaunching(_ n: Notification) { AppModel.shared.start(); AppModel.shared.sources.startAuto() }
+
+    /// `gloamlog://refresh`: Claude Code's hook says a session ended, so today's lines are looked for now (a no-op unless "Add them for me" is on).
+    func application(_ app: NSApplication, open urls: [URL]) {
+        if urls.contains(where: { $0.scheme == "gloamlog" && $0.host == "refresh" }) { AppModel.shared.sources.autoTick(force: true) }
+    }
 
     /// Quit: ask the editor for its final text and save it first (async, with a 1.5 s ceiling). If the text cannot be
     /// written the user is asked before it is lost.

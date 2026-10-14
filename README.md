@@ -11,7 +11,7 @@
 - **Jot from anywhere.** Press `⌃⌥J` in any app (full-screen apps included), type a thought, press Return: it lands as a time-stamped bullet under *Jots* on today's page, even while you are typing there. A write-ahead journal means a note is never lost.
 - **Review and export.** Review a week, month, year or any range; copy as Markdown, plain text or rich text for a standup; save as PDF; export as Markdown with just the images you used.
 - **Reminders that find you.** A strict or gentle end-of-day reminder, snooze, and system notifications that still arrive when Gloamlog is closed.
-- **Suggested from your work (off by default).** Turn it on and Gloamlog reads your local Claude Code sessions and Git commits, redacts secrets, and offers an editable list of what you worked on, per project you opt in. Read-only; nothing leaves your Mac.
+- **Suggested from your work (off by default).** Turn it on and Gloamlog reads your local Claude Code sessions and Git commits, redacts secrets, and offers an editable list of what you worked on, for the projects you tick or for every session and tab. Switch on "Add them for me" and today's lines go into your page by themselves as you work (about every 2 minutes, or instantly with an optional Claude Code hook that runs `open -g gloamlog://refresh`). Read-only; nothing leaves your Mac.
 - **Safe with sync.** Keep your logs in iCloud Drive or Dropbox and use two Macs: Gloamlog watches the folder, never treats a not-yet-downloaded day as empty, and resolves "conflicted copy" files with *Keep mine / Take theirs / Keep both* (nothing is ever deleted).
 - **Settings you can find.** A real Settings window (gear in the sidebar, `⌘,`): appearance, week start, reminders, template, words rule, storage, shortcuts, sources.
 

@@ -77,7 +77,7 @@ final class SourcesController: ObservableObject {
     func isActive(for day: String) -> Bool { prefs.anyOn && prefs.consented && !hiddenDays.contains(day) }
 
     private func key(_ p: SourcesPrefs, _ day: String) -> String {
-        "\(day)|\(p.claude)|\(p.git)|\(p.allowed.map { $0.lowercased() }.sorted().joined(separator: ","))|\(p.gitRoots.joined(separator: ","))"
+        "\(day)|\(p.claude)|\(p.git)|\(p.allProjects)|\(p.allowed.map { $0.lowercased() }.sorted().joined(separator: ","))|\(p.gitRoots.joined(separator: ","))"
     }
 
     private func settingsChanged() {
@@ -124,17 +124,21 @@ final class SourcesController: ObservableObject {
         }
         let p = prefs, cal = model.cal, today = model.today, claude = self.claude
         queue.async { [weak self] in
-            var items = [ActivityItem](), stats = ScanStats(), notices = [String]()
-            func absorb(_ r: SourceResult) { items += r.items; stats.add(r.stats); notices += r.notices }
-            // Git first: when a commit is seen by both sources, the one with the right time and subject wins.
-            if p.git && !ctl.isCancelled { absorb(GitSource(roots: p.gitRoots).activity(day: day, calendar: cal, policy: p.policy, control: ctl)) }
-            if p.claude && !ctl.isCancelled { absorb(claude.activity(day: day, calendar: cal, policy: p.policy, control: ctl)) }
-            let digest = ActivityDigest.bullets(from: items)
+            let (digest, stats, notices) = SourcesController.scan(day: day, prefs: p, cal: cal, claude: claude, ctl: ctl)
             DispatchQueue.main.async {
                 guard let s = self, s.generation == gen, !ctl.isCancelled else { return }
                 s.finish(day: day, key: k, today: today, prefs: p, digest: digest, stats: stats, notices: notices)
             }
         }
+    }
+
+    /// One look at `day`: Git first (when a commit is seen by both sources, the one with the right time and subject wins), then Claude Code.
+    private static func scan(day: String, prefs p: SourcesPrefs, cal: Calendar, claude: ClaudeCodeSource, ctl: ScanControl) -> (DigestResult, ScanStats, [String]) {
+        var items = [ActivityItem](), stats = ScanStats(), notices = [String]()
+        func absorb(_ r: SourceResult) { items += r.items; stats.add(r.stats); notices += r.notices }
+        if p.git && !ctl.isCancelled { absorb(GitSource(roots: p.gitRoots).activity(day: day, calendar: cal, policy: p.policy, control: ctl)) }
+        if p.claude && !ctl.isCancelled { absorb(claude.activity(day: day, calendar: cal, policy: p.policy, control: ctl)) }
+        return (ActivityDigest.bullets(from: items), stats, notices)
     }
 
     private func finish(day: String, key k: String, today: String, prefs p: SourcesPrefs, digest: DigestResult, stats: ScanStats, notices: [String]) {
@@ -178,8 +182,8 @@ final class SourcesController: ObservableObject {
     func insertSelected() { insert(bullets.filter { selected.contains($0.id) }) }
 
     /// Adds `items` as bullets under the Settings heading, in one editor transaction.
-    func insert(_ items: [SuggestedBullet]) {
-        guard !items.isEmpty, !inserting, let e = model.editor, e.loaded, e.showsEditor, e.day == loadedDay,
+    func insert(_ items: [SuggestedBullet], day: String? = nil) {
+        guard !items.isEmpty, !inserting, let e = model.editor, e.loaded, e.showsEditor, e.day == (day ?? loadedDay),
               let b = model.bridgeIfCreated, b.isReady else { return }
         let page = ActivityDigest.plainText(e.latest)
         let fresh = items.filter { !ActivityDigest.isAdded($0, inPlainPage: page) }
@@ -198,6 +202,68 @@ final class SourcesController: ObservableObject {
             case .stale, .failed: self.model.pageNotice = "Couldn't add those lines. Your page is unchanged. Try again."
             }
         }
+    }
+
+    // MARK: auto-add
+    // While "Add them for me" is on, today's lines go onto today's page by themselves: every 2 minutes, when Claude Code says a
+    // session ended (the hook runs `open -g gloamlog://refresh`), and at launch. It reads every session and tab, not only the
+    // folder in front of you. The session summary line is left out of today (its time and count would be stale the moment it is written).
+    // An open page takes the lines through the editor; a day nobody has open is written to its file, once per line; a page that is
+    // open but not ready is skipped until the next look.
+    private var autoBusy = false
+    private var autoAt = Date.distantPast
+    private var autoTimer: Timer?
+
+    func startAuto() {
+        autoTimer?.invalidate()
+        autoTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in self?.autoTick() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.autoTick(force: true) }
+    }
+
+    func autoTick(force: Bool = false) {
+        let p = prefs
+        guard p.autoAdd, p.anyOn, p.consented, !autoBusy, model.live else { return }
+        guard force || Date().timeIntervalSince(autoAt) >= 20 else { return }
+        autoBusy = true; autoAt = Date()
+        let day = model.today, cal = model.cal, claude = self.claude
+        queue.async { [weak self] in
+            let (digest, _, _) = SourcesController.scan(day: day, prefs: p, cal: cal, claude: claude, ctl: ScanControl())
+            DispatchQueue.main.async {
+                guard let s = self else { return }
+                s.autoBusy = false
+                s.autoWrite(day: day, bullets: digest.bullets.filter { $0.kind != .session })
+            }
+        }
+    }
+
+    private func autoWrite(day: String, bullets: [SuggestedBullet]) {
+        guard !bullets.isEmpty, prefs.autoAdd, day == model.today else { return }
+        let hasEditor = model.editor?.day == day || model.orphans.contains { $0.day == day }
+        if hasEditor {
+            if model.editor?.day == day { insert(bullets, day: day) }          // the live page owns its text; hidden pages wait for the next look
+            return
+        }
+        let doc: DayDocument?
+        do { doc = try model.store.load(day) } catch { return }                // a missing file is a new page; an unreadable one is left alone
+        if doc?.isSkipped == true { return }
+        var body = doc?.body ?? ""
+        let page = ActivityDigest.plainText(body)
+        let fresh = bullets.filter { !ActivityDigest.isAdded($0, inPlainPage: page) }
+        guard !fresh.isEmpty else { return }
+        for b in fresh {
+            let item = CaptureItem(id: UUID().uuidString, ts: Date(), day: day, text: ActivityDigest.escape(b.text), stamp: nil, todo: false, source: "claude")
+            body = CapturePlacement.apply(item, to: body, jotsHeading: prefs.headingText)
+        }
+        if (try? model.store.save(day: day, body: body)) != nil { model.fileChangedUnderneath(day) }
+    }
+
+    /// The Claude Code Stop hook as settings.json wants it; only runs when Gloamlog is open.
+    func copyHook() {
+        let json = """
+        "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "pgrep -x Gloamlog >/dev/null && open -g gloamlog://refresh || true" } ] } ] }
+        """
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(json, forType: .string)
     }
 
     // MARK: Settings > Sources
@@ -257,7 +323,7 @@ final class SourcesController: ObservableObject {
             }
             if p.claude { claude.projects(control: ctl).forEach(merge) }
             if p.git { GitSource(roots: p.gitRoots).projects(control: ctl).forEach(merge) }
-            for a in p.allowed {                                      // a ticked project that is not found stays, so it can be unticked
+            for a in p.allowed {                                      // a ticked (or skipped) project that is not found stays, so it can be changed back
                 let n = SourcePath.normalize(a)
                 if by[n.lowercased()] == nil { by[n.lowercased()] = SourceProject(root: n, name: SourcePath.name(of: n), sources: [], lastActive: nil) }
             }

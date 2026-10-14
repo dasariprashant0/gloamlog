@@ -2461,6 +2461,19 @@ test("journal: dropping the writer without any ack loses nothing (in-process kil
     expect(CaptureJournal(dir: d).pending() == [items[0], items[2], items[4]], "pending equals exactly the unacknowledged notes")
 }
 
+test("Sources: all-projects mode reads every project except the skipped ones") {
+    var p = SourcesPrefs()
+    expect(p.policy.isEmpty && p.policy.root(for: "/work/a") == nil, "nothing is read until a project is ticked")
+    p.allProjects = true
+    expect(!p.policy.isEmpty && p.policy.root(for: "/work/a") == "/work/a", "every project is read")
+    expect(p.policy.root(for: "/work/a/.claude/worktrees/x") == "/work/a", "worktrees fold into their project")
+    p.setAllowed("/work/b", false)
+    expect(p.policy.root(for: "/work/b") == nil && p.policy.root(for: "/work/a") != nil, "a skipped project is not read")
+    p.setAllowed("/work/b", true)
+    expect(p.policy.root(for: "/work/b") != nil && p.allowed.isEmpty, "switching it back on removes the skip")
+    expect(ClaudeText.promptLine("Below is a conversation log from a Claude Code coding session.") == nil, "a summariser prompt is not work")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

@@ -76,7 +76,7 @@ enum ClaudeText {
     private static let wrapped = rx(#"<(system-reminder|local-command-caveat|local-command-stdout|local-command-stderr|command-name|command-message|command-args|command-contents|bash-input|bash-stdout|bash-stderr|ide_opened_file|ide_selection|ide_diagnostics|user-prompt-submit-hook|task-notification|function_results|persisted-output)\b[^>]*>[\s\S]*?</\1>"#, [.caseInsensitive])
     private static let unclosed = rx(#"<(?:system-reminder|local-command-caveat|ide_opened_file|ide_selection|user-prompt-submit-hook)\b[^>]*>[\s\S]*$"#, [.caseInsensitive])
     private static let placeholders = rx(#"\[(?:Pasted text|Pasted image|Image|Attachment)[^\]]*\]"#, [.caseInsensitive])
-    private static let noisePrefixes = ["Caveat:", "[Request interrupted", "This session is being continued", "API Error"]
+    private static let noisePrefixes = ["Caveat:", "[Request interrupted", "This session is being continued", "API Error", "Below is a conversation log from", "The app was quit while you were working"]
 
     private static func strip(_ re: NSRegularExpression?, _ s: String) -> String {
         guard let re = re else { return s }

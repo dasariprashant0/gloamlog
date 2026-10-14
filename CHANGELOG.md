@@ -2,6 +2,9 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## Unreleased
+- Sources: "Every session and tab" mode (no per-project ticking, with a skip list), "Add them for me" (auto-writes today's lines), `gloamlog://refresh` URL for a Claude Code Stop hook, and system-generated prompts are no longer listed as work.
+
 ## [Unreleased] - 0.6.0 (alpha, feature-complete build)
 
 ### Added

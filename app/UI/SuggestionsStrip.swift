@@ -84,7 +84,7 @@ struct SuggestionsStrip: View {
         VStack(alignment: .leading, spacing: 3) {
             if sources.loading || !ready {
                 Text("Reading your work for \(model.shortDate(editor.day)). Nothing leaves this Mac.").font(Theme.font(12)).foregroundColor(Theme.textSecondary)
-            } else if prefs.allowed.isEmpty {
+            } else if !prefs.allProjects && prefs.allowed.isEmpty {
                 HStack(spacing: Theme.s2) {
                     Text("No projects are ticked yet, so nothing is read.").font(Theme.font(13)).foregroundColor(Theme.textPrimary)
                     Button("Choose projects…") { model.openSettings(pane: .sources) }.buttonStyle(TextButtonStyle())

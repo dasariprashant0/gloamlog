@@ -35,6 +35,15 @@ struct SourcesSettings: View {
                 SettingsRow("Git", help: "Runs git log in the repositories you tick and lists only commits made with your own git email. It never fetches, pushes or changes anything.") {
                     Toggle("Git", isOn: switchBinding(.git)).labelsHidden().toggleStyle(.switch)
                 }
+                SettingsRow("Every session and tab", help: "Reads all your Claude Code sessions, in every folder and tab, without ticking projects. Use the list below to skip a project.") {
+                    Toggle("Every session and tab", isOn: Binding(get: { model.settings.sources.allProjects }, set: { model.settings.sources.allProjects = $0; model.settings.sources.allowed = [] })).labelsHidden().toggleStyle(.switch)
+                }
+                SettingsRow("Add them for me", help: "Writes today's lines into your page by themselves as you work, about every 2 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line.") {
+                    Toggle("Add them for me", isOn: Binding(get: { model.settings.sources.autoAdd }, set: { model.settings.sources.autoAdd = $0 })).labelsHidden().toggleStyle(.switch)
+                }
+                SettingsRow("Instant update", help: "Optional. Add this hook to ~/.claude/settings.json so Gloamlog updates the moment a Claude Code session ends, instead of waiting up to 2 minutes.") {
+                    Button("Copy hook") { sources.copyHook() }
+                }
                 SettingsRow("Insert under", help: "The heading the lines you choose are added under. It is added at the end of the page when the page has none.") {
                     TextField("Worked on", text: heading).textFieldStyle(.roundedBorder).frame(width: 180).multilineTextAlignment(.trailing)
                 }
@@ -66,7 +75,7 @@ struct SourcesSettings: View {
                                  : "No projects found yet. Claude Code projects appear once you have used it on this Mac; for Git, add a folder above.")
                 }
                 ForEach(sources.projects) { p in projectRow(p) }
-                SettingsHelp("Hidden projects are skipped before any text is read. Nothing is included until you tick it. Gloamlog stores nothing from what it reads: it looks again when you open a day.")
+                SettingsHelp(prefs.allProjects ? "Every project is read except the ones you switch off here. Gloamlog stores nothing from what it reads: it looks again when you open a day." : "Hidden projects are skipped before any text is read. Nothing is included until you tick it. Gloamlog stores nothing from what it reads: it looks again when you open a day.")
                 if let l = sources.lastScanLine, prefs.anyOn { SettingsHelp(l) }
             } header: { Text("Projects").font(Theme.font(13, .semibold)) }
         }
@@ -112,12 +121,12 @@ struct SourcesConsentSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.s4) {
             Text("Let Gloamlog read your Claude Code and Git activity?").font(Theme.font(17, .semibold)).foregroundColor(Theme.textPrimary)
-            Text("Read-only. It stays on this Mac and nothing is sent anywhere. Projects you have not ticked are skipped before any text is read.")
+            Text("Read-only. It stays on this Mac and nothing is sent anywhere. Unless you switch on \"Every session and tab\", projects you have not ticked are skipped before any text is read.")
                 .font(Theme.font(13)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Theme.s3) {
                 point("Claude Code", "The session files in ~/.claude/projects (and $CLAUDE_CONFIG_DIR when it is set). To list your projects it reads the working folder named at the start of each file. For a project you tick it reads the whole file and keeps only: the first line of the prompts you typed, the names of the files Claude edited, git commit messages from its commands, pull-request links from a pull-request command, and when each record was written. Claude's replies, other tool output and file contents are not kept.")
                 point("Git", "In the folders you add it looks for repositories, up to three levels down. For the repositories you tick it runs git log and git config user.email to find your own commits: hash, subject and time. It never fetches, pushes or changes a repository.")
-                point("Before anything is shown", "Tokens, keys, emails and long secrets are hidden, and your home folder is shown as ~. Nothing is saved: Gloamlog reads again when you open a day. The only thing it writes is the lines you choose to insert into your page.")
+                point("Before anything is shown", "Tokens, keys, emails and long secrets are hidden, and your home folder is shown as ~. Nothing is saved: Gloamlog reads again when you open a day. The only thing it writes is lines into your page: the ones you choose to insert, or all of today's when you switch on \"Add them for me\".")
             }
             HStack(spacing: Theme.s3) {
                 Spacer()

@@ -45,21 +45,28 @@ enum SourcePath {
 struct ProjectPolicy: Equatable {
     /// The ticked project roots, as the owner's Settings hold them.
     let allowed: [String]
-    private let table: [String: String]            // lower-cased normalised root -> normalised root
+    /// Every project is read (each Claude Code session and tab, wherever it ran) except the ones in `table`, which then holds the skipped roots.
+    let all: Bool
+    private let table: [String: String]            // lower-cased normalised root -> normalised root (ticked, or skipped when `all`)
 
-    init(allowed: [String]) {
+    init(allowed: [String], all: Bool = false) {
         self.allowed = allowed
+        self.all = all
         var t = [String: String]()
         for a in allowed { let n = SourcePath.normalize(a); t[n.lowercased()] = n }
         table = t
     }
 
-    var isEmpty: Bool { table.isEmpty }
+    var isEmpty: Bool { !all && table.isEmpty }
     /// A short stable text for "which projects were ticked", used to key caches.
-    var key: String { table.keys.sorted().joined(separator: "\n") }
+    var key: String { (all ? "all\n" : "") + table.keys.sorted().joined(separator: "\n") }
 
-    /// The ticked root that is this project (worktrees folded), or nil: then nothing about it may be read or shown.
-    func root(for path: String) -> String? { table[SourcePath.collapseWorktree(path).lowercased()] }
+    /// The root that is this project (worktrees folded), or nil: then nothing about it may be read or shown.
+    func root(for path: String) -> String? {
+        let n = SourcePath.collapseWorktree(path)
+        if all { return table[n.lowercased()] == nil ? n : nil }
+        return table[n.lowercased()]
+    }
 }
 
 /// Settings > Sources. Everything is off until the owner turns it on; decoding is tolerant so an older or newer save never
@@ -70,30 +77,34 @@ struct SourcesPrefs: Codable, Equatable {
     var claude = false               // read Claude Code's session files (only for ticked projects)
     var git = false                  // run `git log` in ticked repositories
     var consented = false            // the first-enable sheet was accepted
-    var allowed: [String] = []       // ticked project roots (absolute paths)
+    var allowed: [String] = []       // ticked project roots (absolute paths); with `allProjects` it holds the SKIPPED roots instead
+    var allProjects = false          // read every Claude Code session and tab, not only ticked projects
+    var autoAdd = false              // write today's lines into the page by themselves, as the work happens
     var gitRoots: [String] = []      // folders added with "Add folder…": a repository, or a folder that holds repositories
     var heading = SourcesPrefs.defaultHeading
 
     init() {}
-    enum CodingKeys: String, CodingKey { case claude, git, consented, allowed, gitRoots, heading }
+    enum CodingKeys: String, CodingKey { case claude, git, consented, allowed, allProjects, autoAdd, gitRoots, heading }
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         claude = (try? c.decodeIfPresent(Bool.self, forKey: .claude)) ?? claude
         git = (try? c.decodeIfPresent(Bool.self, forKey: .git)) ?? git
         consented = (try? c.decodeIfPresent(Bool.self, forKey: .consented)) ?? consented
         allowed = (try? c.decodeIfPresent([String].self, forKey: .allowed)) ?? allowed
+        allProjects = (try? c.decodeIfPresent(Bool.self, forKey: .allProjects)) ?? allProjects
+        autoAdd = (try? c.decodeIfPresent(Bool.self, forKey: .autoAdd)) ?? autoAdd
         gitRoots = (try? c.decodeIfPresent([String].self, forKey: .gitRoots)) ?? gitRoots
         heading = (try? c.decodeIfPresent(String.self, forKey: .heading)) ?? heading
     }
 
     var anyOn: Bool { claude || git }
     var headingText: String { let h = heading.dlTrimmed; return h.isEmpty ? SourcesPrefs.defaultHeading : h }
-    var policy: ProjectPolicy { ProjectPolicy(allowed: allowed) }
+    var policy: ProjectPolicy { ProjectPolicy(allowed: allowed, all: allProjects) }
     func isAllowed(_ root: String) -> Bool { policy.root(for: root) != nil }
 
     mutating func setAllowed(_ root: String, _ on: Bool) {
         let n = SourcePath.normalize(root)
         allowed.removeAll { SourcePath.normalize($0).lowercased() == n.lowercased() }
-        if on { allowed.append(n) }
+        if on != allProjects { allowed.append(n) }          // ticked (normal mode) or skipped (all mode)
     }
 }
