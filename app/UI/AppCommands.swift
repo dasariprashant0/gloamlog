@@ -14,7 +14,10 @@ struct AppCommands: Commands {
     private var canEdit: Bool { onDay && (model.editor?.showsEditor ?? false) }
 
     var body: some Commands {
-        CommandGroup(replacing: .appInfo) { Button("About Gloamlog") { AppDelegate.showAbout() } }
+        CommandGroup(replacing: .appInfo) {
+            Button("About Gloamlog") { AppDelegate.showAbout() }
+            Button("Check for Updates…") { Updater.shared.check() }
+        }
         CommandGroup(replacing: .saveItem) {
             // Autosave is always on; ⌘S just flushes right now, as people expect.
             Button("Save Now") { model.flushEditor() }.keyboardShortcut("s").disabled(!canEdit)

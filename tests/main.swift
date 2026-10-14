@@ -2474,6 +2474,21 @@ test("Sources: all-projects mode reads every project except the skipped ones") {
     expect(ClaudeText.promptLine("Below is a conversation log from a Claude Code coding session.") == nil, "a summariser prompt is not work")
 }
 
+test("UpdateCheck: versions, release JSON, checksum, trusted hosts") {
+    expect(UpdateCheck.isNewer("0.6.10", than: "0.6.9") && UpdateCheck.isNewer("1.0", than: "0.9.9") && UpdateCheck.isNewer("0.6.1", than: "0.6"), "newer")
+    expect(!UpdateCheck.isNewer("0.6.0", than: "0.6.0") && !UpdateCheck.isNewer("0.5.9", than: "0.6.0") && !UpdateCheck.isNewer("0.6", than: "0.6.0"), "same or older")
+    let json = #"{"tag_name":"v0.7.0","draft":false,"prerelease":false,"html_url":"https://github.com/o/r/releases/tag/v0.7.0","body":"Notes","assets":[{"name":"Gloamlog.zip","browser_download_url":"https://github.com/o/r/releases/download/v0.7.0/Gloamlog.zip"},{"name":"Gloamlog.zip.sha256","browser_download_url":"https://github.com/o/r/releases/download/v0.7.0/Gloamlog.zip.sha256"}]}"#
+    let r = UpdateCheck.parse(Data(json.utf8))
+    expect(r?.version == "0.7.0" && r?.notes == "Notes" && r?.shaURL != nil, "parsed")
+    expect(UpdateCheck.parse(Data(json.replacingOccurrences(of: "\"prerelease\":false", with: "\"prerelease\":true").utf8)) == nil, "a prerelease is not offered")
+    expect(UpdateCheck.parse(Data(json.replacingOccurrences(of: "Gloamlog.zip\"", with: "Other.zip\"").utf8)) == nil, "no zip asset, no update")
+    expect(UpdateCheck.parse(Data("[]".utf8)) == nil, "garbage")
+    let h = String(repeating: "ab", count: 32)
+    expect(UpdateCheck.checksum(from: h + "  Gloamlog.zip\n") == h && UpdateCheck.checksum(from: "nothex") == nil && UpdateCheck.checksum(from: "abc") == nil, "checksum line")
+    expect(UpdateCheck.isTrusted(URL(string: "https://github.com/x")!) && !UpdateCheck.isTrusted(URL(string: "http://github.com/x")!)
+           && !UpdateCheck.isTrusted(URL(string: "https://evilgithub.com/x")!) && !UpdateCheck.isTrusted(URL(string: "https://github.com.evil.io/x")!), "only https github.com")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)
