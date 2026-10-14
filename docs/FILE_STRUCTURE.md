@@ -22,7 +22,7 @@ gloamlog/
 │   ├── v1/                   the current plans: PRD_V1, UX_FLOWS, DESIGN_V4, TRD, ARCHITECTURE, M1/M2 build plans, evidence/
 │   ├── research/             market, growth, SEO and Claude-integration research
 │   └── ABOUT.md  EXPLANATION.md  FILE_STRUCTURE.md  (older v0.1/v0.2 docs in this folder are superseded by v1/)
-└── .github/                  CI (build + tests), release workflow, issue and PR templates
+└── .github/                  CI (build + tests), issue and PR templates (releases come from scripts/release.sh)
 ```
 
 Generated, not committed: `app/Gloamlog.app/`, `app/Gloamlog.zip`, `editor-web/node_modules/`.
