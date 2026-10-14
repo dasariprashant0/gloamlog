@@ -13,17 +13,23 @@ extension AppModel {
             if empty { self.searchHits = []; if self.selection == .search { self.selection = self.returnSelection } }
         }.store(in: &cancellables)
         Publishers.CombineLatest($searchText, $searchHeading).debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-            .sink { [weak self] q, h in self?.runSearch(q, h) }.store(in: &cancellables)
+            .map { [weak self] q, h in self?.runSearch(q, h) ?? Just([SearchHit]()).eraseToAnyPublisher() }
+            .switchToLatest()                                   // typing fast: only the newest search's hits land, never a stale set
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] hits in self?.searchHits = hits; self?.searchCursor = 0 }.store(in: &cancellables)
+        // The first search would read every page: fill the cache (SearchIndex.swift) once launch has settled, off the main thread.
+        let store = self.store
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) { try? store.warmSearch() }
     }
 
-    func runSearch(_ q: String, _ heading: String?) {
-        guard !q.dlTrimmed.isEmpty else { searchHits = []; return }
-        // What was typed a moment ago must be on disk to be found.
-        flushEditor { [weak self] in
-            guard let self = self else { return }
-            self.searchHits = (try? self.store.search(q, heading: heading)) ?? []
-            self.searchCursor = 0
-        }
+    /// The hits for a query, found off the main thread once what was typed a moment ago is on disk. The empty query is [] at once.
+    func runSearch(_ q: String, _ heading: String?) -> AnyPublisher<[SearchHit], Never> {
+        guard !q.dlTrimmed.isEmpty else { return Just([SearchHit]()).eraseToAnyPublisher() }
+        let store = self.store                                  // taken on the main thread; LogStore's reads are thread-safe
+        return Future { promise in
+            // What was typed a moment ago must be on disk to be found.
+            self.flushEditor { DispatchQueue.global(qos: .utility).async { promise(.success((try? store.search(q, heading: heading)) ?? [])) } }
+        }.eraseToAnyPublisher()
     }
     var searchDayCount: Int { Set(searchHits.map { $0.day }).count }
     /// Headings offered in the search filter: the template's headings.

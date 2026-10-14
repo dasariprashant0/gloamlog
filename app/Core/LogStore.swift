@@ -412,9 +412,11 @@ final class LogStore {
         return true
     }
 
+    // MARK: search (Search.swift). Pages are parsed once per run and re-read only when their file changed: SearchIndex.swift.
+    let searchIndex = SearchIndex()
     func search(_ query: String, heading: String? = nil) throws -> [SearchHit] {
-        var hits = [SearchHit]()
-        for d in try listDays() { if let e = try loadIfLocal(d) { hits += Search.hits(in: e, query: query, heading: heading) } }
-        return hits
+        try searchIndex.pages(of: self, load: loadIfLocal).flatMap { Search.hits(day: $0.day, sections: $0.sections, query: query, heading: heading) }
     }
+    /// Fills the search cache ahead of the first search; the app calls it off the main thread after launch and when the folder changes.
+    func warmSearch() throws { _ = try searchIndex.pages(of: self, load: loadIfLocal) }
 }

@@ -2522,6 +2522,91 @@ test("ClaudeMd: add, replace, remove, keep a hand-written section") {
     expect(ClaudeMd.apply(to: stale).contains("old text") == false && ClaudeMd.apply(to: stale).hasSuffix("## After\n"), "a stale block is replaced in place")
 }
 
+// MARK: search index (SearchIndex.swift)
+/// The uncached path as LogStore.search ran it before the index: list, load (a day that is not here yet is left out), match.
+func uncachedSearch(_ store: LogStore, _ q: String, heading: String? = nil) throws -> [SearchHit] {
+    var hits = [SearchHit]()
+    for d in try store.listDays() {
+        do { if let e = try store.load(d) { hits += Search.hits(in: e, query: q, heading: heading) } } catch LogError.notLocal { continue }
+    }
+    return hits
+}
+test("search index: cached results equal the uncached path (headings, skipped days, heading filter); a file is parsed once per run") {
+    let store = freshStore("sidx")
+    try store.save(day: "2026-10-05", body: "## 📝 What I did\nDrafted the Pricing page copy at the Café with Ana\n- [ ] review PRICING page with Ana\n\n## Finished\nPricing only")
+    try store.save(day: "2026-10-06", body: "no headings here: notes on pricing and more")
+    try store.skip("2026-10-07", reason: "pricing holiday")
+    try store.save(day: "2026-10-08", body: "## Pricing review\n\n## Notes\nnothing\n\n## Finished\n### Details\nneedle in a sub section\n\nintro without heading goes first")
+    try raw("# 2026-10-09\n\n## 🚀 Started\nKicked off the zebra project\n\n", in: store.dir, day: "2026-10-09")
+    let queries: [(String, String?)] = [("pricing", nil), ("CAFE ana", nil), ("pricing review", nil), ("needle", nil), ("zebra", nil), ("holiday", nil),
+                                        ("pricing zebra", nil), ("", nil), ("pricing", "finished"), ("pricing", "what I did"), ("pricing", "to-do next")]
+    for (q, h) in queries {
+        let cached = try store.search(q, heading: h), plain = try uncachedSearch(store, q, heading: h)
+        expect(cached == plain, "\(q) / \(h ?? "-"): \(cached) vs \(plain)")
+    }
+    try expect(try store.search("pricing").map { $0.day } == ["2026-10-08", "2026-10-06", "2026-10-05", "2026-10-05"], "newest day first, then document order")
+    try expect(try store.search("pricing", heading: "finished").map { $0.snippet } == ["Pricing only"])
+    expect(store.searchIndex.fileReads == 5, "every file (the skip marker too) parsed once: \(store.searchIndex.fileReads)")
+    _ = try store.search("anything")
+    expect(store.searchIndex.fileReads == 5, "a later search reads nothing")
+}
+
+test("search index: a changed file is re-read (own save, outside write, touched mtime); a deleted file drops out; a placeholder is never cached") {
+    let store = freshStore("sidx-inv")
+    try store.save(day: "2026-10-05", body: "alpha one")
+    try store.save(day: "2026-10-06", body: "alpha two")
+    try expect(try store.search("alpha").map { $0.day } == ["2026-10-06", "2026-10-05"] && store.searchIndex.fileReads == 2)
+    // the app's own save (atomic replace)
+    try store.save(day: "2026-10-05", body: "bravo one again")
+    try expect(try store.search("alpha").map { $0.day } == ["2026-10-06"] && (try store.search("bravo").map { $0.day } == ["2026-10-05"])
+               && store.searchIndex.fileReads == 3, "own save")
+    // an outside write of the same size, its mtime pushed forward explicitly (not left to the file system's clock resolution)
+    try raw("# 2026-10-06\n\ndelta two\n", in: store.dir, day: "2026-10-06")
+    try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(5)], ofItemAtPath: store.url(for: "2026-10-06").path)
+    try expect(try store.search("alpha").isEmpty && (try store.search("delta").map { $0.day } == ["2026-10-06"]) && store.searchIndex.fileReads == 4, "outside write")
+    // touched only (same bytes, newer mtime): read again, nothing visible changes
+    try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(10)], ofItemAtPath: store.url(for: "2026-10-06").path)
+    try expect(try store.search("delta").map { $0.day } == ["2026-10-06"] && store.searchIndex.fileReads == 5, "touch")
+    // deleted outside the app
+    try FileManager.default.removeItem(at: store.url(for: "2026-10-06"))
+    try expect(try store.search("delta").isEmpty && (try store.search("bravo").map { $0.day } == ["2026-10-05"]) && store.searchIndex.fileReads == 5, "deleted")
+    // an iCloud placeholder next to the page: the day is not here yet, so it is neither found nor cached as empty
+    try store.save(day: "2026-10-07", body: "bravo three")
+    let placeholder = store.dir.appendingPathComponent(CloudFile.placeholderName(for: "2026-10-07"))
+    try Data().write(to: placeholder)
+    try expect(try store.search("bravo").map { $0.day } == ["2026-10-05"] && store.searchIndex.fileReads == 5, "placeholder: skipped, not read")
+    try FileManager.default.removeItem(at: placeholder)
+    try expect(try store.search("bravo").map { $0.day } == ["2026-10-07", "2026-10-05"] && store.searchIndex.fileReads == 6, "downloaded: found, read once")
+    // a cached page that goes back to the cloud is left out again until it is here, then read afresh
+    try Data().write(to: placeholder)
+    try expect(try store.search("bravo").map { $0.day } == ["2026-10-05"], "evicted again")
+    try FileManager.default.removeItem(at: placeholder)
+    try expect(try store.search("bravo").map { $0.day } == ["2026-10-07", "2026-10-05"] && store.searchIndex.fileReads == 7, "back: re-read, not the stale entry")
+}
+
+test("search index: warmSearch fills the cache ahead of the first search; a replaced store starts empty; warm and search may overlap") {
+    let a = freshStore("sidx-a")
+    try a.save(day: "2026-10-05", body: "echo in a")
+    try a.warmSearch()
+    expect(a.searchIndex.fileReads == 1, "warm reads every page")
+    try expect(try a.search("echo").map { $0.day } == ["2026-10-05"] && a.searchIndex.fileReads == 1, "the first search after a warm reads nothing")
+    // Another folder is chosen: the app builds a new LogStore (AppModel.store didSet -> storeReplaced -> warmSearch) with its own index.
+    let b = LogStore(dir: freshDir("sidx-b"))
+    try b.save(day: "2026-10-06", body: "echo in b")
+    expect(b.searchIndex.fileReads == 0)
+    try expect(try b.search("echo").map { $0.day } == ["2026-10-06"] && b.searchIndex.fileReads == 1, "nothing carried over from the old folder")
+    try expect(try a.search("echo").map { $0.day } == ["2026-10-05"] && a.searchIndex.fileReads == 1, "the old store's index is untouched")
+    // the launch warm-up and the first keystroke can overlap: both complete, every file is still read once
+    let c = freshStore("sidx-c")
+    for i in 1...30 { try c.save(day: String(format: "2026-09-%02d", i), body: "foxtrot \(i)") }
+    let group = DispatchGroup()
+    var hits = [SearchHit]()
+    DispatchQueue.global(qos: .utility).async(group: group) { try? c.warmSearch() }
+    DispatchQueue.global(qos: .utility).async(group: group) { hits = (try? c.search("foxtrot")) ?? [] }
+    group.wait()
+    expect(hits.count == 30 && c.searchIndex.fileReads == 30, "\(hits.count) hits, \(c.searchIndex.fileReads) reads")
+}
+
 try? FileManager.default.removeItem(at: root)
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

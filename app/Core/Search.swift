@@ -1,7 +1,7 @@
 // Search.swift - search over saved day pages.
 //
-// API: LogStore.search(query, heading:) -> [SearchHit]   (newest day first, then document order)
-//      Search.hits(in: doc, query:, heading:)             pure per-day matcher
+// API: LogStore.search(query, heading:) -> [SearchHit]   (newest day first, then document order; cached, see SearchIndex.swift)
+//      Search.hits(in: doc, query:, heading:)             pure per-day matcher = sections(of: doc) + hits(day:sections:query:heading:)
 // A page is cut at its headings; every heading-delimited section that matches yields ONE hit. Matching is case- and
 // diacritic-insensitive, whitespace-separated words are AND-ed within a section (the heading text counts too, so a
 // heading-only match is found; text before the first heading has heading == nil). `heading:` restricts to sections whose
@@ -20,22 +20,36 @@ struct SearchHit: Equatable {
 enum Search {
     private static let opts: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
 
+    /// A page as search sees it: one record per heading-delimited section with its two haystacks ready (what SearchIndex caches):
+    /// the plain text, and for a titled section the heading joined to it. Both are NSString-backed on purpose: range(of:options:) is the
+    /// same NSString call either way, but on a native Swift string it bridges per call, 15x slower on non-ASCII text (emoji headings).
+    struct Section: Equatable { var level: Int; var title: String; var normalizedTitle: String; var text: String; var titled: String? }
+
     static func words(_ q: String) -> [String] { q.split(whereSeparator: { $0.isWhitespace }).map(String.init) }
 
+    static func sections(of doc: DayDocument) -> [Section] {
+        doc.isSkipped ? [] : MarkdownBody.sections(of: doc.body).map {
+            let text = MarkdownBody.plainText($0.text)
+            let titled = $0.level > 0 && !$0.title.isEmpty ? NSString(string: MarkdownBody.collapse($0.title + " " + text)) as String : nil
+            return Section(level: $0.level, title: $0.title, normalizedTitle: $0.normalizedTitle, text: NSString(string: text) as String, titled: titled)
+        }
+    }
+
     static func hits(in doc: DayDocument, query: String, heading: String? = nil) -> [SearchHit] {
+        hits(day: doc.day, sections: sections(of: doc), query: query, heading: heading)
+    }
+
+    static func hits(day: String, sections: [Section], query: String, heading: String? = nil) -> [SearchHit] {
         let ws = words(query)
-        guard !ws.isEmpty, !doc.isSkipped else { return [] }
+        guard !ws.isEmpty else { return [] }
         let wanted = heading.map { MarkdownBody.normalizeHeading($0) }
         var out = [SearchHit]()
-        for s in MarkdownBody.sections(of: doc.body) {
+        for s in sections {
             if let w = wanted, s.normalizedTitle != w { continue }
-            let text = MarkdownBody.plainText(s.text)
-            var hay = [text]
-            if s.level > 0 && !s.title.isEmpty { hay.append(MarkdownBody.collapse(s.title + " " + text)) }
-            for h in hay {
+            for h in [s.text, s.titled].compactMap({ $0 }) {
                 guard let r = firstMatch(ws, in: h) else { continue }
                 let (snip, range) = snippet(h, r)
-                out.append(SearchHit(day: doc.day, heading: s.level > 0 ? s.title : nil, snippet: snip, matchRange: range))
+                out.append(SearchHit(day: day, heading: s.level > 0 ? s.title : nil, snippet: snip, matchRange: range))
                 break
             }
         }

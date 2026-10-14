@@ -133,4 +133,6 @@ snap(composite(AnyView(SearchView(model: model))), 1000, 520, "search")
 model.searchText = ""
 snap(SkipSheet(model: model, day: model.today), 500, 380, "skip-sheet")
 snap(RestoreVersionSheet(model: model, day: "2026-10-05"), 520, 380, "restore-sheet")
+snap(OnboardingView(model: model, startStep: 4), 600, 520, "onboarding-claude")
+snap(OnboardingView(model: model, startStep: 4), 600, 520, "onboarding-claude-dark", dark: true)
 for step in 1...3 { snap(OnboardingView(model: model, startStep: step), 600, 520, "onboarding-\(step)") }

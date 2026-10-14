@@ -1,4 +1,4 @@
-// Onboarding.swift - first-run sheet, 3 steps. Everything is pre-filled; the login item is opt-in (unticked).
+// Onboarding.swift - first-run sheet, 4 steps (the last, Claude Code, is optional). Everything is pre-filled; the login item is opt-in (unticked).
 //   1 Welcome + the page template   2 Reminder + words to log a day   3 Folder + log start (existing logs) + login item
 // "Run setup again" (Settings > About) opens the same sheet. It starts from the current settings and changes only what is
 // edited: a folder switch goes through the usual copy / move dialog, a template of your own stays unless you pick a card.
@@ -80,20 +80,22 @@ final class OnboardingState: ObservableObject {
 struct OnboardingView: View {
     @ObservedObject var model: AppModel
     @StateObject private var st: OnboardingState
+    @ObservedObject private var claudeSetup: ClaudeSetup
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     /// `state` lets a test or screenshot start from prepared answers (a folder other than the real one).
     init(model: AppModel, startStep: Int = 1, state: OnboardingState? = nil) {
         self.model = model
         _st = StateObject(wrappedValue: { let s = state ?? OnboardingState(Settings()); s.step = startStep; return s }())
+        _claudeSetup = ObservedObject(wrappedValue: model.claudeSetup)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 HStack(spacing: 6) {
-                    ForEach(1...3, id: \.self) { i in Capsule().fill(i <= st.step ? Theme.accent : Theme.border).frame(width: 28, height: 4) }
-                }.accessibilityElement(children: .ignore).accessibilityLabel("Step \(st.step) of 3")
+                    ForEach(1...4, id: \.self) { i in Capsule().fill(i <= st.step ? Theme.accent : Theme.border).frame(width: 28, height: 4) }
+                }.accessibilityElement(children: .ignore).accessibilityLabel("Step \(st.step) of 4")
                 Spacer()
                 if st.step == 1 {
                     Button(st.rerun ? "Cancel" : "Skip setup") { if st.rerun { model.sheet = nil } else { finish(useDefaults: true) } }
@@ -104,26 +106,27 @@ struct OnboardingView: View {
                 switch st.step {
                 case 1: welcome
                 case 2: reminder
-                default: folder
+                case 3: folder
+                default: claude
                 }
             }.padding(.top, Theme.s6).frame(maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: Theme.s4)
             HStack {
                 if st.step > 1 { Button("Back") { go(st.step - 1) }.buttonStyle(TextButtonStyle(color: Theme.textSecondary)) }
                 Spacer()
-                Button(st.step == 3 ? (st.rerun ? "Done" : "Start writing") : "Continue") { next() }
+                Button(st.step == 4 ? (st.rerun ? "Done" : "Start writing") : "Continue") { next() }
                     .buttonStyle(PrimaryButtonStyle()).keyboardShortcut(.defaultAction)
             }
         }
         .padding(Theme.s10).frame(width: 600, height: 520).background(Theme.surface)
         .interactiveDismissDisabled()
-        .onAppear { st.configure(from: model.settings, loginEnabled: model.loginEnabled); st.refreshFound() }
+        .onAppear { st.configure(from: model.settings, loginEnabled: model.loginEnabled); st.refreshFound(); if model.live { claudeSetup.refresh() } }
     }
 
     private func go(_ n: Int) { withAnimation(Theme.animation(.easeInOut(duration: 0.2), reduce: reduce)) { st.step = n } }
     private func next() {
         if st.step == 2 { Notifier.shared.requestAuthorization { _ in Notifier.shared.refreshState { s in model.notifState = s } } }
-        if st.step < 3 { go(st.step + 1) } else { finish(useDefaults: false) }
+        if st.step < 4 { go(st.step + 1) } else { finish(useDefaults: false) }
     }
 
     private func headline(_ t: String) -> some View {
@@ -257,6 +260,37 @@ struct OnboardingView: View {
     private func chooseCustom() {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true; p.prompt = "Choose"
         if p.runModal() == .OK, let u = p.url { st.customURL = u; st.refreshFound() } else if st.customURL == nil { st.choice = .local }
+    }
+
+    // MARK: 4 claude (optional)
+    private var claude: some View {
+        VStack(alignment: .leading, spacing: Theme.s4) {
+            headline("Let Claude write your log")
+            Text("If you use Claude Code, Gloamlog can give it a small helper. When a piece of work is done, Claude adds a short entry to today's page: the problem, what it did, what is still open. Your Git commits and pull requests can be added too.")
+                .font(Theme.font(15)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Theme.s3) { claudeControl }.padding(.top, Theme.s2)
+            if let m = claudeSetup.message { note(m) }
+            note("Optional. The button shows exactly what it changes before it does anything, nothing leaves your Mac, and Settings > Sources can undo it. You can skip this and connect later.")
+        }
+    }
+
+    @ViewBuilder private var claudeControl: some View {
+        switch claudeSetup.state {
+        case .unknown, .checking:
+            ProgressView().controlSize(.small)
+        case .working:
+            ProgressView().controlSize(.small)
+            Text("Connecting…").font(Theme.font(13)).foregroundColor(Theme.textSecondary)
+        case .connected:
+            Label("Connected to Claude Code", systemImage: "checkmark.circle.fill").font(Theme.font(13)).foregroundColor(Theme.accentText)
+        case .moved:
+            Button("Reconnect Claude Code") { claudeSetup.connect() }.buttonStyle(SecondaryButtonStyle())
+        case .notConnected:
+            Button("Connect Claude Code") { claudeSetup.connect() }.buttonStyle(SecondaryButtonStyle())
+        case .noClaude:
+            Text("Claude Code was not found on this Mac. You can connect it later in Settings > Sources.")
+                .font(Theme.font(13)).foregroundColor(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func finish(useDefaults: Bool) {

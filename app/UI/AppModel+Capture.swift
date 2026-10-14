@@ -58,6 +58,7 @@ extension AppModel {
         rebuildWriter()
         applyJotsRules()
         replayCaptureSoon()
+        DispatchQueue.global(qos: .utility).async { [store = self.store] in try? store.warmSearch() }   // the new folder's search cache
     }
 
     /// The Jots heading and whether jots count toward "logged" are process-wide rules in the core (LogStore.jotsRules).
