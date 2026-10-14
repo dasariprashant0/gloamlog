@@ -128,11 +128,21 @@ for dark in [false, true] {
 model.select(.day("2026-10-05"))
 snap(composite(AnyView(DayPage(model: model, editor: model.editor))), 1000, 860, "main-past-day")
 model.select(.day(model.today))
-model.searchText = "pricing"; model.runSearch("pricing", nil)
+model.searchText = "pricing"; model.searchHits = (try? model.store.search("pricing", heading: nil)) ?? []   // search runs off the main thread now; set the hits directly
 snap(composite(AnyView(SearchView(model: model))), 1000, 520, "search")
 model.searchText = ""
 snap(SkipSheet(model: model, day: model.today), 500, 380, "skip-sheet")
 snap(RestoreVersionSheet(model: model, day: "2026-10-05"), 520, 380, "restore-sheet")
 snap(OnboardingView(model: model, startStep: 4), 600, 520, "onboarding-claude")
 snap(OnboardingView(model: model, startStep: 4), 600, 520, "onboarding-claude-dark", dark: true)
+// demo video scenes: the Sources pane with the Connect button, reminders, the quick-capture panel, and Catch Up
+var demoSettings = model.settings; demoSettings.sources.claude = true; demoSettings.sources.consented = true; demoSettings.sources.allProjects = true; model.settings = demoSettings
+model.claudeSetup.setStateForSnapshot(.notConnected)
+snap(SourcesSettings(model: model), 560, 640, "settings-sources")
+snap(RemindersSettings(model: model), 520, 560, "settings-reminders")
+let jm = JotModel(); jm.text = "Fixed the invoice export showing yesterday's date; added a test for it"; jm.stamp = "14:32"
+snap(JotView(model: jm, onSubmit: {}, onCancel: {}), JotMetrics.width, JotMetrics.panelHeight(field: jm.fieldHeight), "jot-panel")
+model.select(.catchUp)
+snap(composite(AnyView(CatchUpView(model: model))), 1000, 760, "catch-up")
+model.select(.day(model.today))
 for step in 1...3 { snap(OnboardingView(model: model, startStep: step), 600, 520, "onboarding-\(step)") }

@@ -2,6 +2,12 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.6.6
+- Search is fast: pages are parsed once per run and re-read only when their file changes, and search runs off the main thread. Over ten years of synthetic logs a realistic query went from about 1,600 ms to about 85 ms.
+- Onboarding has an optional last step: Connect Claude Code (or a note when Claude Code is not installed).
+- Fix: the search summary said "matchs".
+- Around the app: a website (dasariprashant0.github.io/gloamlog), a 95-second demo video with a neural voiceover, a Homebrew tap (`brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog`), and a one-line installer that verifies the published checksum.
+
 ## 0.6.5
 - Connect Claude Code in one click (Settings > Sources): registers the helper, adds a short section to ~/.claude/CLAUDE.md and sets Jots go under to What I did, after a confirmation that lists exactly what changes. Disconnect undoes it.
 - New app icon: a sun setting over three journal lines.

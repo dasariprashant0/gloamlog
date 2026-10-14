@@ -1,6 +1,6 @@
 # Privacy
 
-Gloamlog is local-first. There is no account, no analytics, no telemetry and no crash reporting. This page lists what the app reads, what it writes and what can leave your Mac. It describes version 0.6.5; if you find a case where the code does something different, please [open an issue](https://github.com/dasariprashant0/gloamlog/issues).
+Gloamlog is local-first. There is no account, no analytics, no telemetry and no crash reporting. This page lists what the app reads, what it writes and what can leave your Mac. It describes version 0.6.6; if you find a case where the code does something different, please [open an issue](https://github.com/dasariprashant0/gloamlog/issues).
 
 ## What leaves your Mac
 

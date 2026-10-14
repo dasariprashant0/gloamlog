@@ -1,27 +1,47 @@
 1
-00:00:00,400 --> 00:00:04,070
+00:00:00,400 --> 00:00:04,590
 Gloamlog is a free, open-source work journal for your Mac.
 
 2
-00:00:04,900 --> 00:00:11,440
-One page a day, saved as a plain markdown file in a folder you choose. No account, no cloud.
+00:00:05,100 --> 00:00:16,420
+Each day is one page, saved as a plain markdown file in a folder you choose. Headings, lists, to-dos and images. No account, no cloud.
 
 3
-00:00:12,433 --> 00:00:21,153
-Connect Claude Code, and when a piece of work is done, Claude adds a short entry: what you were solving, what got done, and what is still open.
+00:00:16,833 --> 00:00:24,193
+In Settings, one click connects Claude Code. It gives Claude a small helper, and tells it when to write.
 
 4
-00:00:22,167 --> 00:00:25,907
-Turn on Git, and your commits and pull requests show up too.
+00:00:24,700 --> 00:00:34,220
+Then, when a piece of work is done, Claude adds a short entry to today's page: what you were solving, what got done, and what is still open.
 
 5
-00:00:26,500 --> 00:00:31,370
-At the end of the week, review it, and export it as Markdown or PDF.
+00:00:35,233 --> 00:00:39,953
+Turn on Git, and your commits and pull requests show up too.
 
 6
-00:00:31,967 --> 00:00:37,137
-Everything stays on your Mac. The only network request is the update check you click.
+00:00:40,567 --> 00:00:48,237
+Press Control-Option-J in any app to jot a line. It lands on today's page, with the time.
 
 7
-00:00:37,733 --> 00:00:43,403
-Install with one command, or build it from source. Free, and open source on GitHub.
+00:00:48,833 --> 00:00:55,083
+Missed a few days? Catch Up lists them and walks you through, and you can skip the ones that don't count.
+
+8
+00:00:55,600 --> 00:01:01,560
+Search every page you have ever written. It stays fast, even after years.
+
+9
+00:01:02,067 --> 00:01:07,907
+At the end of the week, review it, and export it as Markdown or PDF.
+
+10
+00:01:08,500 --> 00:01:17,700
+A gentle or strict end-of-day reminder keeps the habit, and the folder can live in iCloud Drive or Dropbox, so you can use two Macs.
+
+11
+00:01:18,200 --> 00:01:24,310
+Everything stays on your Mac. The only network request is the update check you click.
+
+12
+00:01:24,900 --> 00:01:32,350
+Install with one command or with Homebrew, or build it from source. Free, and open source on GitHub.

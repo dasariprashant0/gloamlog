@@ -19,7 +19,7 @@ It is local. No account, no telemetry. The only network request in the app is th
 
 What is rough, so you do not have to find out:
 
-- It is alpha (0.6.5). Several newer features, such as quick capture over full-screen apps, reminders while the app is quit and iCloud-synced folders, have had little use on real Macs.
+- It is alpha (0.6.6). Several newer features, such as quick capture over full-screen apps, reminders while the app is quit and iCloud-synced folders, have had little use on real Macs.
 - It is not notarised, because I do not have a paid Apple developer account. The install one-liner and the in-app updater avoid the Gatekeeper prompt; a browser-downloaded zip needs System Settings > Privacy & Security > Open Anyway once. docs/INSTALL.md has the steps and a by-hand checksum check.
 - The release is a universal binary, but I have only run it on Apple silicon.
 - Reading Claude Code's session files (an optional extra) depends on a file format Anthropic does not document, so it may break.
@@ -27,6 +27,6 @@ What is rough, so you do not have to find out:
 
 It builds with the Command Line Tools alone (`bash app/build.sh`, no Xcode project, no SwiftPM, no macros) and has no third-party dependencies in the app apart from the bundled editor.
 
-Install: `curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh | bash` (read it first if you like), `brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog`, the zip from Releases, or build from source. Site with a 45-second demo: https://dasariprashant0.github.io/gloamlog/
+Install: `curl -fsSL https://raw.githubusercontent.com/dasariprashant0/gloamlog/main/install.sh | bash` (read it first if you like), `brew install --cask --no-quarantine dasariprashant0/gloamlog/gloamlog`, the zip from Releases, or build from source. Site with a 95-second demo: https://dasariprashant0.github.io/gloamlog/
 
 I would like to hear whether the Claude Code entries are useful or noise, and what you would want a work log to capture that this does not.

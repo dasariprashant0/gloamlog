@@ -16,13 +16,15 @@ final class ClaudeSetup: ObservableObject {
     private let queue = DispatchQueue(label: "gloamlog.claude-setup", qos: .utility)
 
     init(model: AppModel) { self.model = model }
+    /// Harnesses only (the snapshot tool): show a given state without running `claude`.
+    func setStateForSnapshot(_ s: State) { state = s }
 
     static var scriptPath: String { Bundle.main.bundlePath + "/Contents/Resources/claude/gloamlog-mcp.py" }
     static var claudeMdURL: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/CLAUDE.md") }
 
     // MARK: status
     func refresh() {
-        guard state != .working else { return }
+        guard state != .working, model.live else { return }          // a harness shows a preset state instead (setStateForSnapshot)
         state = .checking
         queue.async { [weak self] in
             let s = ClaudeSetup.currentState()

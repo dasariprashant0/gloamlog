@@ -4,9 +4,9 @@ Gloamlog is a free, open-source work journal for macOS that keeps one plain mark
 
 ![Gloamlog demo: the title, today's page, and a Claude-written entry being highlighted](docs/demo/gloamlog-demo.gif)
 
-[Watch the 45-second demo with narration (MP4)](https://github.com/dasariprashant0/gloamlog/releases/download/v0.6.5/gloamlog-demo.mp4) · [Website](https://dasariprashant0.github.io/gloamlog/)
+[Watch the 95-second demo with narration (MP4)](https://github.com/dasariprashant0/gloamlog/releases/download/v0.6.6/gloamlog-demo.mp4) · [Website](https://dasariprashant0.github.io/gloamlog/)
 
-> **Alpha (v0.6.5).** It works and the core logic has automated tests, but several newer features have had little use on real Macs. Expect rough edges and please [report them](https://github.com/dasariprashant0/gloamlog/issues/new/choose). The release is a universal binary (Apple silicon and Intel; the Intel half has not been run on a real Intel Mac), requires macOS 13 or later, and is **not notarised** (see [docs/INSTALL.md](docs/INSTALL.md) for why and what that means on first launch).
+> **Alpha (v0.6.6).** It works and the core logic has automated tests, but several newer features have had little use on real Macs. Expect rough edges and please [report them](https://github.com/dasariprashant0/gloamlog/issues/new/choose). The release is a universal binary (Apple silicon and Intel; the Intel half has not been run on a real Intel Mac), requires macOS 13 or later, and is **not notarised** (see [docs/INSTALL.md](docs/INSTALL.md) for why and what that means on first launch).
 
 ## Why
 

@@ -88,7 +88,10 @@ enum Fmt {
         let d = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: now) ?? now
         return time(d)
     }
-    static func plural(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
+    static func plural(_ n: Int, _ word: String) -> String {
+        let es = ["ch", "sh", "s", "x", "z"].contains { word.hasSuffix($0) }     // match -> matches
+        return "\(n) \(word)\(n == 1 ? "" : (es ? "es" : "s"))"
+    }
 }
 
 /// Heading text for display: leading emoji/symbols and spaces dropped ("📌 To do next" -> "To do next").
