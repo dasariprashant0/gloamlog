@@ -30,10 +30,10 @@ var showMain, showJot, showSettings, hideJot func()
 // Windows lets any page open or close the app's other windows.
 type Windows struct{}
 
-func (Windows) ShowMain()     { showMain() }
-func (Windows) ShowJot()      { showJot() }
-func (Windows) HideJot()      { hideJot() }
-func (Windows) ShowSettings() { showSettings() }
+func (*Windows) ShowMain()     { showMain() }
+func (*Windows) ShowJot()      { showJot() }
+func (*Windows) HideJot()      { hideJot() }
+func (*Windows) ShowSettings() { showSettings() }
 
 func main() {
 	notes, err := NewNotes()
@@ -43,7 +43,7 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "Gloamlog",
 		Description: "A work journal: one markdown file per day.",
-		Services:    []application.Service{application.NewService(notes), application.NewService(Windows{})},
+		Services:    []application.Service{application.NewService(notes), application.NewService(&Windows{})},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: notes.serveAssets, // the editor's images: /dlasset/assets/<file>
