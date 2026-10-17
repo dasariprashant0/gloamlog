@@ -25,7 +25,15 @@ const bundleID = "io.github.dasariprashant0.gloamlog"
 var version = "dev"
 
 // Set in main once the windows exist; menus, shortcuts and services call them.
-var showMain, showJot func()
+var showMain, showJot, showSettings, hideJot func()
+
+// Windows lets any page open or close the app's other windows.
+type Windows struct{}
+
+func (Windows) ShowMain()     { showMain() }
+func (Windows) ShowJot()      { showJot() }
+func (Windows) HideJot()      { hideJot() }
+func (Windows) ShowSettings() { showSettings() }
 
 func main() {
 	notes, err := NewNotes()
@@ -35,7 +43,7 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "Gloamlog",
 		Description: "A work journal: one markdown file per day.",
-		Services:    []application.Service{application.NewService(notes)},
+		Services:    []application.Service{application.NewService(notes), application.NewService(Windows{})},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: notes.serveAssets, // the editor's images: /dlasset/assets/<file>
@@ -89,14 +97,33 @@ func main() {
 		},
 	})
 
+	settings := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:      "settings",
+		Title:     "Settings",
+		Width:     720,
+		Height:    560,
+		MinWidth:  640,
+		MinHeight: 480,
+		URL:       "/settings.html",
+		Hidden:    true,
+		Mac:       application.MacWindow{TitleBar: application.MacTitleBarHiddenInset, InvisibleTitleBarHeight: 44},
+	})
+	settings.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		settings.Hide()
+		e.Cancel()
+	})
+
 	showMain = func() { win.Show(); win.Focus() }
 	showJot = func() { jot.Show(); jot.Focus() }
+	showSettings = func() { settings.Show(); settings.Focus() }
+	hideJot = func() { jot.Hide() }
 
 	tray := app.SystemTray.New()
 	tray.SetTemplateIcon(icons.SystrayMacTemplate)
 	menu := app.NewMenu()
 	menu.Add("Open Gloamlog").OnClick(func(*application.Context) { showMain() })
 	menu.Add("Jot…").OnClick(func(*application.Context) { showJot() })
+	menu.Add("Settings…").OnClick(func(*application.Context) { showSettings() })
 	menu.AddSeparator()
 	menu.Add("Quit Gloamlog").OnClick(func(*application.Context) { app.Quit() })
 	tray.SetMenu(menu)

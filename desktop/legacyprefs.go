@@ -17,7 +17,8 @@ import (
 func readLegacyDefaults(domain string) map[string]any {
 	out, err := exec.Command("/usr/bin/defaults", "export", domain, "-").Output()
 	if err != nil {
-		return nil // no such domain: a fresh install
+		// No such domain (a fresh install) or no `defaults` tool: nothing to import, the defaults stand.
+		return nil
 	}
 	m, _ := parsePlist(out).(map[string]any)
 	return m

@@ -40,7 +40,7 @@ func TestLegacyPlistImport(t *testing.T) {
 	if a, _ := m["dailylog.sources.hiddenDays"].([]any); len(a) != 1 || a[0] != "2026-10-01" {
 		t.Fatalf("array: %#v", m["dailylog.sources.hiddenDays"])
 	}
-	s, imported := core.ImportLegacyDefaults(m, "/Users/someone")
+	s, imported := core.ImportLegacyDefaults(m, testHome)
 	if !imported {
 		t.Fatal("nothing imported")
 	}
@@ -56,8 +56,8 @@ func TestLegacyPlistImport(t *testing.T) {
 func TestLegacyPlistEmptyOrBroken(t *testing.T) {
 	for _, in := range []string{"", "not xml at all", "<plist><dict><key>x</key>", `<plist version="1.0"><dict/></plist>`} {
 		m, _ := parsePlist([]byte(in)).(map[string]any)
-		s, imported := core.ImportLegacyDefaults(m, "/Users/someone")
-		if imported || s.ReminderMinutes != core.DefaultSettings("/Users/someone").ReminderMinutes {
+		s, imported := core.ImportLegacyDefaults(m, testHome)
+		if imported || s.ReminderMinutes != core.DefaultSettings(testHome).ReminderMinutes {
 			t.Fatalf("%q: imported=%v settings=%+v", in, imported, s)
 		}
 	}

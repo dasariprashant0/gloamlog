@@ -42,6 +42,7 @@ func NewNotes() (*Notes, error) {
 		now:          time.Now,
 	}
 	if _, err := os.Stat(n.settingsPath); errors.Is(err, os.ErrNotExist) {
+		// The second result only says whether anything was imported; a fresh install (no old app) gets the defaults.
 		s, _ := core.ImportLegacyDefaults(readLegacyDefaults(bundleID), home)
 		if err := os.MkdirAll(support, 0o700); err != nil {
 			return nil, err
@@ -128,8 +129,8 @@ func (n *Notes) Overview() (Overview, error) {
 			o.Recent = append(o.Recent, d)
 		}
 	}
-	o.Summary, _ = n.store.FolderSummary()
-	return o, nil
+	o.Summary, err = n.store.FolderSummary()
+	return o, err
 }
 
 // Month is the sidebar calendar for one month (month 1...12).
@@ -222,8 +223,28 @@ func (n *Notes) Open(day string) (Page, error) {
 func (n *Notes) Save(day, body string) (core.SaveOutcome, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	return n.store.Save(day, body)
+	return n.store.Save(day, writable(body, n.settings))
 }
+
+// writable is what a save writes for the editor's markdown (Swift DayEditor.writable): a page of nothing but empty headings
+// ("##", what select-all + delete leaves) is an emptied page, which the store turns into "no log"; and the untouched
+// template above nothing but jots writes only the jots, so template headings reach the file with the user's first words.
+func writable(md string, s core.Settings) string {
+	emptied := true
+	for _, l := range strings.Split(md, "\n") {
+		if t := strings.TrimSpace(l); t != "" && (len(t) > 6 || strings.Trim(t, "#") != "") {
+			emptied = false
+			break
+		}
+	}
+	if emptied {
+		return ""
+	}
+	return core.StripUntouchedTemplate(md, s.Template, s.Capture.JotsHeading)
+}
+
+// Words counts the words that count toward "logged" (the live progress line on the page).
+func (n *Notes) Words(body string) int { return core.CountWords(body) }
 
 // CarryOver returns the body with the carried items added under the carry heading (the page saves it like any edit).
 func (n *Notes) CarryOver(card core.CarryCard, body string) string {
