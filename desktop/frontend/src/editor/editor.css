@@ -1,0 +1,528 @@
+/*
+ * Gloamlog editor skin: Milkdown Crepe on the shared @personal/ui tokens.
+ * Ported from editor-web/src/theme.css. The --dl-* names stay (every rule below uses them) but now point at the design
+ * system's tokens, so the page follows the app's theme (warm, dark, midnight) and accent with no rules of its own.
+ * Pixel sizes below are Crepe widget tuning (handles, menus, gutters), kept from the Swift build.
+ */
+.milkdown {
+  --dl-text: var(--foreground);
+  --dl-text-2: var(--muted);
+  --dl-text-3: var(--muted);
+  --dl-surface: var(--background);
+  --dl-sidebar: var(--wash);
+  --dl-border: var(--rule);
+  --dl-border-strong: var(--ink-3);
+  --dl-hover: var(--wash-2);
+  --dl-accent: var(--accent);
+  --dl-accent-text: var(--accent-text);
+  --dl-accent-tint: color-mix(in srgb, var(--accent) 16%, var(--background));
+  --dl-on-accent: var(--on-accent);
+  --dl-accent-pressed: var(--accent-text);
+  --dl-selection: color-mix(in srgb, var(--accent) 30%, transparent);
+  --dl-danger: var(--danger);
+  --dl-shadow: 0 0 0 1px var(--rule), 0 8px 30px -12px rgba(0, 0, 0, 0.35);
+  --dl-font: var(--font-body);
+  --dl-mono: var(--font-body);
+}
+
+/* ---------------------------------------------------------------- Crepe tokens */
+.milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--dl-text);
+  --crepe-color-surface: var(--dl-surface);
+  --crepe-color-surface-low: var(--dl-sidebar);
+  --crepe-color-on-surface: var(--dl-text);
+  --crepe-color-on-surface-variant: var(--dl-text-2);
+  --crepe-color-outline: var(--dl-text-2);
+  --crepe-color-primary: var(--dl-accent);
+  --crepe-color-secondary: var(--dl-accent-tint);
+  --crepe-color-on-secondary: var(--dl-accent-text);
+  --crepe-color-inverse: var(--dl-surface);
+  --crepe-color-on-inverse: var(--dl-text-2);
+  --crepe-color-inline-code: var(--dl-text);
+  --crepe-color-error: var(--dl-danger);
+  --crepe-color-hover: var(--dl-hover);
+  --crepe-color-selected: var(--dl-accent-tint);
+  --crepe-color-inline-area: var(--dl-border);
+  --crepe-base-font-size: var(--text-base);
+  --crepe-font-title: var(--font-display);
+  --crepe-font-default: var(--dl-font);
+  --crepe-font-code: var(--dl-mono);
+  --crepe-shadow-1: var(--dl-shadow);
+  --crepe-shadow-2: var(--dl-shadow);
+}
+
+/* -------------------------------------------------------------------- the page */
+/* 816 = the 720pt reading column plus the 48pt page padding of the host layout (DESIGN_SYSTEM section 5); the left
+   padding also holds the block handle. */
+.milkdown .ProseMirror {
+  max-width: 816px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 8px 48px 40vh;
+  caret-color: var(--dl-accent);
+  line-height: 1.65;
+}
+.milkdown .ProseMirror *::selection,
+.milkdown .ProseMirror::selection {
+  background: var(--dl-selection);
+}
+.milkdown .ProseMirror-focused {
+  --prosemirror-virtual-cursor-color: var(--dl-accent);
+}
+
+/* ------------------------------------------------------------------ typography */
+.milkdown .ProseMirror h1,
+.milkdown .ProseMirror h2,
+.milkdown .ProseMirror h3,
+.milkdown .ProseMirror h4,
+.milkdown .ProseMirror h5,
+.milkdown .ProseMirror h6 {
+  font-family: var(--dl-font);
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 4px;
+  color: var(--dl-text);
+}
+.milkdown .ProseMirror h1,
+.milkdown .ProseMirror h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.milkdown .ProseMirror h1 {
+  font-size: 1.75em;
+  line-height: 1.25;
+  margin-top: 1.5em;
+  letter-spacing: -0.015em;
+}
+.milkdown .ProseMirror h2 {
+  font-size: 1.375em;
+  line-height: 1.3;
+  margin-top: 1.5em;
+  letter-spacing: -0.01em;
+}
+.milkdown .ProseMirror h3 {
+  font-size: 1.125em;
+  line-height: 1.4;
+  margin-top: 1.35em;
+}
+.milkdown .ProseMirror h4 {
+  font-size: 1em;
+  line-height: 1.5;
+  margin-top: 1.25em;
+}
+.milkdown .ProseMirror h5,
+.milkdown .ProseMirror h6 {
+  font-size: 0.875em;
+  line-height: 1.5;
+  margin-top: 1.25em;
+  color: var(--dl-text-2);
+}
+.milkdown .ProseMirror h6 {
+  color: var(--dl-text-3);
+}
+/* The virtual cursor is a widget div that always sits at position 0, before the first block. While nothing has a DOM
+   selection yet (editor not focused, the usual state after setMarkdown) it still carries ProseMirror's own class
+   .ProseMirror-widget; once it has a rect it is .prosemirror-virtual-cursor. Either way :first-child alone misses the real
+   first block and its top margin (33px under an h2) would push the page down. Only a widget that is the FIRST child counts,
+   so widgets elsewhere and the drag handle (outside .ProseMirror) are untouched. */
+.milkdown .ProseMirror > :first-child,
+.milkdown .ProseMirror > .ProseMirror-widget:first-child + *,
+.milkdown .ProseMirror > .prosemirror-virtual-cursor:first-child + * {
+  margin-top: 0;
+}
+.milkdown .ProseMirror p {
+  padding: 5px 0;
+  line-height: inherit;
+}
+.milkdown .ProseMirror a {
+  color: var(--dl-accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.milkdown .ProseMirror code {
+  color: var(--dl-text);
+  background: var(--dl-hover);
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius);
+  display: inline;
+  line-height: inherit;
+}
+.milkdown .ProseMirror blockquote {
+  padding-left: 16px;
+  margin: 6px 0;
+  color: var(--dl-text-2);
+}
+.milkdown .ProseMirror blockquote::before {
+  width: 3px;
+  top: 2px;
+  bottom: 2px;
+  background: var(--dl-border-strong);
+}
+.milkdown .ProseMirror hr {
+  background-color: var(--dl-border-strong);
+}
+.milkdown .ProseMirror hr.ProseMirror-selectednode {
+  background-color: var(--dl-accent);
+}
+.milkdown .ProseMirror hr.ProseMirror-selectednode::before {
+  display: none;
+}
+.milkdown .crepe-placeholder::before {
+  color: var(--dl-text-3);
+}
+/* the empty doc that exists before the host calls setMarkdown must not flash the hint */
+html:not([data-loaded]) .milkdown .crepe-placeholder::before {
+  content: none;
+}
+/* raw HTML (for example an <!-- comment -->) is kept as typed and shown as markup, not as prose */
+.milkdown .ProseMirror [data-type='html'] {
+  font-family: var(--dl-mono);
+  font-size: 0.875em;
+  color: var(--dl-text-3);
+  background: var(--dl-hover);
+  border-radius: var(--radius);
+  padding: 0 0.35em;
+}
+
+/* ----------------------------------------------------------------------- lists */
+.milkdown .milkdown-list-item-block li {
+  gap: 6px;
+}
+.milkdown .milkdown-list-item-block li .label-wrapper {
+  height: calc(1.65em + 4px);
+  width: 22px;
+  color: var(--dl-text-2);
+}
+.milkdown .milkdown-list-item-block li .label-wrapper .label {
+  height: auto;
+  width: 22px;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+.milkdown .milkdown-list-item-block li .label-wrapper svg {
+  fill: var(--dl-text-2);
+}
+.milkdown .milkdown-list-item-block li .label-wrapper .checked svg {
+  fill: var(--dl-accent);
+}
+.milkdown .milkdown-list-item-block li .label-wrapper .unchecked svg,
+.milkdown .milkdown-list-item-block li .label-wrapper .checked svg {
+  width: 20px;
+  height: 20px;
+}
+.milkdown .milkdown-list-item-block p {
+  padding: 2px 0;
+}
+
+/* ------------------------------------------------------------ block handle, menus */
+/* two 20px buttons + the 4px offset set in main.js fit the 48px page gutter */
+.milkdown .milkdown-block-handle {
+  gap: 0;
+}
+.milkdown .milkdown-block-handle .operation-item {
+  width: 20px;
+  height: 24px;
+  padding: 3px 1px;
+}
+.milkdown .milkdown-block-handle .operation-item svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--dl-text-3);
+}
+.milkdown .milkdown-slash-menu,
+.milkdown .milkdown-toolbar,
+.milkdown .milkdown-link-preview > .link-preview,
+.milkdown .milkdown-link-edit > .link-edit {
+  border: 1px solid var(--dl-border);
+}
+.milkdown .milkdown-slash-menu {
+  border-radius: var(--radius);
+  width: 264px;
+}
+.milkdown .milkdown-slash-menu .tab-group {
+  display: none;
+}
+.milkdown .milkdown-slash-menu .menu-groups {
+  padding: 4px 6px 6px;
+  max-height: 340px;
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group h6 {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  padding: 10px 8px 4px;
+  text-transform: none;
+  color: var(--dl-text-3);
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li {
+  min-width: 0;
+  gap: 10px;
+  padding: 7px 8px;
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li > span {
+  font-size: 14px;
+  font-weight: 500;
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--dl-text-2);
+  fill: var(--dl-text-2);
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group + .menu-group::before {
+  margin: 4px 8px 0;
+  background: var(--dl-border);
+}
+/* `hover` is the row Enter will pick (keyboard or pointer): make it unmistakable, like a native menu */
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.hover {
+  background: var(--dl-accent);
+  color: var(--dl-on-accent);
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.hover svg {
+  color: var(--dl-on-accent);
+  fill: var(--dl-on-accent);
+}
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.active {
+  background: var(--dl-accent-pressed);
+}
+.milkdown .milkdown-toolbar {
+  border-radius: var(--radius);
+}
+.milkdown .milkdown-toolbar .toolbar-item {
+  width: 28px;
+  height: 28px;
+  margin: 4px;
+  padding: 3px;
+}
+.milkdown .milkdown-toolbar .toolbar-item svg {
+  width: 22px;
+  height: 22px;
+  color: var(--dl-text-2);
+  fill: var(--dl-text-2);
+}
+.milkdown .milkdown-toolbar .toolbar-item.active {
+  background: var(--dl-accent-tint);
+}
+.milkdown .milkdown-toolbar .toolbar-item.active svg {
+  color: var(--dl-accent-text);
+  fill: var(--dl-accent-text);
+}
+.milkdown .milkdown-toolbar .divider {
+  height: 20px;
+  margin: 8px 4px;
+  background: var(--dl-border);
+}
+.milkdown .milkdown-link-preview > .link-preview > .link-display {
+  color: var(--dl-text);
+}
+.milkdown .milkdown-link-edit > .link-edit > .input-area::placeholder {
+  color: var(--dl-text-3);
+}
+
+/* ----------------------------------------------------------------- code block */
+.milkdown .milkdown-code-block {
+  background: var(--dl-sidebar);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 8px 0;
+}
+.milkdown .milkdown-code-block .cm-editor,
+.milkdown .milkdown-code-block .cm-panel {
+  background: transparent;
+  font-size: 13px;
+}
+.milkdown .milkdown-code-block .cm-gutters {
+  display: none;
+}
+.milkdown .milkdown-code-block .cm-activeLine {
+  background: transparent;
+}
+.milkdown .milkdown-code-block .cm-content {
+  padding: 0;
+  caret-color: var(--dl-accent);
+}
+.milkdown .milkdown-code-block .cm-line {
+  padding: 0;
+}
+.milkdown .milkdown-code-block .cm-selectionBackground,
+.milkdown .milkdown-code-block .cm-focused .cm-selectionBackground {
+  background: var(--dl-selection) !important;
+}
+.milkdown .milkdown-code-block .cm-cursor {
+  border-left-color: var(--dl-accent);
+}
+/* No language packs are bundled (no highlighting), so the language picker would only offer "No result". */
+.milkdown .milkdown-code-block .tools .language-button,
+.milkdown .milkdown-code-block .language-picker {
+  display: none;
+}
+.milkdown .milkdown-code-block .tools {
+  justify-content: flex-end;
+  height: 0;
+}
+.milkdown .milkdown-code-block .tools .tools-button-group {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+}
+.milkdown .milkdown-code-block .tools .tools-button-group button {
+  background: var(--dl-surface);
+  border: 1px solid var(--dl-border);
+  color: var(--dl-text-2);
+}
+
+/* ---------------------------------------------------------------------- tables */
+.milkdown .milkdown-table-block {
+  margin: 8px 0;
+}
+.milkdown .milkdown-table-block table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.milkdown .milkdown-table-block th,
+.milkdown .milkdown-table-block td {
+  border: 1px solid var(--dl-border-strong);
+  padding: 6px 12px;
+}
+.milkdown .milkdown-table-block th {
+  background: var(--dl-sidebar);
+  font-weight: 600;
+  text-align: left;
+}
+.milkdown .milkdown-table-block p {
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------------- images */
+.milkdown .milkdown-image-block {
+  margin: 8px 0;
+}
+.milkdown .milkdown-image-block > .image-wrapper img {
+  border-radius: var(--radius);
+}
+/* The resize ratio is not stored in the markdown (it would replace the alt text), so do not offer it. */
+.milkdown .milkdown-image-block .image-resize-handle {
+  display: none;
+}
+.milkdown .milkdown-image-block .image-wrapper .operation > .operation-item {
+  background: var(--dl-surface);
+  color: var(--dl-text-2);
+  border: 1px solid var(--dl-border);
+  opacity: 1;
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+}
+.milkdown .milkdown-image-block .image-wrapper .operation > .operation-item svg {
+  width: 20px;
+  height: 20px;
+}
+.milkdown .milkdown-image-block .image-edit {
+  height: 52px;
+  padding: 0 16px;
+  gap: 12px;
+  background: var(--dl-sidebar);
+  border: 1px dashed var(--dl-border-strong);
+  border-radius: var(--radius);
+}
+.milkdown .milkdown-image-block .image-edit .link-importer .placeholder,
+.milkdown .milkdown-image-inline .empty-image-inline .link-importer .placeholder {
+  color: var(--dl-text-3);
+}
+.milkdown .milkdown-image-block .image-edit .link-importer .placeholder .uploader {
+  color: var(--dl-accent-text);
+}
+.milkdown .milkdown-image-block .image-edit .confirm {
+  line-height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+}
+.milkdown .milkdown-image-block > .caption-input {
+  font-size: 13px;
+  color: var(--dl-text-2);
+}
+/* Remote or missing images are blocked by the CSP: show a quiet box rather than a broken-image icon. */
+.milkdown .milkdown-image-block > .image-wrapper:has(img.dl-broken) {
+  width: min(100%, 360px);
+}
+.milkdown .ProseMirror img.dl-broken {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 96px !important;
+  background: var(--dl-hover);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--radius);
+  color: var(--dl-text-3);
+  font-size: 13px;
+  line-height: 94px;
+  text-align: center;
+  overflow: hidden;
+}
+.milkdown .ProseMirror img.dl-broken::before {
+  content: 'Image unavailable';
+  position: absolute;
+  inset: 0;
+  background: var(--dl-hover);
+}
+.milkdown .milkdown-image-inline img.dl-broken {
+  display: inline-block;
+  width: 20px;
+  height: 20px !important;
+  vertical-align: text-bottom;
+  border-radius: var(--radius);
+}
+.milkdown .milkdown-image-inline img.dl-broken::before {
+  content: '';
+}
+
+/* ------------------------------------------------------------- cursor and drag */
+.milkdown .crepe-drop-cursor {
+  background-color: var(--dl-accent);
+  opacity: 0.5;
+}
+.milkdown .ProseMirror-gapcursor:after {
+  border-top-color: var(--dl-text);
+}
+
+/* ----------------------------------------------------------------------- toast */
+/* Same look as the kit's .toast: dark in every theme, bottom centre. */
+.dl-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--s5);
+  z-index: var(--z-toast);
+  max-width: min(480px, calc(100vw - 32px));
+  padding: var(--s3) var(--s5);
+  transform: translateX(-50%) translateY(6px);
+  opacity: 0;
+  pointer-events: none;
+  background: var(--surface);
+  color: var(--surface-text);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.5);
+  font: 400 var(--text-sm) / 1.4 var(--font-body);
+  transition:
+    opacity var(--base) var(--ease),
+    transform var(--base) var(--ease);
+}
+.dl-toast[data-show='true'] {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+html[data-readonly] .milkdown-block-handle {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milkdown *,
+  .dl-toast {
+    transition: none !important;
+    animation: none !important;
+  }
+}

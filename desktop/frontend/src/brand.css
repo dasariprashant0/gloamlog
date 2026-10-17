@@ -1,0 +1,5 @@
+/* Gloamlog's accent on the shared @personal/ui base (DESIGN.md §1).
+   Only the accent group changes; contrast is checked in DESIGN.md's table. */
+:root, [data-theme="warm"] { --accent: #0E7A5F; --accent-text: #0B6A52; --accent-2: #E0A23A; --on-accent: #FFFFFF; }
+[data-theme="dark"]        { --accent: #45C29C; --accent-text: #45C29C; --accent-2: #E0A23A; --on-accent: #06241C; }
+[data-theme="midnight"]    { --accent: #5FD6B2; --accent-text: #5FD6B2; --accent-2: #FFC857; --on-accent: #06241C; }

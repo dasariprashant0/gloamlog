@@ -13,3 +13,8 @@ app/Gloamlog.zip.sha256
 .tap-update.*/
 demo-video/.venv/
 demo-video/public/
+
+# Go + Wails app (desktop/)
+node_modules/
+desktop/Gloamlog.app/
+desktop/Gloamlog.zip

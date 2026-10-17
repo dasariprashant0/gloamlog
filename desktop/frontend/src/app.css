@@ -1,0 +1,6 @@
+/* Gloamlog screens. Shared pieces come from @personal/ui; this file holds
+   only Gloamlog's own layouts, from tokens only (DESIGN.md §11). */
+
+/* The jot panel: one field, no chrome. */
+.jot-body { background: var(--background); }
+.jot { display: grid; gap: var(--s3); padding: var(--s4); height: 100vh; grid-template-rows: auto 1fr auto; }
