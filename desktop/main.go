@@ -28,10 +28,18 @@ var version = "dev"
 var showMain, showJot func()
 
 func main() {
+	notes, err := NewNotes()
+	if err != nil {
+		log.Fatal(err)
+	}
 	app := application.New(application.Options{
 		Name:        "Gloamlog",
 		Description: "A work journal: one markdown file per day.",
-		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Services:    []application.Service{application.NewService(notes)},
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: notes.serveAssets, // the editor's images: /dlasset/assets/<file>
+		},
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyRegular,
 			// Closing the window keeps the app in the menu bar, for reminders and Jot.
