@@ -154,7 +154,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 const d = loaded.current;
                 if (!m.id.startsWith('add-')) { // a jot from the panel or Claude (capture.go asked via jot-into-page)
                     void Notes.JotPlaced(m.id, m.result, m.markdown ?? '');
-                    if (m.result === 'appended' && d && m.markdown != null) { void save(d, m.markdown); Notes.Words(m.markdown).then(setWords, () => {}); }
+                    if (m.result === 'appended' && d && m.markdown != null) { void save(d, m.markdown); Notes.Words(m.markdown).then(setWords, () => {}); } // count is a hint: the old one stays
                     break;
                 }
                 if (m.result === 'appended' && d && m.markdown != null) {

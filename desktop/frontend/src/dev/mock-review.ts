@@ -138,7 +138,7 @@ export const reviewMock = {
         if (flavor === 'print') return later({title: d.title, text: '', html: html(md)});
         return later({title: d.title, text: md, html: ''});
     },
-    ReviewCopyText: (text: string) => { navigator.clipboard?.writeText(text).catch(() => {}); return later(undefined); },
+    ReviewCopyText: (text: string) => { navigator.clipboard?.writeText(text).catch(() => {}); /* mock only: no clipboard in some previews */ return later(undefined); },
     async ReviewExportInfo(this: any, req: any) {
         const d = await this.Review(req);
         const days = d.period.scale === 'year' ? d.counts.logged : d.days.length;

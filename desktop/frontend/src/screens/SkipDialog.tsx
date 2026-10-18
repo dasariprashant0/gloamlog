@@ -42,7 +42,7 @@ export function SkipDialog({open, days, today, many, onClose, onSkipped}: Props)
     useEffect(() => {
         if (!open) return;
         setReason(''); setOther(''); setRange(false); setThrough(start); setError(''); setBusy(false);
-        Notes.Settings().then(s => setWeekdays(s.weekdays)).catch(() => {});
+        Notes.Settings().then(s => setWeekdays(s.weekdays)).catch(() => {}); // keep the Mon-Fri default for the range count
     }, [open, start]);
 
     const end = through > start ? through : start;

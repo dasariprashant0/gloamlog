@@ -28,7 +28,7 @@ export function SessionBar({days, current, onGo, onEnd, onSkip, onFinish, flush}
     // Which of the session's days are still unlogged, for the progress line.
     useEffect(() => {
         let on = true;
-        Notes.Overview().then(o => { if (on) setLive(o.catchUp); }).catch(() => {});
+        Notes.Overview().then(o => { if (on) setLive(o.catchUp); }).catch(() => {}); // progress line only: without it the bar counts from the fixed session days
         return () => { on = false; };
     }, [current]);
     useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(''), 5000); return () => clearTimeout(t); }, [note]);
