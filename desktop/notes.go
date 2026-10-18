@@ -411,18 +411,21 @@ func (n *Notes) serveAssets(next http.Handler) http.Handler {
 // setAsideDamagedSettings protects a settings.json that exists but can't be used. LoadSettings would fall back to the
 // defaults (notes folder ~/Gloamlog, not onboarded) and the next save would overwrite the real file, so the person's folder
 // choice and template would be lost and their notes would look gone. The damaged file is moved to
-// settings.json.damaged-<time> first. It returns a sentence for the page, and blocked when even the move failed (then
+// settings.json.damaged-<time> first; a file that can't be read at all is left in place. It returns a sentence for the page, and blocked when the file can't be read or moved (then
 // nothing may save over it). A missing file is the normal first run: "", false.
 func setAsideDamagedSettings(path string, now time.Time) (note string, blocked bool) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return "", false
 	}
-	if err == nil {
-		var probe core.Settings
-		if json.Unmarshal(data, &probe) == nil {
-			return "", false // readable and well formed
-		}
+	if err != nil {
+		// Unreadable is not damaged (no permission, a disk error, an iCloud file not yet here): leave it where it is,
+		// run on defaults this time, and save nothing over it.
+		return "Gloamlog couldn't read its settings file (" + path + "), so it is using defaults for now and leaving the file as it is. Settings changes won't be saved until it can be read; quit and open Gloamlog again to retry.", true
+	}
+	var probe core.Settings
+	if json.Unmarshal(data, &probe) == nil {
+		return "", false // readable and well formed
 	}
 	aside := path + ".damaged-" + now.Format("20060102-150405")
 	if rerr := os.Rename(path, aside); rerr != nil {

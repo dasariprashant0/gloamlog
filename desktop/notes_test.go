@@ -60,3 +60,21 @@ func TestDamagedSettingsAreSetAsideNotOverwritten(t *testing.T) {
 		t.Errorf("set-aside copy: %q, %v", got, err)
 	}
 }
+
+// A settings.json that exists but can't be read (no permission, a disk error) is not damaged: it stays put and blocks saves.
+func TestUnreadableSettingsStayInPlaceAndBlockSaves(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"minWords":30}`), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.ReadFile(path); err == nil {
+		t.Skip("running as a user who can read a 000 file")
+	}
+	note, blocked := setAsideDamagedSettings(path, time.Now())
+	if !blocked || note == "" {
+		t.Fatalf("note %q blocked %v", note, blocked)
+	}
+	if _, err := os.Lstat(path); err != nil {
+		t.Fatalf("the file moved: %v", err)
+	}
+}

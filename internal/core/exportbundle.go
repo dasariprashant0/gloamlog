@@ -8,7 +8,7 @@
 //	    bundle holds.
 //	WriteExport(plan, layout) (path, error)
 //	    ExportFile(md)       <dir>/<name>.md with <dir>/assets/ beside it (assets/ only when an image is used; a file already there
-//	                         with the same bytes is kept)
+//	                         with the same bytes is kept; a different one stops the export, nothing replaced)
 //	    ExportFolder(parent) a new folder <parent>/<name>/ ("<name> 2" when taken) holding the .md and assets/
 //	    ExportZip(dest)      the same folder, zipped with /usr/bin/ditto (argument array, no shell), the folder being the single
 //	                         top-level entry
@@ -159,11 +159,16 @@ func writeExport(plan ExportPlan, layout ExportLayout) (string, error) {
 		if err := exportDitto(root, zip); err != nil {
 			return "", err
 		}
-		if err := os.RemoveAll(layout.Path); err != nil { // an old file of that name is replaced
-			return "", err
-		}
+		// Rename replaces an old file of that name in one step, so a failure never leaves the person with neither.
+		// (Swift removed the old one first, recursively; a failed move then lost it.)
 		if err := os.Rename(zip, layout.Path); err != nil {
-			if err := copyFile(zip, layout.Path); err != nil { // another volume: rename cannot cross it
+			// another volume: rename cannot cross it, so copy beside the target and rename that over it
+			side := layout.Path + ".gloamlog-" + newUUID()
+			if err := copyFile(zip, side); err != nil {
+				return "", err
+			}
+			if err := os.Rename(side, layout.Path); err != nil {
+				os.Remove(side) // drop our copy; the old file is untouched
 				return "", err
 			}
 		}
@@ -182,9 +187,9 @@ func exportTree(plan ExportPlan, mdName, dir string) error {
 				if sameBytes(to, a.Source) {
 					continue
 				}
-				if err := os.Remove(to); err != nil {
-					return err
-				}
+				// Names carry a content hash, so different bytes means someone else's file: never replace it.
+				// (Swift deleted it.)
+				return fmt.Errorf("an image called %s is already there and is a different picture, so nothing was replaced; choose another place", filepath.Base(to))
 			}
 			if err := copyFile(a.Source, to); err != nil {
 				return err

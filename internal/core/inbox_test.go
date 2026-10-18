@@ -4,6 +4,7 @@ package core
 // reader limits and the ts rule that Swift did not test.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,7 +66,7 @@ func TestInboxReaderLimits(t *testing.T) {
 	_, err := os.Stat(filepath.Join(d, "big.json"))
 	expect(t, err == nil)
 
-	// 60 files: at most 50 per look, and junk counts toward the 50
+	// 60 files: at most 50 good entries per look; junk does not count toward the 50 (Swift counted it)
 	e := t.TempDir()
 	base := mk(2026, 10, 14, 9, 0)
 	for i := 0; i < 60; i++ {
@@ -79,7 +80,7 @@ func TestInboxReaderLimits(t *testing.T) {
 		setMTime(t, p, base.Add(time.Duration(i)*time.Second))
 	}
 	got := InboxPending(e)
-	expect(t, len(got) == InboxMaxEntriesPerLook-5 && got[0].Text == "n5" && got[len(got)-1].Text == "n49", "%d entries, first %s", len(got), got[0].Text)
+	expect(t, len(got) == InboxMaxEntriesPerLook && got[0].Text == "n5" && got[len(got)-1].Text == "n54", "%d entries, first %s", len(got), got[0].Text)
 }
 
 func TestInboxTimestampAndCaptureTime(t *testing.T) {
@@ -103,4 +104,19 @@ func TestInboxTimestampAndCaptureTime(t *testing.T) {
 func TestDefaultDirs(t *testing.T) {
 	expect(t, DefaultInboxDir("/home/u") == "/home/u/Library/Application Support/Gloamlog/inbox")
 	expect(t, DefaultCaptureDir("/home/u") == "/home/u/Library/Application Support/Gloamlog/capture")
+}
+
+// Review fix: junk files that are never removed must not starve newer entries out of the 50 a look takes.
+func TestInboxJunkDoesNotHideNewerEntries(t *testing.T) {
+	d := t.TempDir()
+	base := mk(2026, 10, 14, 9, 0)
+	for i := 0; i < InboxMaxEntriesPerLook; i++ {
+		p := filepath.Join(d, fmt.Sprintf("junk%03d.json", i))
+		must(t, os.WriteFile(p, []byte("not json"), 0o644))
+		setMTime(t, p, base.Add(-time.Hour))
+	}
+	p := filepath.Join(d, "good.json")
+	must(t, os.WriteFile(p, []byte(`{"text":"still here"}`), 0o644))
+	setMTime(t, p, base)
+	expect(t, equal(inboxTexts(InboxPending(d)), []string{"still here"}), "%v", inboxTexts(InboxPending(d)))
 }

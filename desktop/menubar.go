@@ -15,6 +15,7 @@ import (
 	"image/png"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dasariprashant0/gloamlog/internal/core"
@@ -172,8 +173,12 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 	tray.SetMenu(menu)
 
 	var mu sync.Mutex
+	var started atomic.Bool
 	shown := menuIcon("")
 	refresh := func() {
+		if !started.Load() { // a "refresh-menubar" from capture at launch can come before app.Run: see below
+			return
+		}
 		v := currentMenuView(n)
 		mu.Lock()
 		defer mu.Unlock()
@@ -188,6 +193,7 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 	// refresh updates the menu on the main thread, which only exists once app.Run has started: before that, InvokeSync
 	// dereferences a nil dispatcher and the app crashes at launch. So the first refresh and the 30 s loop wait for it.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		started.Store(true)
 		go refresh()
 		go func() {
 			for range time.Tick(menuRefresh) {

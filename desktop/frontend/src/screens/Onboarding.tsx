@@ -168,7 +168,11 @@ export function Onboarding({open, firstRun, onDone}: Props) {
             }
             next.onboarded = true;
             await Notes.SaveSettings(next);
-            if (!useDefaults && login !== (firstRun ? false : loginNow)) await Notes.SetLoginItem(login).catch(e => setError(errText(e)));
+            if (!useDefaults && login !== (firstRun ? false : loginNow)) {
+                // stay open on a failure: closing at once would hide the message and the login item would quietly not be set
+                const failed = await Notes.SetLoginItem(login).then(() => '', e => errText(e));
+                if (failed) { setError(`Your settings were saved, but the login item wasn't set: ${failed} You can turn it on later in Settings.`); setBusy(false); return; }
+            }
             if (firstRun) {
                 await Notes.RecreateFolder().catch(() => undefined); // best effort: the first save makes the folder too
                 await Notes.MarkWhatsNewSeen().catch(() => undefined); // a new person has nothing to be told is new

@@ -17,8 +17,16 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 
 ## Known gaps vs the Swift app
 - Menu bar is a native menu, not the Swift popover (no Jot field, streak, week strip, snooze in it).
-- Quit with unsaved edits: no "Your latest edits couldn't be saved" alert yet; no in-memory orphan pages.
+- Quit with unsaved edits: no "Your latest edits couldn't be saved" alert yet (a failed save is kept in memory and retried, with a banner, while the app runs).
 - Not ported: auto-add commits (`sources.autoAdd`), VoiceOver announcements, Dock bounce, time-zone change while running, iCloud's own download-status query (polling instead, up to 3 s lag), Share… in review export, RTF in rich copy.
+
+## Safer than the Swift app, on purpose
+Found in the line-by-line review; each has a test.
+- Zip export replaces an old file with one rename; it never deletes first (Swift deleted recursively, so a failed move lost the old file or a folder).
+- Export stops when a different image already has the same name, instead of deleting it.
+- The inbox's 50-per-look cap counts good entries, so junk files can't hide newer `log_work` notes.
+- A settings file that can't be read (permissions, disk) stays in place and blocks saves; only one that reads but won't decode is set aside.
+- Removing the CLAUDE.md block tidies only where it was; Swift collapsed blank lines across the whole file.
 
 ## Cutover (when the checks above pass)
 1. `scripts/release.sh`: build with `desktop/build.sh` instead of `app/build.sh`, and bump `VERSION` there (now 0.7.0).

@@ -54,7 +54,14 @@ export function SuggestionsStrip({day, pageMarkdown, onInsert, onToast}: {
     }
     async function insert(list: SuggestedBullet[]) {
         if (!list.length) return;
-        onInsert(data!.heading, await Notes.SuggestionLines(list), list.length);
+        let lines: string;
+        try {
+            lines = await Notes.SuggestionLines(list);
+        } catch (e) {
+            onToast(`Couldn't add the suggestions. ${String((e as Error)?.message ?? e)}`);
+            return;
+        }
+        onInsert(data!.heading, lines, list.length);
         setAdded(a => [...a, ...list.map(b => b.id)]);
         setTicked([]);
     }

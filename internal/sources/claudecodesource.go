@@ -217,7 +217,7 @@ func heredocBody(cmd string) (string, bool) {
 }
 
 func isNewline(c rune) bool {
-	return c == '\n' || c == '\r' || c == '\u0085' || c == ' ' || c == ' ' || c == '\v' || c == '\f'
+	return c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029' || c == '\v' || c == '\f'
 }
 
 // firstNonEmptyLine is the first line that has something on it, trimmed.

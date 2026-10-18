@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {Banner, Button, Kbd} from '@personal/ui/react';
 import {Notes, shortDay} from '../api';
+import {errText} from './settings/shared';
 
 type Props = {
     /** The unlogged days when the session began, oldest first. They stay fixed: "3 of 5" never moves. */
@@ -34,18 +35,26 @@ export function SessionBar({days, current, onGo, onEnd, onSkip, onFinish, flush}
     useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(''), 5000); return () => clearTimeout(t); }, [note]);
 
     async function next() {
-        await flush?.();
-        const list = (await Notes.Overview()).catchUp; // the live list: a day written meanwhile is never offered again
-        const n = list.find(d => d > current) ?? list.find(d => d !== current); // wrap once
-        if (n) { setNote(''); onGo(n); }
-        else if (list.includes(current)) setNote(ONLY_DAY);
-        else (onFinish ?? onEnd)();
+        try {
+            await flush?.();
+            const list = (await Notes.Overview()).catchUp; // the live list: a day written meanwhile is never offered again
+            const n = list.find(d => d > current) ?? list.find(d => d !== current); // wrap once
+            if (n) { setNote(''); onGo(n); }
+            else if (list.includes(current)) setNote(ONLY_DAY);
+            else (onFinish ?? onEnd)();
+        } catch (e) {
+            setNote(`Couldn't move on: ${errText(e)}`);
+        }
     }
     async function previous() {
         if (i <= 0) return;
-        await flush?.();
-        setNote('');
-        onGo(days[i - 1]);
+        try {
+            await flush?.();
+            setNote('');
+            onGo(days[i - 1]);
+        } catch (e) {
+            setNote(`Couldn't go back: ${errText(e)}`);
+        }
     }
 
     // Esc ends, ⌘↩ and ⌥⌘↓ go on, ⌥⌘↑ goes back. Latest handlers through a ref, so the listener is set once.

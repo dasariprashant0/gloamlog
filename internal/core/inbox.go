@@ -63,7 +63,7 @@ func (e InboxEntry) CaptureTime(drain time.Time, mode InboxTimeMode) time.Time {
 
 // InboxPending lists the entries waiting in dir, oldest first. A missing or unreadable dir has none.
 func InboxPending(dir string) []InboxEntry {
-	names, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
@@ -72,7 +72,7 @@ func InboxPending(dir string) []InboxEntry {
 		mod  time.Time // zero (long ago) when unknown
 	}
 	var files []file
-	for _, e := range names {
+	for _, e := range entries {
 		n := e.Name()
 		if strings.HasPrefix(n, ".") || filepath.Ext(n) != ".json" {
 			continue
@@ -90,11 +90,13 @@ func InboxPending(dir string) []InboxEntry {
 		}
 		return a.mod.Before(b.mod)
 	})
-	if len(files) > InboxMaxEntriesPerLook {
-		files = files[:InboxMaxEntriesPerLook]
-	}
+	// The cap counts good entries, not files: Swift took the 50 oldest files first, so 50 unreadable ones (never removed)
+	// would hide every newer entry for good.
 	var out []InboxEntry
 	for _, f := range files {
+		if len(out) >= InboxMaxEntriesPerLook {
+			break
+		}
 		path := filepath.Join(dir, f.name)
 		fi, err := os.Stat(path)
 		if err != nil || fi.Size() > InboxMaxFileBytes {
