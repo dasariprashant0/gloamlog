@@ -167,3 +167,87 @@ func (l LogLine) Plain() string {
 	}
 	return strings.TrimRight("- "+strings.ReplaceAll(l.Text, "\n", "\n  "), " ")
 }
+
+// LogPage is a list page split around its first Log section.
+type LogPage struct {
+	Before string    `json:"before"` // the page up to and including the Log heading line
+	Lines  []LogLine `json:"lines"`
+	Trail  int       `json:"trail"` // blank lines after the last line, before After
+	After  string    `json:"after"` // the page from the heading that ends the section; "" when it runs to the end
+}
+
+// IsLogPage is true when body has a Log heading outside code.
+func IsLogPage(body string) bool {
+	return len(jotsBlocks(ScanBody(strings.ReplaceAll(body, "\r\n", "\n")), LogHeading)) > 0
+}
+
+// ParseLog splits body around its first Log section (see the header). ok=false when there is none.
+func ParseLog(body string) (LogPage, bool) {
+	text := strings.ReplaceAll(body, "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	scanned := ScanBody(text) // splits exactly like lines, so the indexes match
+	blocks := jotsBlocks(scanned, LogHeading)
+	if len(blocks) == 0 {
+		return LogPage{}, false
+	}
+	b := blocks[0]
+	p := LogPage{Before: strings.Join(lines[:b.heading+1], "\n"), Lines: []LogLine{}}
+	if b.end < len(lines) {
+		p.After = strings.Join(lines[b.end:], "\n")
+	}
+	var rows []string
+	bullet, blank, startBlank := false, 0, 0
+	flush := func() {
+		if rows == nil {
+			return
+		}
+		l := LogLine{Other: true, Text: strings.Join(rows, "\n")}
+		if bullet {
+			l, _ = parseLogRows(rows)
+		}
+		l.Blank = startBlank
+		p.Lines = append(p.Lines, l)
+		rows = nil
+	}
+	for i := b.heading + 1; i < b.end; i++ {
+		l := scanned[i]
+		if l.Kind == LineBlank {
+			flush()
+			blank++
+			continue
+		}
+		indent, isItem := listItemIndent(lines[i])
+		top := l.Kind == LineText && isItem && indent < 2 && strings.IndexByte("-*+", strings.TrimLeft(lines[i], " \t")[0]) >= 0
+		switch {
+		case top:
+			flush()
+			rows, bullet, startBlank, blank = []string{lines[i]}, true, blank, 0
+		case rows != nil && (!bullet || l.Kind == LineText):
+			rows = append(rows, lines[i]) // a continuation row, or more of an Other block
+		default:
+			flush()
+			rows, bullet, startBlank, blank = []string{lines[i]}, false, blank, 0
+		}
+	}
+	flush()
+	p.Trail = blank
+	return p, true
+}
+
+// Markdown is the page with its Log section written back.
+func (p LogPage) Markdown() string {
+	out := []string{p.Before}
+	for _, l := range p.Lines {
+		for i := 0; i < l.Blank; i++ {
+			out = append(out, "")
+		}
+		out = append(out, l.Markdown())
+	}
+	for i := 0; i < p.Trail; i++ {
+		out = append(out, "")
+	}
+	if p.After != "" {
+		out = append(out, p.After)
+	}
+	return strings.Join(out, "\n")
+}

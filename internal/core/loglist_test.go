@@ -78,3 +78,44 @@ func TestTimeKeyReadsOnlyABareTime(t *testing.T) {
 		expect(t, !ok, "%q is not a bare time", tm)
 	}
 }
+
+func TestParseLogFindsTheSectionAndKeepsTheRest(t *testing.T) {
+	body := "intro words\n\n## Log\n\n- 09:40 a\n- 10:00 b #next\n  more of b\n\nA paragraph\nstill it\n\n```\ncode\n\nblock\n```\n\n## Notes\nx\n"
+	p, ok := ParseLog(body)
+	expect(t, ok, "has a Log heading")
+	expect(t, p.Before == "intro words\n\n## Log", "before: %q", p.Before)
+	expect(t, p.After == "## Notes\nx\n", "after: %q", p.After)
+	expect(t, len(p.Lines) == 4, "two bullets, a paragraph, a code block: %+v", p.Lines)
+	expect(t, p.Lines[0].Blank == 1 && p.Lines[0].Text == "a", "%+v", p.Lines[0])
+	expect(t, p.Lines[1].Mark == MarkNext && p.Lines[1].Text == "b\nmore of b", "%+v", p.Lines[1])
+	expect(t, p.Lines[2].Other && p.Lines[2].Text == "A paragraph\nstill it" && p.Lines[2].Blank == 1, "%+v", p.Lines[2])
+	expect(t, p.Lines[3].Other && p.Lines[3].Text == "```\ncode\n\nblock\n```", "a fence keeps its blank line: %+v", p.Lines[3])
+	expect(t, p.Trail == 1, "one blank line before ## Notes: %d", p.Trail)
+	expect(t, p.Markdown() == body, "untouched page comes back byte for byte:\n%q", p.Markdown())
+}
+
+func TestParseLogRoundTripsAwkwardPages(t *testing.T) {
+	for _, body := range []string{
+		"## Log",
+		"## Log\n",
+		"# Log\n- a\n- b",
+		"### 📝 Log\n\n\n- a\n\n\n- b\n\n",
+		"## Log\n- a\nlazy continuation\n- [ ] t\n#### sub\n- c",
+		"## Done\n- x\n## Log\n- y\n## Later\n- z",
+	} {
+		p, ok := ParseLog(body)
+		expect(t, ok && p.Markdown() == body, "%q -> %q", body, p.Markdown())
+	}
+	_, ok := ParseLog("## What I did\n- x")
+	expect(t, !ok, "a classic page is not a list page")
+	_, ok = ParseLog("```\n## Log\n```")
+	expect(t, !ok, "a heading inside code does not count")
+	expect(t, IsLogPage("## LOG\n") && !IsLogPage("## Logbook"), "IsLogPage matches the whole normalised heading")
+}
+
+func TestParseLogEditsRenderOnlyTheChangedLine(t *testing.T) {
+	body := "## Log\n\n*  09:40  a\n- 10:00 b\n"
+	p, _ := ParseLog(body)
+	p.Lines[1].Mark = MarkBlocked
+	expect(t, p.Markdown() == "## Log\n\n*  09:40  a\n- 10:00 b #blocked\n", "%q", p.Markdown())
+}
