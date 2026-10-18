@@ -44,7 +44,7 @@ export function App() {
 
     const reload = useCallback(() => {
         Notes.Overview().then(o => { setOverview(o); setError(''); }, e => setError(String(e?.message ?? e)));
-        Notes.Settings().then(s => setMinWords(s.minWords), () => {});
+        Notes.Settings().then(s => setMinWords(s.minWords), () => {}); // keep the default 20; the overview banner reports folder trouble
         setVersion(v => v + 1);
     }, []);
     useEffect(reload, [reload]);
@@ -69,7 +69,7 @@ export function App() {
         const offs = [
             on('folder-changed', () => { reload(); setSyncKey(k => k + 1); setPageKey(k => k + 1); }),
             on('capture-changed', reload),
-            on('open-today', () => Notes.Overview().then(o => go({kind: 'day', day: o.today}), () => {})),
+            on('open-today', () => Notes.Overview().then(o => go({kind: 'day', day: o.today}), () => {})), // the folder banner already says why
             on<string>('reminder-open-day', d => go({kind: 'day', day: d})),
             on('check-updates', () => setUpdateOpen(true)),
             on('run-setup', () => setOnboarding('again')),

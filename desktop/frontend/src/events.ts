@@ -4,7 +4,7 @@ import {Events} from '@wailsio/runtime';
 export function on<T = unknown>(name: string, handler: (data: T) => void): () => void {
     try {
         return Events.On(name, ev => handler(ev.data as T));
-    } catch {
+    } catch { // no Wails runtime (browser mock): nothing will ever be emitted
         return () => {};
     }
 }

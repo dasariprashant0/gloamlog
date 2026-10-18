@@ -577,11 +577,11 @@ func (e *reminderEngine) write() error {
 	}
 	tmp := e.path + ".tmp"
 	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		_ = os.Remove(tmp)
+		_ = os.Remove(tmp) // best effort: the write error below is what matters
 		return err
 	}
 	if err := os.Rename(tmp, e.path); err != nil {
-		_ = os.Remove(tmp)
+		_ = os.Remove(tmp) // best effort: the rename error below is what matters
 		return err
 	}
 	return nil
