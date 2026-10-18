@@ -1,7 +1,7 @@
 // markdownbodyjots.go - the Jots block in the words rule and in the editor's initial/written text. Pure.
 // Port of app/Core/Capture/MarkdownBody+Jots.swift. That file belongs to the Capture chunk, but the logged rule (DayDocument.Status,
-// WordsRule) cannot work without it, so it is ported here. Left out for the Capture chunk: unclosedFenceCloser and jotsHeadingText,
-// which only CapturePlacement uses.
+// WordsRule) cannot work without it, so it was ported with the first chunk. unclosedFenceCloser and jotsHeadingText (only
+// CapturePlacement uses them) follow below.
 //
 // A "Jots block" = a heading whose NormalizeHeading equals the normalised jots heading, at any level, running to the next heading of
 // the same or higher level (the rule isCarriedHeading already uses).
@@ -105,6 +105,36 @@ func jotsBlocks(lines []ScannedLine, jotsHeading string) []jotsBlock {
 		out = append(out, cur)
 	}
 	return out
+}
+
+// jotsHeadingText is the text a NEW Jots heading is written with: the configured text with whitespace collapsed, or "Jots" when it
+// is unusable (empty, emoji only).
+func jotsHeadingText(jotsHeading string) string {
+	c := Collapse(jotsHeading)
+	if NormalizeHeading(c) == "" {
+		return "Jots"
+	}
+	return c
+}
+
+// unclosedFenceCloser is the closing fence line ("```", "~~~~") when the page ends inside an open code fence; ok is false otherwise.
+func unclosedFenceCloser(lines []ScannedLine) (closer string, ok bool) {
+	last := -1
+	n := 0
+	for i, l := range lines {
+		if l.Kind == LineFence {
+			n++
+			last = i
+		}
+	}
+	if n%2 == 0 {
+		return "", false
+	}
+	f, isOpening := openingFence(lines[last].Text)
+	if !isOpening {
+		return "", false
+	}
+	return strings.Repeat(string(f.ch), f.n), true
 }
 
 // listItemIndent returns the indentation (a tab counts 4) when line starts a list item: "-", "*", "+" or "1." / "1)" followed by a

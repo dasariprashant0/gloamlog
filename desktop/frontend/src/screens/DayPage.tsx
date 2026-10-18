@@ -6,6 +6,7 @@ import {Banner, Button, Display} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
+import {SuggestionsStrip} from './SuggestionsStrip';
 
 const SAVE_DELAY = 600;
 
@@ -28,6 +29,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const pending = useRef<{day: string; md: string} | null>(null);
     const timer = useRef(0);
     const chain = useRef<Promise<unknown>>(Promise.resolve());
+    const appending = useRef(0);                  // lines being added by the suggestions strip, for the reply
 
     const save = useCallback((d: string, md: string) => {
         chain.current = chain.current.then(() => Notes.Save(d, md)).then(out => {
@@ -77,7 +79,17 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         baseline.current = editor.getMarkdown();
         lastSaved.current = exists ? baseline.current : '';
         loaded.current = d;
+        // The document's token: appendToSection refuses ("stale") when the page in the editor is no longer this day.
+        (window as unknown as {__dlDoc?: string}).__dlDoc = d;
     }
+
+    // Adds lines under a heading as one undoable step in the live page; the editor replies with appendResult.
+    const insertUnder = useCallback((heading: string, markdown: string, count: number) => {
+        const d = loaded.current;
+        if (!d) return;
+        appending.current = count;
+        editor.appendToSection(`add-${Date.now()}`, d, heading, markdown, {unlessPresent: true});
+    }, []);
 
     // Leaving the page (search, catch up, review) or the window: write now.
     useEffect(() => { if (!active) void flush(); }, [active, flush]);
@@ -116,6 +128,15 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             case 'openLink':
                 if (/^(https?:|mailto:)/i.test(m.url)) Browser.OpenURL(m.url).catch(() => window.open(m.url, '_blank'));
                 break;
+            case 'appendResult': {
+                const d = loaded.current;
+                if (m.result === 'appended' && d && m.markdown != null) {
+                    void save(d, m.markdown);
+                    onToast(`Added ${plural(appending.current, 'line')}.`);
+                } else if (m.result === 'alreadyPresent') onToast('Those lines are already on the page.');
+                else onToast('The page changed while adding. Try again.');
+                break;
+            }
             case 'rawFallback':
                 setRaw(true);
                 break;
@@ -124,7 +145,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 if (m.level === 'error') console.info('[editor error]', m.message);
                 break;
         }
-    }, [day, save]);
+    }, [day, save, onToast]);
 
     async function carryOver() {
         if (!page?.carry) return;
@@ -179,6 +200,10 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                     {page.carry.items.length > 8 && <p className="small muted">and {page.carry.items.length - 8} more</p>}
                     <Button variant="line" size="sm" onClick={carryOver}>Carry over {plural(page.carry.items.length, 'item')}</Button>
                 </section>
+            )}
+
+            {page && !skipped && day <= today && (
+                <SuggestionsStrip day={day} pageMarkdown={() => editor.getMarkdown()} onInsert={insertUnder} onToast={onToast}/>
             )}
 
             {skipped && page && (

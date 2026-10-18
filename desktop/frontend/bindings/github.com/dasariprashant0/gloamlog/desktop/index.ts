@@ -18,5 +18,6 @@ export {
     Overview,
     Page,
     SettingsInfo,
+    Suggestions,
     Week
 } from "./models.js";

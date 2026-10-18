@@ -8,23 +8,35 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as core$0 from "../internal/core/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as sources$0 from "../internal/sources/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
+ * AlreadyAdded lists the bullets whose evidence is already in the page, so the strip never offers them twice.
+ */
+export function AlreadyAdded(bullets: sources$0.SuggestedBullet[], pageMarkdown: string): $CancellablePromise<string[]> {
+    return $Call.ByID(3957017541, bullets, pageMarkdown).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * BackupVersions lists the safety copies of a day, newest first, each with a short preview.
  */
 export function BackupVersions(day: string): $CancellablePromise<$models.BackupVersion[]> {
     return $Call.ByID(2268935856, day).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
 export function Backups(day: string): $CancellablePromise<core$0.BackupInfo[]> {
     return $Call.ByID(2779159358, day).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -40,7 +52,7 @@ export function CarryOver(card: core$0.CarryCard, body: string): $CancellablePro
  */
 export function CatchUp(windowDays: number): $CancellablePromise<$models.CatchUpData> {
     return $Call.ByID(3496980667, windowDays).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -49,7 +61,7 @@ export function CatchUp(windowDays: number): $CancellablePromise<$models.CatchUp
  */
 export function ChangeFolder(path: string, mode: string): $CancellablePromise<$models.FolderResult> {
     return $Call.ByID(2806158987, path, mode).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -65,7 +77,7 @@ export function ChooseFolder(message: string): $CancellablePromise<string> {
  */
 export function Heatmap(weeks: number): $CancellablePromise<core$0.HeatCell[][]> {
     return $Call.ByID(2743609837, weeks).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -88,13 +100,13 @@ export function JumpTo(input: string): $CancellablePromise<string> {
  */
 export function Month(year: number, month: number): $CancellablePromise<core$0.MonthCell[][]> {
     return $Call.ByID(1347049071, year, month).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
 export function Open(day: string): $CancellablePromise<$models.Page> {
     return $Call.ByID(2356740839, day).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -107,13 +119,13 @@ export function OpenLoginItems(): $CancellablePromise<void> {
 
 export function Overview(): $CancellablePromise<$models.Overview> {
     return $Call.ByID(3639484436).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
 export function PlanFolderChange(path: string): $CancellablePromise<$models.FolderPlan> {
     return $Call.ByID(3440431704, path).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
@@ -126,7 +138,7 @@ export function RecreateFolder(): $CancellablePromise<void> {
 
 export function Restore(day: string, backup: core$0.BackupInfo): $CancellablePromise<core$0.DayDocument> {
     return $Call.ByID(323430763, day, backup).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType16($result);
     });
 }
 
@@ -142,7 +154,7 @@ export function Reveal(paths: string[]): $CancellablePromise<void> {
  */
 export function Save(day: string, body: string): $CancellablePromise<core$0.SaveOutcome> {
     return $Call.ByID(3438292470, day, body).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType17($result);
     });
 }
 
@@ -155,13 +167,13 @@ export function SaveImage(day: string, name: string, mime: string, dataBase64: s
 
 export function SaveSettings(s: core$0.Settings): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1865548995, s).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType18($result);
     });
 }
 
 export function Search(query: string): $CancellablePromise<$models.Hit[]> {
     return $Call.ByID(2621087907, query).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType20($result);
     });
 }
 
@@ -170,19 +182,19 @@ export function Search(query: string): $CancellablePromise<$models.Hit[]> {
  */
 export function SetLoginItem(on: boolean): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1272266701, on).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType21($result);
     });
 }
 
 export function Settings(): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1674428486).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType18($result);
     });
 }
 
 export function SettingsInfo(): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1358861334).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType21($result);
     });
 }
 
@@ -192,7 +204,7 @@ export function Skip(day: string, reason: string): $CancellablePromise<void> {
 
 export function SkipDays(days: string[], reason: string): $CancellablePromise<string[]> {
     return $Call.ByID(865620331, days, reason).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType0($result);
     });
 }
 
@@ -202,13 +214,38 @@ export function SkipDays(days: string[], reason: string): $CancellablePromise<st
  */
 export function SkipRange($from: string, to: string, reason: string): $CancellablePromise<string[]> {
     return $Call.ByID(4254315077, $from, to, reason).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType0($result);
+    });
+}
+
+/**
+ * SourceProjects lists Claude Code's projects and the repositories under the added Git folders, for Settings > Sources.
+ */
+export function SourceProjects(): $CancellablePromise<sources$0.SourceProject[]> {
+    return $Call.ByID(1562696260).then(($result: any) => {
+        return $$createType23($result);
+    });
+}
+
+/**
+ * SuggestionLines is the markdown the strip inserts for the ticked bullets: one "- " line each, escaped.
+ */
+export function SuggestionLines(bullets: sources$0.SuggestedBullet[]): $CancellablePromise<string> {
+    return $Call.ByID(2128797982, bullets);
+}
+
+/**
+ * Suggestions scans day for work to suggest. again forces a fresh look ("Look again").
+ */
+export function Suggestions(day: string, again: boolean): $CancellablePromise<$models.Suggestions> {
+    return $Call.ByID(2074390080, day, again).then(($result: any) => {
+        return $$createType24($result);
     });
 }
 
 export function Unskip(days: string[]): $CancellablePromise<string[]> {
     return $Call.ByID(2412791907, days).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType0($result);
     });
 }
 
@@ -217,7 +254,7 @@ export function Unskip(days: string[]): $CancellablePromise<string[]> {
  */
 export function Week(day: string, shift: number, bySection: boolean): $CancellablePromise<$models.Week> {
     return $Call.ByID(490576683, day, shift, bySection).then(($result: any) => {
-        return $$createType22($result);
+        return $$createType25($result);
     });
 }
 
@@ -229,26 +266,29 @@ export function Words(body: string): $CancellablePromise<number> {
 }
 
 // Private type creation functions
-const $$createType0 = $models.BackupVersion.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = core$0.BackupInfo.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $models.CatchUpData.createFrom;
-const $$createType5 = $models.FolderResult.createFrom;
-const $$createType6 = core$0.HeatCell.createFrom;
-const $$createType7 = $Create.Array($$createType6);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = $models.BackupVersion.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = core$0.BackupInfo.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $models.CatchUpData.createFrom;
+const $$createType6 = $models.FolderResult.createFrom;
+const $$createType7 = core$0.HeatCell.createFrom;
 const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = core$0.MonthCell.createFrom;
-const $$createType10 = $Create.Array($$createType9);
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = core$0.MonthCell.createFrom;
 const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $models.Page.createFrom;
-const $$createType13 = $models.Overview.createFrom;
-const $$createType14 = $models.FolderPlan.createFrom;
-const $$createType15 = core$0.DayDocument.createFrom;
-const $$createType16 = core$0.SaveOutcome.createFrom;
-const $$createType17 = core$0.Settings.createFrom;
-const $$createType18 = $models.Hit.createFrom;
-const $$createType19 = $Create.Array($$createType18);
-const $$createType20 = $models.SettingsInfo.createFrom;
-const $$createType21 = $Create.Array($Create.Any);
-const $$createType22 = $models.Week.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $models.Page.createFrom;
+const $$createType14 = $models.Overview.createFrom;
+const $$createType15 = $models.FolderPlan.createFrom;
+const $$createType16 = core$0.DayDocument.createFrom;
+const $$createType17 = core$0.SaveOutcome.createFrom;
+const $$createType18 = core$0.Settings.createFrom;
+const $$createType19 = $models.Hit.createFrom;
+const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = $models.SettingsInfo.createFrom;
+const $$createType22 = sources$0.SourceProject.createFrom;
+const $$createType23 = $Create.Array($$createType22);
+const $$createType24 = $models.Suggestions.createFrom;
+const $$createType25 = $models.Week.createFrom;

@@ -25,8 +25,11 @@ import (
 	"unicode"
 )
 
+// isFoundationSpace is Foundation's .whitespacesAndNewlines: unicode.IsSpace plus U+200B (zero width space, which Foundation counts).
+func isFoundationSpace(r rune) bool { return unicode.IsSpace(r) || r == 0x200B }
+
 // trimmed removes leading and trailing whitespace and newlines (Foundation's .whitespacesAndNewlines; Swift name: dlTrimmed).
-func trimmed(s string) string { return strings.TrimFunc(s, unicode.IsSpace) }
+func trimmed(s string) string { return strings.TrimFunc(s, isFoundationSpace) }
 
 // DayKeyIsWellFormed is a shape check only ("2026-10-06"); it guards file names against path tricks.
 func DayKeyIsWellFormed(s string) bool {

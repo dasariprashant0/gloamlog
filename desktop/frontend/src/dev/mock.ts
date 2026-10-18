@@ -149,6 +149,17 @@ export const Notes = {
     },
     Week: (day: string) => later({summary: {weekStart: day, weekEnd: add(day, 6), days: [], sections: [], loggedCount: 3, workdayCount: 5, skippedCount: 1, missingDays: []}, markdown: '# Week\n'} as unknown as Week),
     Words: (body: string) => later(words(body)),
+    Suggestions: (day: string) => later({off: false, noneOn: false, heading: 'What I did', result: {day, notes: [], hiddenLine: '1 value hidden (1 token)',
+        lastScanLine: 'Last look: today, 4 files read, 0 records skipped.', stats: {files: 4, skipped: 0}, hidden: {},
+        bullets: [
+            {id: 'c1', kind: 'commit', project: 'gloamlog', text: 'Committed: Port the day page to React (gloamlog 3fa2c19)', detail: '', evidence: '3fa2c19', time: ''},
+            {id: 's1', kind: 'session', project: 'gloamlog', text: 'Worked in gloamlog with Claude Code for about 1h 20m (3 sessions, 12 files edited)', detail: 'DayPage.tsx, notes.go, app.css', evidence: 'Worked in gloamlog with Claude Code', time: ''},
+            {id: 'p1', kind: 'prompt', project: 'design-system', text: 'Worked on design-system: make the theme follow other windows', detail: '', evidence: 'make the theme follow other windows', time: ''},
+        ]}}),
+    SuggestionLines: (bullets: {text: string}[]) => later(bullets.map(b => '- ' + b.text).join('\n')),
+    AlreadyAdded: (bullets: {id: string; evidence: string}[], page: string) => later(bullets.filter(b => b.evidence && page.includes(b.evidence)).map(b => b.id)),
+    SourceProjects: () => later([]),
+    HotKeyStatus: () => later(''),
     ...settingsMock,
     ...catchupMock,
 };

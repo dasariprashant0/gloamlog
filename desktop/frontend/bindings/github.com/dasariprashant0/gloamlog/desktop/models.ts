@@ -8,6 +8,9 @@ import { Create as $Create } from "@wailsio/runtime";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as core$0 from "../internal/core/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as sources$0 from "../internal/sources/models.js";
 
 /**
  * BackupVersion is a safety copy with the first words of what it holds. Pass Date, Path and Words back to Restore.
@@ -460,6 +463,50 @@ export class SettingsInfo {
     }
 }
 
+/**
+ * Suggestions is the strip's state for one day. Off means the strip is not shown at all (no source on, or no consent yet).
+ */
+export class Suggestions {
+    "off": boolean;
+
+    /**
+     * sources are on but no project is ticked, so nothing was read
+     */
+    "noneOn": boolean;
+    "heading": string;
+    "result": sources$0.ScanResult;
+
+    /** Creates a new Suggestions instance. */
+    constructor($$source: Partial<Suggestions> = {}) {
+        if (!("off" in $$source)) {
+            this["off"] = false;
+        }
+        if (!("noneOn" in $$source)) {
+            this["noneOn"] = false;
+        }
+        if (!("heading" in $$source)) {
+            this["heading"] = "";
+        }
+        if (!("result" in $$source)) {
+            this["result"] = (new sources$0.ScanResult());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Suggestions instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Suggestions {
+        const $$createField3_0 = $$createType7;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("result" in $$parsedSource) {
+            $$parsedSource["result"] = $$createField3_0($$parsedSource["result"]);
+        }
+        return new Suggestions($$parsedSource as Partial<Suggestions>);
+    }
+}
+
 export class Week {
     "summary": core$0.WeekSummary;
     "markdown": string;
@@ -480,7 +527,7 @@ export class Week {
      * Creates a new Week instance from a string or object.
      */
     static createFrom($$source: any = {}): Week {
-        const $$createField0_0 = $$createType7;
+        const $$createField0_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
             $$parsedSource["summary"] = $$createField0_0($$parsedSource["summary"]);
@@ -497,4 +544,5 @@ const $$createType3 = core$0.StreakResult.createFrom;
 const $$createType4 = core$0.FolderSummary.createFrom;
 const $$createType5 = core$0.CarryCard.createFrom;
 const $$createType6 = $Create.Nullable($$createType5);
-const $$createType7 = core$0.WeekSummary.createFrom;
+const $$createType7 = sources$0.ScanResult.createFrom;
+const $$createType8 = core$0.WeekSummary.createFrom;

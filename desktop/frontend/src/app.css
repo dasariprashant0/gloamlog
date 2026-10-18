@@ -46,3 +46,10 @@ button.cal-day:hover { background: var(--wash-2); }
 
 /* Search */
 .snippet mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; padding: 0 2px; }
+
+/* Suggested from your work */
+.suggest { display: grid; gap: var(--s3); padding: var(--s4) 0; margin-bottom: var(--s4); }
+.suggest-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
+.suggest-list { display: grid; gap: var(--s2); }
+.suggest-item { display: flex; gap: var(--s3); align-items: flex-start; font-size: var(--text-sm); cursor: pointer; }
+.suggest-item input { margin-top: 3px; accent-color: var(--accent); }
