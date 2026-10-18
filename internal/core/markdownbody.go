@@ -414,7 +414,7 @@ func contentLinesOf(lines []ScannedLine) []ContentLine {
 // CountWords is the logged-rule word count of a page body.
 func CountWords(body string) int { return wordCount(ContentLines(body), false) }
 
-// wordCount is the one counting formula. dropJotTimes skips a leading H:mm / HH:mm token on list items (a jot's time stamp is not a word).
+// wordCount is the one counting formula. dropJotTimes skips a leading H:mm / HH:mm token and a trailing #next / #blocked on list items (neither is a word).
 func wordCount(lines []ContentLine, dropJotTimes bool) int {
 	n := 0
 	for _, l := range lines {
@@ -424,7 +424,8 @@ func wordCount(lines []ContentLine, dropJotTimes bool) int {
 		case l.IsCode:
 			n += CountTokens(l.Text)
 		case dropJotTimes && l.ListItem:
-			n += CountTokens(RemoveNoise(dropLeadingTime(l.Text)))
+			text, _ := cutMark(dropLeadingTime(l.Text)) // a jot's time stamp and a trailing #next / #blocked are not words
+			n += CountTokens(RemoveNoise(text))
 		default:
 			n += CountTokens(RemoveNoise(l.Text))
 		}

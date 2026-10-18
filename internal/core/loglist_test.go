@@ -166,3 +166,18 @@ func TestOpenLinesAreNextBlockedAndOpenTasks(t *testing.T) {
 	expect(t, equal(got, []string{"next:later", "next:a task", "blocked:stuck"}), "%v", got)
 	expect(t, len(OpenLines("## To do next\n- [ ] x")) == 0, "a classic page has no log lines")
 }
+
+func TestListPagesCountEveryLogLineAndNoMarks(t *testing.T) {
+	SetJotsRules(JotsRules{Heading: "Jots"})
+	defer SetJotsRules(JotsRules{Heading: "Jots"})
+	page := DayDocument{Body: "## Log\n\n- 09:40 one two three #next\n- 10:00 four five #blocked"}
+	expect(t, page.Words() == 5, "times and marks are not words; Log lines count although jots don't: %d", page.Words())
+	expect(t, page.Status(5) == StatusLogged && page.Status(6) == StatusPartial, "status follows the same count")
+	classic := DayDocument{Body: "## What I did\n\none two\n\n## Jots\n\n- 09:40 three four"}
+	expect(t, classic.Words() == 2, "a classic page still leaves jots out: %d", classic.Words())
+	expect(t, JotsHeadingFor(page.Body, "Jots") == LogHeading && JotsHeadingFor(classic.Body, "Jots") == "Jots", "heading per page")
+	expect(t, JotsHeadingFor("", "Jots") == "Jots", "a new day follows NewDaysLog, off here")
+	SetJotsRules(JotsRules{Heading: "Jots", NewDaysLog: true})
+	expect(t, JotsHeadingFor("", "Jots") == LogHeading && JotsHeadingFor("  \n", "Jots") == LogHeading, "new days are list pages")
+	expect(t, JotsHeadingFor("words", "Jots") == "Jots", "a page with writing but no Log stays classic")
+}

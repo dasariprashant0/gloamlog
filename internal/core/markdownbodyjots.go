@@ -36,6 +36,7 @@ const DefaultJotsHeading = "Jots"
 type JotsRules struct {
 	Heading           string
 	CountTowardLogged bool
+	NewDaysLog        bool // the template is a list page: a note to a day without writing starts "## Log" (the app sets it)
 }
 
 var (
@@ -56,6 +57,25 @@ func CurrentJotsRules() JotsRules {
 	jotsRulesMu.RLock()
 	defer jotsRulesMu.RUnlock()
 	return storedJotsRules
+}
+
+// JotsRulesFor is the rule for one page: on a list page notes go to Log and every Log line counts toward "logged" (the
+// person's lines and delivered notes look the same there). Any other page follows the configured rule.
+func JotsRulesFor(body string) JotsRules {
+	r := CurrentJotsRules()
+	if IsLogPage(body) {
+		r.Heading, r.CountTowardLogged = LogHeading, true
+	}
+	return r
+}
+
+// JotsHeadingFor is the section a note to this page goes under: Log on a list page, and on a day with no writing yet when new
+// days are list pages; else the configured Jots heading.
+func JotsHeadingFor(body, configured string) string {
+	if IsLogPage(body) || (trimmed(body) == "" && CurrentJotsRules().NewDaysLog) {
+		return LogHeading
+	}
+	return configured
 }
 
 // BodyCountsResult is what BodyCounts returns. (Swift: MarkdownBody.Counts.)

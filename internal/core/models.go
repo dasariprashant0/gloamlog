@@ -192,12 +192,12 @@ type DayDocument struct {
 
 // Words counts per the contract rule (headings, empty list/task markers, code-fence lines, images, HTML comments ignored; task lines
 // under a "Carried over from ..." heading never count, see markdownbody.go). Jots do not count unless JotsRules.CountTowardLogged is
-// on (LoggedWords): this is what "logged" is measured in.
+// on (LoggedWords): this is what "logged" is measured in. On a list page every Log line counts (JotsRulesFor).
 func (d DayDocument) Words() int {
 	if d.IsSkipped {
 		return 0
 	}
-	rules := CurrentJotsRules()
+	rules := JotsRulesFor(d.Body)
 	return LoggedWords(d.Body, rules.Heading, rules.CountTowardLogged)
 }
 
@@ -206,7 +206,7 @@ func (d DayDocument) JotCount() int {
 	if d.IsSkipped {
 		return 0
 	}
-	return BodyCounts(d.Body, CurrentJotsRules().Heading).JotCount
+	return BodyCounts(d.Body, JotsRulesFor(d.Body).Heading).JotCount
 }
 
 // HasContent is true if the page holds anything beyond headings / empty markers (an image or a carried-over block alone counts).
@@ -218,7 +218,7 @@ func (d DayDocument) Status(minWords int) DayStatus {
 	if d.IsSkipped {
 		return StatusSkipped
 	}
-	rules := CurrentJotsRules()
+	rules := JotsRulesFor(d.Body)
 	c := BodyCounts(d.Body, rules.Heading)
 	w := c.Words
 	if rules.CountTowardLogged {
