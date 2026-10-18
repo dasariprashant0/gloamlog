@@ -14,5 +14,6 @@ export default defineConfig(({mode}) => ({
     },
     // Three pages: the main window, the quick-jot panel and the Settings window.
     build: {rollupOptions: {input: {main: 'index.html', jot: 'jot.html', settings: 'settings.html'}}},
-    server: {port: mode === 'mock' ? 9246 : 9245, strictPort: true},
+    // 127.0.0.1, not "localhost": Node binds localhost to IPv6 (::1) and the Wails dev proxy dials IPv4.
+    server: {host: '127.0.0.1', port: mode === 'mock' ? 9246 : 9245, strictPort: true},
 }));

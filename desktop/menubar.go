@@ -19,6 +19,7 @@ import (
 
 	"github.com/dasariprashant0/gloamlog/internal/core"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 const menuRefresh = 30 * time.Second
@@ -184,11 +185,15 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 			}
 		})
 	}
-	go refresh()
+	// refresh updates the menu on the main thread, which only exists once app.Run has started: before that, InvokeSync
+	// dereferences a nil dispatcher and the app crashes at launch. So the first refresh and the 30 s loop wait for it.
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		go refresh()
+		go func() {
+			for range time.Tick(menuRefresh) {
+				refresh()
+			}
+		}()
+	})
 	app.Event.On("refresh-menubar", func(*application.CustomEvent) { go refresh() })
-	go func() {
-		for range time.Tick(menuRefresh) {
-			refresh()
-		}
-	}()
 }
