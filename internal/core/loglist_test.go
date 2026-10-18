@@ -65,4 +65,16 @@ func TestLogLinePlainDropsTimeAndMark(t *testing.T) {
 	expect(t, l.Plain() == "- Write the test\n  Needs staging.", "%q", l.Plain())
 	other := LogLine{Other: true, Text: "A paragraph."}
 	expect(t, other.Plain() == "A paragraph.", "%q", other.Plain())
+	expect(t, (LogLine{}).Plain() == "-", "an empty line is a bare bullet: %q", (LogLine{}).Plain())
+}
+
+func TestTimeKeyReadsOnlyABareTime(t *testing.T) {
+	for tm, want := range map[string]int{"09:40": 580, "9:05": 545, "23:59": 1439} {
+		got, ok := timeKey(tm)
+		expect(t, ok && got == want, "%q -> %d, %v", tm, got, ok)
+	}
+	for _, tm := range []string{"09:40 x", "24:00", ""} {
+		_, ok := timeKey(tm)
+		expect(t, !ok, "%q is not a bare time", tm)
+	}
 }

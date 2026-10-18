@@ -64,9 +64,9 @@ func splitTime(s string) (tm, rest string) {
 	return s[:end], strings.TrimLeft(s[end:], " \t")
 }
 
-// timeKey is minutes since midnight, ok=false for no time.
+// timeKey is minutes since midnight, ok=false for no time or anything but a bare time.
 func timeKey(tm string) (int, bool) {
-	if t, _ := splitTime(tm); t == "" {
+	if t, _ := splitTime(tm); t == "" || t != tm {
 		return 0, false
 	}
 	colon := strings.IndexByte(tm, ':')
@@ -78,7 +78,7 @@ func timeKey(tm string) (int, bool) {
 // cutMark takes a trailing #next / #blocked off the first row.
 func cutMark(s string) (string, LogMark) {
 	t := strings.TrimRight(s, " \t")
-	i := strings.LastIndexAny(t, " \t")
+	i := strings.LastIndexAny(t, " \t") // -1 (one word) makes t[i+1:] the whole string
 	switch strings.ToLower(t[i+1:]) {
 	case "#next":
 		return strings.TrimRight(t[:i+1], " \t"), MarkNext
@@ -124,7 +124,8 @@ func (l LogLine) same(o LogLine) bool {
 	return l.Time == o.Time && l.Text == o.Text && l.Mark == o.Mark && l.Task == o.Task
 }
 
-// Markdown is the line as it goes in the file.
+// Markdown is the line as it goes in the file. A trailing #next / #blocked in Text marks the line when it is read back: that is
+// how typing a mark works (spec section 1).
 func (l LogLine) Markdown() string {
 	if l.Other {
 		return l.Text
@@ -164,5 +165,5 @@ func (l LogLine) Plain() string {
 	if l.Other {
 		return l.Text
 	}
-	return "- " + strings.ReplaceAll(l.Text, "\n", "\n  ")
+	return strings.TrimRight("- "+strings.ReplaceAll(l.Text, "\n", "\n  "), " ")
 }
