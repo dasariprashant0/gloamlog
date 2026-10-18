@@ -11,6 +11,9 @@ import {DownloadingPage} from './SyncChip';
 import {ReminderNotice} from './ReminderNotice';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 import {on} from '../events';
+import {LogEditor, type LogEditorHandle} from '../log/LogEditor';
+import * as LogModel from '../log/model';
+import type {LogPage} from '../../bindings/github.com/dasariprashant0/gloamlog/internal/core';
 
 const SAVE_DELAY = 600;
 
@@ -26,6 +29,12 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const [loadError, setLoadError] = useState('');
     const [raw, setRaw] = useState(false);
     const [writeAnyway, setWriteAnyway] = useState(false);
+    const [listPage, setListPage] = useState<LogPage | null>(null); // the open page's Log section; null for a classic page
+    const [full, setFull] = useState(false);                        // "Edit whole page" on a list page
+    const [pageKey, setPageKey] = useState(0);                      // remounts the list editor with a new page
+    const [summary, setSummary] = useState('');
+    const logRef = useRef<LogEditorHandle>(null);
+    const listMode = useRef(false);                                 // listPage && !full, for the callbacks
 
     const loaded = useRef<string | null>(null);   // the day whose text is in the editor (null: none, or a skipped page)
     const baseline = useRef('');                  // the editor's text right after loading: anything else is an edit
@@ -67,8 +76,9 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         for (const [od, omd] of [...orphans.current]) await save(od, omd);
         const d = loaded.current;
         let unsaved: {day: string; md: string} | null = null;
-        if (d && !editor.isRawFallback()) {
-            const md = editor.getMarkdown();
+        const md = d && listMode.current && logRef.current ? await logRef.current.markdown().catch(() => null)
+            : d && !editor.isRawFallback() ? editor.getMarkdown() : null;
+        if (d && md !== null) {
             if (md !== baseline.current && md !== lastSaved.current) unsaved = {day: d, md};
         } else if (p) unsaved = p;
         if (unsaved && !(await save(unsaved.day, unsaved.md))) orphans.current.set(unsaved.day, unsaved.md);
@@ -89,6 +99,8 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             if (previous && previous !== day) void Notes.EditorClosed(previous).catch(() => {}); // see above: jots fall back to the file
             void Notes.EditorOpened(day).catch(() => {}); // from now on a jot for this day comes through the editor
             const p = await Notes.Open(day);
+            const kept = orphans.current.get(p.day);
+            const parsed = p.isSkipped ? null : await Notes.LogParse(kept ?? p.body);
             if (!live) return;
             setPage(p);
             setWords(p.words);
@@ -97,18 +109,22 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             setWriteAnyway(false);
             loaded.current = null;
             if (!p.isSkipped) {
-                const kept = orphans.current.get(p.day);
-                show(p.day, kept ?? p.body, p.exists, p.notLocal);
+                show(p.day, kept ?? p.body, p.exists, p.notLocal, parsed?.ok ? parsed.page : null);
                 if (kept !== undefined) baseline.current = ''; // the kept text is unsaved: the next flush writes it
             }
         })().catch(e => live && setLoadError(String(e?.message ?? e)));
         return () => { live = false; };
     }, [day, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    function show(d: string, body: string, exists: boolean, readOnly = false) {
-        editor.setMarkdown(body, {cursor: 'start'});
+    function show(d: string, body: string, exists: boolean, readOnly = false, list: LogPage | null = null) {
+        setListPage(list);
+        setFull(false);
+        setPageKey(k => k + 1);
+        setSummary(list ? LogModel.summary(list.lines as unknown as LogModel.Line[]) : '');
+        listMode.current = !!list;
+        editor.setMarkdown(body, {cursor: 'start'}); // the full editor holds the page too, for "Edit whole page"
         editor.setReadOnly(readOnly);
-        baseline.current = editor.getMarkdown();
+        baseline.current = list ? body : editor.getMarkdown(); // the list editor writes an untouched page back byte for byte
         lastSaved.current = exists ? baseline.current : '';
         loaded.current = d;
         // The document's token: appendToSection refuses ("stale") when the page in the editor is no longer this day.
@@ -119,15 +135,31 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const insertUnder = useCallback((heading: string, markdown: string, count: number) => {
         const d = loaded.current;
         if (!d) return;
+        if (listMode.current && logRef.current) {
+            void logRef.current.appendLines(markdown).then(r => {
+                if (r.result === 'appended') { void save(d, r.markdown); onToast(`Added ${plural(count, 'line')}.`); }
+                else onToast('Those lines are already on the page.');
+            }, e => onToast(`Couldn't add the lines: ${String(e?.message ?? e)}`));
+            return;
+        }
         appending.current = count;
         editor.appendToSection(`add-${Date.now()}`, d, heading, markdown, {unlessPresent: true});
-    }, []);
+    }, [save, onToast]);
 
     // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
     useEffect(() => on<{id: string; day: string; heading: string; markdown: string}>('jot-into-page', j => {
-        if (loaded.current === j.day && !editor.isRawFallback()) editor.appendToSection(j.id, j.day, j.heading, j.markdown, {unlessPresent: true});
-        else void Notes.JotPlaced(j.id, 'notLoaded', '').catch(() => {}); // no answer: capture.go writes the file after 4 s
-    }), []);
+        const notLoaded = () => void Notes.JotPlaced(j.id, 'notLoaded', '').catch(() => {}); // capture.go writes the file after 4 s
+        if (loaded.current !== j.day) return notLoaded();
+        if (listMode.current && logRef.current) {
+            logRef.current.appendLines(j.markdown).then(r => {
+                void Notes.JotPlaced(j.id, r.result, r.markdown).catch(() => {});
+                if (r.result === 'appended') void save(j.day, r.markdown);
+            }, notLoaded);
+            return;
+        }
+        if (!editor.isRawFallback()) editor.appendToSection(j.id, j.day, j.heading, j.markdown, {unlessPresent: true});
+        else notLoaded();
+    }), [save]);
 
     // Today's reminder notice (reminders.go); dismissed stays dismissed until the next notice.
     const [notice, setNotice] = useState<ReminderNoticeState | null>(null);
@@ -146,22 +178,32 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         return () => { window.removeEventListener('blur', out); window.removeEventListener('beforeunload', out); };
     }, [flush]);
 
+    // A change in either editor: save it 600 ms after the last one, if it differs from the file and from the page as it
+    // opened (opening never writes).
+    const scheduleSave = useCallback((md: string) => {
+        const d = loaded.current;
+        if (!d) return;
+        pending.current = {day: d, md};
+        clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => {
+            const p = pending.current;
+            pending.current = null;
+            if (p && p.md !== lastSaved.current && p.md !== baseline.current) void save(p.day, p.md);
+        }, SAVE_DELAY);
+    }, [save]);
+
+    const onLogChange = useCallback((md: string, w: number) => { scheduleSave(md); setWords(w); }, [scheduleSave]);
+
     const onMessage = useCallback((m: EditorMessage) => {
         switch (m.type) {
             case 'ready':
-                // The editor replays queued calls right after this message; take the baseline once it has.
-                setTimeout(() => { if (loaded.current) { baseline.current = editor.getMarkdown(); if (lastSaved.current) lastSaved.current = baseline.current; } }, 0);
+                // The editor replays queued calls right after this message; take the baseline once it has. A list page's
+                // baseline is its file text (the list editor writes that back byte for byte), never Milkdown's version of it.
+                setTimeout(() => { if (loaded.current && !listMode.current) { baseline.current = editor.getMarkdown(); if (lastSaved.current) lastSaved.current = baseline.current; } }, 0);
                 break;
             case 'change': {
-                const d = loaded.current;
-                if (!d) return;
-                pending.current = {day: d, md: m.markdown};
-                clearTimeout(timer.current);
-                timer.current = window.setTimeout(() => {
-                    const p = pending.current;
-                    pending.current = null;
-                    if (p && p.md !== lastSaved.current) void save(p.day, p.md);
-                }, SAVE_DELAY);
+                if (listMode.current) break; // Milkdown is hidden behind the list editor: nothing typed there
+                scheduleSave(m.markdown);
                 Notes.Words(m.markdown).then(setWords, () => {}); // the count is a hint: on failure the old one stays
                 break;
             }
@@ -197,7 +239,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 if (m.level === 'error') console.info('[editor error]', m.message);
                 break;
         }
-    }, [day, save, onToast]);
+    }, [day, save, scheduleSave, onToast]);
 
     async function carryOver() {
         if (!page?.carry) return;
@@ -221,6 +263,31 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         show(p.day, p.body, p.exists);
     }
 
+    async function editWholePage() {
+        if (!logRef.current) return;
+        const md = await logRef.current.markdown();
+        editor.setMarkdown(md, {cursor: 'start'});
+        if (md === baseline.current) { // untouched: Milkdown's version of it is not an edit (as on 'ready')
+            const shown = editor.getMarkdown();
+            if (lastSaved.current === baseline.current) lastSaved.current = shown;
+            baseline.current = shown;
+        }
+        listMode.current = false;
+        setFull(true);
+    }
+
+    async function backToList() {
+        const parsed = await Notes.LogParse(editor.getMarkdown());
+        if (!parsed.ok) return onToast('This page has no Log heading now, so it stays in the full editor.');
+        setListPage(parsed.page);
+        setPageKey(k => k + 1);
+        listMode.current = true;
+        setFull(false);
+    }
+
+    // What "Copy my text" copies: the editor that is showing.
+    const pageText = async () => listMode.current && logRef.current ? logRef.current.markdown() : editor.getMarkdown();
+
     const skipped = !!page?.isSkipped && !writeAnyway;
     const [weekday, ...rest] = (page?.title ?? '').split(' ');
     const label = day === today ? 'Today' : relativeDay(day, today);
@@ -231,7 +298,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             <PageNav day={day} today={today} onDay={onDay}/>
             {folderError && <Banner tone="danger"><strong>Gloamlog can't save to your log folder.</strong> {folderError}</Banner>}
             {saveError && <Banner tone="danger" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
-                <Button variant="line" size="sm" onClick={() => navigator.clipboard.writeText(`# ${day}\n\n${editor.getMarkdown()}`)}>Copy my text</Button></div>}>
+                <Button variant="line" size="sm" onClick={async () => navigator.clipboard.writeText(`# ${day}\n\n${await pageText()}`)}>Copy my text</Button></div>}>
                 <strong>Couldn't save this page.</strong> {saveError}</Banner>}
             {orphanCount > 0 && <Banner tone="warning" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
                 <Button variant="line" size="sm" onClick={() => navigator.clipboard.writeText([...orphans.current].map(([d, md]) => `# ${d}\n\n${md}`).join('\n\n'))}>Copy my text</Button></div>}>
@@ -246,15 +313,17 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             )}
 
             <header className="page-head">
-                {label && <p className="label">{label}</p>}
-                {page && <Display key={day} lines={[weekday, rest.join(' ')]}/>}
+                {(label || (listPage && !full)) && <p className="label">{listPage && !full ? [label, page?.title].filter(Boolean).join(' · ') : label}</p>}
+                {page && (listPage && !full
+                    ? <Display key={day} lines={[summary || 'Nothing yet']}/>
+                    : <Display key={day} lines={[weekday, rest.join(' ')]}/>)}
                 {page && !skipped && <p className="small muted page-progress" aria-live="polite">
                     {words >= Math.max(1, minWords) ? `Logged, ${plural(words, 'word')}` : `${plural(words, 'word')}. Counts as logged at ${minWords}.`}
                     {recentlySaved && <span className="page-saved"> · Saved</span>}
                 </p>}
             </header>
 
-            {page?.carry && !page.carryApplied && !skipped && (
+            {page?.carry && !page.carryApplied && !skipped && !listPage && (
                 <section className="carry rule-top">
                     <p className="label">From yesterday · {page.carry.sourceLabel} · {plural(page.carry.items.length, 'item')}</p>
                     <ul className="carry-items">{page.carry.items.slice(0, 8).map(i => <li key={i}>{i}</li>)}</ul>
@@ -277,10 +346,17 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 </section>
             )}
             {page?.notLocal && <DownloadingPage day={day} title={page.title} source={''} onOpenStorage={() => void Windows.ShowSettings()}/>}
-            <div hidden={skipped || !!page?.notLocal}><Editor onMessage={onMessage} label={`Page for ${page?.title ?? day}`}/></div>
+            {listPage && !full && !skipped && (
+                <LogEditor key={pageKey} ref={logRef} day={day} page={listPage} readOnly={!!page?.notLocal} autoFocus={day === today}
+                           onChange={onLogChange} onSummary={setSummary} onToast={onToast}/>
+            )}
+            <div hidden={skipped || !!page?.notLocal || (!!listPage && !full)}><Editor onMessage={onMessage} label={`Page for ${page?.title ?? day}`}/></div>
 
             {page && !skipped && (
                 <footer className="page-foot row-gap">
+                    {listPage && (full
+                        ? <Button variant="ghost" size="sm" onClick={() => void backToList()}>Back to the list</Button>
+                        : <Button variant="ghost" size="sm" onClick={() => void editWholePage()}>Edit whole page</Button>)}
                     {page.status !== 'logged' && day <= today && <Button variant="ghost" size="sm" onClick={() => onSkip([day])}>Skip day…</Button>}
                     {page.exists && <Button variant="ghost" size="sm" onClick={() => onRestore(day)}>Restore previous version…</Button>}
                 </footer>
