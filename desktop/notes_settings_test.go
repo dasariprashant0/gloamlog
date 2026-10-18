@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func writeFile(t *testing.T, path, text string) {
+func writeTestFile(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
@@ -17,7 +17,7 @@ func writeFile(t *testing.T, path, text string) {
 	}
 }
 
-func readFile(t *testing.T, path string) string {
+func readTestFile(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -30,27 +30,27 @@ func readFile(t *testing.T, path string) string {
 // stays behind; everything else arrives byte for byte and only then leaves the old folder.
 func TestMoveLogFolderKeepsEveryDay(t *testing.T) {
 	from, to := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(from, "2026-10-12.md"), "# 2026-10-12\n\nold folder\n")
-	writeFile(t, filepath.Join(from, "2026-10-13.md"), "# 2026-10-13\n\nonly in the old folder\n")
-	writeFile(t, filepath.Join(from, "notes.txt"), "not a day")
-	writeFile(t, filepath.Join(from, "assets", "2026-10-13-1a2b3c4d.png"), "png bytes")
-	writeFile(t, filepath.Join(to, "2026-10-12.md"), "# 2026-10-12\n\nnew folder wins\n")
+	writeTestFile(t, filepath.Join(from, "2026-10-12.md"), "# 2026-10-12\n\nold folder\n")
+	writeTestFile(t, filepath.Join(from, "2026-10-13.md"), "# 2026-10-13\n\nonly in the old folder\n")
+	writeTestFile(t, filepath.Join(from, "notes.txt"), "not a day")
+	writeTestFile(t, filepath.Join(from, "assets", "2026-10-13-1a2b3c4d.png"), "png bytes")
+	writeTestFile(t, filepath.Join(to, "2026-10-12.md"), "# 2026-10-12\n\nnew folder wins\n")
 
 	res := transfer(from, to, true)
 
-	if got := readFile(t, filepath.Join(to, "2026-10-12.md")); !strings.Contains(got, "new folder wins") {
+	if got := readTestFile(t, filepath.Join(to, "2026-10-12.md")); !strings.Contains(got, "new folder wins") {
 		t.Errorf("existing day in the new folder was overwritten: %q", got)
 	}
-	if got := readFile(t, filepath.Join(from, "2026-10-12.md")); !strings.Contains(got, "old folder") {
+	if got := readTestFile(t, filepath.Join(from, "2026-10-12.md")); !strings.Contains(got, "old folder") {
 		t.Errorf("the conflicting original must stay behind, got %q", got)
 	}
-	if got := readFile(t, filepath.Join(to, "2026-10-13.md")); !strings.Contains(got, "only in the old folder") {
+	if got := readTestFile(t, filepath.Join(to, "2026-10-13.md")); !strings.Contains(got, "only in the old folder") {
 		t.Errorf("moved day: %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(from, "2026-10-13.md")); !os.IsNotExist(err) {
 		t.Errorf("a moved day should leave the old folder, stat err = %v", err)
 	}
-	if got := readFile(t, filepath.Join(to, "assets", "2026-10-13-1a2b3c4d.png")); got != "png bytes" {
+	if got := readTestFile(t, filepath.Join(to, "assets", "2026-10-13-1a2b3c4d.png")); got != "png bytes" {
 		t.Errorf("image: %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(from, "notes.txt")); err != nil {
@@ -64,9 +64,9 @@ func TestMoveLogFolderKeepsEveryDay(t *testing.T) {
 // Copying leaves the old folder exactly as it was.
 func TestCopyLogFolderLeavesTheOriginal(t *testing.T) {
 	from, to := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(from, "2026-10-14.md"), "# 2026-10-14\n\ncopied\n")
+	writeTestFile(t, filepath.Join(from, "2026-10-14.md"), "# 2026-10-14\n\ncopied\n")
 	transfer(from, to, false)
-	if readFile(t, filepath.Join(from, "2026-10-14.md")) != readFile(t, filepath.Join(to, "2026-10-14.md")) {
+	if readTestFile(t, filepath.Join(from, "2026-10-14.md")) != readTestFile(t, filepath.Join(to, "2026-10-14.md")) {
 		t.Error("copy differs from the original")
 	}
 }
@@ -80,17 +80,17 @@ func TestTransferEdgeCases(t *testing.T) {
 	}
 
 	from, to := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(from, "2026-10-15.md"), "")
-	writeFile(t, filepath.Join(from, "2026-10-16.md"), "# 2026-10-16\n\nold\n")
-	writeFile(t, filepath.Join(to, "2026-10-16.md"), "# 2026-10-16\n\nkeep me\n")
+	writeTestFile(t, filepath.Join(from, "2026-10-15.md"), "")
+	writeTestFile(t, filepath.Join(from, "2026-10-16.md"), "# 2026-10-16\n\nold\n")
+	writeTestFile(t, filepath.Join(to, "2026-10-16.md"), "# 2026-10-16\n\nkeep me\n")
 	res := transfer(from, to, false)
-	if got := readFile(t, filepath.Join(to, "2026-10-15.md")); got != "" {
+	if got := readTestFile(t, filepath.Join(to, "2026-10-15.md")); got != "" {
 		t.Errorf("zero-byte day: %q", got)
 	}
-	if got := readFile(t, filepath.Join(to, "2026-10-16.md")); !strings.Contains(got, "keep me") {
+	if got := readTestFile(t, filepath.Join(to, "2026-10-16.md")); !strings.Contains(got, "keep me") {
 		t.Errorf("copy overwrote an existing day: %q", got)
 	}
-	if got := readFile(t, filepath.Join(from, "2026-10-16.md")); !strings.Contains(got, "old") {
+	if got := readTestFile(t, filepath.Join(from, "2026-10-16.md")); !strings.Contains(got, "old") {
 		t.Errorf("copy touched the original: %q", got)
 	}
 	if len(res.Conflicts) != 1 {

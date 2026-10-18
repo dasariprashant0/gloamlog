@@ -134,6 +134,200 @@ export class CatchUpDay {
 }
 
 /**
+ * ClaudeInfo is the state plus the one-line text for Settings.
+ */
+export class ClaudeInfo {
+    "state": ClaudeState;
+    "message": string;
+
+    /** Creates a new ClaudeInfo instance. */
+    constructor($$source: Partial<ClaudeInfo> = {}) {
+        if (!("state" in $$source)) {
+            this["state"] = ClaudeState.$zero;
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ClaudeInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ClaudeInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ClaudeInfo($$parsedSource as Partial<ClaudeInfo>);
+    }
+}
+
+/**
+ * ClaudeResult is what Connect and Disconnect report.
+ */
+export class ClaudeResult {
+    "ok": boolean;
+    "message": string;
+    "state": ClaudeState;
+
+    /** Creates a new ClaudeResult instance. */
+    constructor($$source: Partial<ClaudeResult> = {}) {
+        if (!("ok" in $$source)) {
+            this["ok"] = false;
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = ClaudeState.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ClaudeResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ClaudeResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ClaudeResult($$parsedSource as Partial<ClaudeResult>);
+    }
+}
+
+/**
+ * ClaudeState is where the connection stands.
+ */
+export enum ClaudeState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ClaudeConnected = "connected",
+
+    /**
+     * registered, but the app was moved or renamed since: "Needs reconnecting"
+     */
+    ClaudeMoved = "moved",
+    ClaudeNotConnected = "notConnected",
+
+    /**
+     * "Claude Code not found"
+     */
+    ClaudeNoClaude = "noClaude",
+};
+
+/**
+ * ConflictItem is one conflict copy with both versions. When a side cannot be read yet (Error is set) Mine and Theirs are null.
+ */
+export class ConflictItem {
+    "name": string;
+    "day": string;
+    "family": string;
+
+    /**
+     * "" = both versions were read
+     */
+    "error": string;
+    "mine": ConflictSide | null;
+    "theirs": ConflictSide | null;
+
+    /**
+     * this Mac has a page for the day: Keep mine makes sense
+     */
+    "mineExists": boolean;
+
+    /**
+     * the other copy has text: Take theirs makes sense
+     */
+    "theirsHasText": boolean;
+
+    /** Creates a new ConflictItem instance. */
+    constructor($$source: Partial<ConflictItem> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("family" in $$source)) {
+            this["family"] = "";
+        }
+        if (!("error" in $$source)) {
+            this["error"] = "";
+        }
+        if (!("mine" in $$source)) {
+            this["mine"] = null;
+        }
+        if (!("theirs" in $$source)) {
+            this["theirs"] = null;
+        }
+        if (!("mineExists" in $$source)) {
+            this["mineExists"] = false;
+        }
+        if (!("theirsHasText" in $$source)) {
+            this["theirsHasText"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ConflictItem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ConflictItem {
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("mine" in $$parsedSource) {
+            $$parsedSource["mine"] = $$createField4_0($$parsedSource["mine"]);
+        }
+        if ("theirs" in $$parsedSource) {
+            $$parsedSource["theirs"] = $$createField5_0($$parsedSource["theirs"]);
+        }
+        return new ConflictItem($$parsedSource as Partial<ConflictItem>);
+    }
+}
+
+/**
+ * ConflictSide is one version of a conflicted day, for the side-by-side view.
+ */
+export class ConflictSide {
+    /**
+     * "This Mac, Thu 8 Oct, 4:30 pm, 12 words"
+     */
+    "title": string;
+
+    /**
+     * every line, and whether the other version lacks it
+     */
+    "lines": core$0.MarkedLine[];
+
+    /** Creates a new ConflictSide instance. */
+    constructor($$source: Partial<ConflictSide> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("lines" in $$source)) {
+            this["lines"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ConflictSide instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ConflictSide {
+        const $$createField1_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("lines" in $$parsedSource) {
+            $$parsedSource["lines"] = $$createField1_0($$parsedSource["lines"]);
+        }
+        return new ConflictSide($$parsedSource as Partial<ConflictSide>);
+    }
+}
+
+/**
  * FolderPlan says what a change to `path` would meet, so the window can ask the right question.
  */
 export class FolderPlan {
@@ -216,12 +410,48 @@ export class FolderResult {
      * Creates a new FolderResult instance from a string or object.
      */
     static createFrom($$source: any = {}): FolderResult {
-        const $$createField1_0 = $$createType2;
+        const $$createField1_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("conflicts" in $$parsedSource) {
             $$parsedSource["conflicts"] = $$createField1_0($$parsedSource["conflicts"]);
         }
         return new FolderResult($$parsedSource as Partial<FolderResult>);
+    }
+}
+
+/**
+ * FoundLogs is a summary of the day pages already in a folder (file names only; nothing is read or changed).
+ */
+export class FoundLogs {
+    "count": number;
+
+    /**
+     * "2026-01-05"
+     */
+    "first": string;
+    "last": string;
+
+    /** Creates a new FoundLogs instance. */
+    constructor($$source: Partial<FoundLogs> = {}) {
+        if (!("count" in $$source)) {
+            this["count"] = 0;
+        }
+        if (!("first" in $$source)) {
+            this["first"] = "";
+        }
+        if (!("last" in $$source)) {
+            this["last"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FoundLogs instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FoundLogs {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FoundLogs($$parsedSource as Partial<FoundLogs>);
     }
 }
 
@@ -262,6 +492,133 @@ export class Hit {
     static createFrom($$source: any = {}): Hit {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Hit($$parsedSource as Partial<Hit>);
+    }
+}
+
+/**
+ * InstallOutcome is how an install ended when the app is still here. Status: "failed" (nothing was installed; Message says
+ * why) or "fallback" (can't install by itself; offer the download page). On success the app quits and nothing is returned.
+ */
+export class InstallOutcome {
+    "status": string;
+    "message": string;
+
+    /** Creates a new InstallOutcome instance. */
+    constructor($$source: Partial<InstallOutcome> = {}) {
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new InstallOutcome instance from a string or object.
+     */
+    static createFrom($$source: any = {}): InstallOutcome {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new InstallOutcome($$parsedSource as Partial<InstallOutcome>);
+    }
+}
+
+/**
+ * JotResult is what the Jot panel shows after Return.
+ */
+export class JotResult {
+    /**
+     * "added" | "kept" | "empty" (nothing left of the text)
+     */
+    "outcome": string;
+    "message": string;
+
+    /**
+     * notes journaled but not in a page yet
+     */
+    "waiting": number;
+    "day": string;
+
+    /**
+     * the heading the note goes under
+     */
+    "heading": string;
+
+    /** Creates a new JotResult instance. */
+    constructor($$source: Partial<JotResult> = {}) {
+        if (!("outcome" in $$source)) {
+            this["outcome"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+        if (!("waiting" in $$source)) {
+            this["waiting"] = 0;
+        }
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("heading" in $$source)) {
+            this["heading"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new JotResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): JotResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new JotResult($$parsedSource as Partial<JotResult>);
+    }
+}
+
+/**
+ * OnboardingInfo is what the folder step needs to know.
+ */
+export class OnboardingInfo {
+    /**
+     * "" when iCloud Drive isn't on this Mac
+     */
+    "icloudFolder": string;
+
+    /**
+     * ~/Gloamlog
+     */
+    "defaultFolder": string;
+
+    /**
+     * day pages in `folder`; nil when there are none
+     */
+    "found": FoundLogs | null;
+
+    /** Creates a new OnboardingInfo instance. */
+    constructor($$source: Partial<OnboardingInfo> = {}) {
+        if (!("icloudFolder" in $$source)) {
+            this["icloudFolder"] = "";
+        }
+        if (!("defaultFolder" in $$source)) {
+            this["defaultFolder"] = "";
+        }
+        if (!("found" in $$source)) {
+            this["found"] = null;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new OnboardingInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): OnboardingInfo {
+        const $$createField2_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("found" in $$parsedSource) {
+            $$parsedSource["found"] = $$createField2_0($$parsedSource["found"]);
+        }
+        return new OnboardingInfo($$parsedSource as Partial<OnboardingInfo>);
     }
 }
 
@@ -321,10 +678,10 @@ export class Overview {
      * Creates a new Overview instance from a string or object.
      */
     static createFrom($$source: any = {}): Overview {
-        const $$createField2_0 = $$createType2;
-        const $$createField3_0 = $$createType3;
-        const $$createField4_0 = $$createType2;
-        const $$createField8_0 = $$createType4;
+        const $$createField2_0 = $$createType6;
+        const $$createField3_0 = $$createType9;
+        const $$createField4_0 = $$createType6;
+        const $$createField8_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("catchUp" in $$parsedSource) {
             $$parsedSource["catchUp"] = $$createField2_0($$parsedSource["catchUp"]);
@@ -410,12 +767,669 @@ export class Page {
      * Creates a new Page instance from a string or object.
      */
     static createFrom($$source: any = {}): Page {
-        const $$createField9_0 = $$createType6;
+        const $$createField9_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("carry" in $$parsedSource) {
             $$parsedSource["carry"] = $$createField9_0($$parsedSource["carry"]);
         }
         return new Page($$parsedSource as Partial<Page>);
+    }
+}
+
+/**
+ * ReminderNoticeState is what the slim notice on today's page needs. The page adds "viewing today" and "not dismissed".
+ */
+export class ReminderNoticeState {
+    /**
+     * due, unlogged and not snoozed
+     */
+    "visible": boolean;
+    "strict": boolean;
+    "day": string;
+
+    /**
+     * "4:55 pm", the clock now
+     */
+    "time": string;
+
+    /**
+     * "Remind me in 15 min · 2 left", "No snoozes left today"
+     */
+    "snoozeLabel": string;
+    "canSnooze": boolean;
+
+    /**
+     * Strict, after the 3rd re-open: "Not today?"
+     */
+    "showSkipHint": boolean;
+
+    /** Creates a new ReminderNoticeState instance. */
+    constructor($$source: Partial<ReminderNoticeState> = {}) {
+        if (!("visible" in $$source)) {
+            this["visible"] = false;
+        }
+        if (!("strict" in $$source)) {
+            this["strict"] = false;
+        }
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("time" in $$source)) {
+            this["time"] = "";
+        }
+        if (!("snoozeLabel" in $$source)) {
+            this["snoozeLabel"] = "";
+        }
+        if (!("canSnooze" in $$source)) {
+            this["canSnooze"] = false;
+        }
+        if (!("showSkipHint" in $$source)) {
+            this["showSkipHint"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReminderNoticeState instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReminderNoticeState {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReminderNoticeState($$parsedSource as Partial<ReminderNoticeState>);
+    }
+}
+
+/**
+ * ReviewCopy is a review as text. Text is the markdown ("markdown", "rich") or the plain text ("plain"); HTML is the pasteboard
+ * page for "rich" and the printable fragment for "print" (images by /dlasset/ link, drawn by the page itself).
+ */
+export class ReviewCopy {
+    "title": string;
+    "text": string;
+    "html": string;
+
+    /** Creates a new ReviewCopy instance. */
+    constructor($$source: Partial<ReviewCopy> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("html" in $$source)) {
+            this["html"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewCopy instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewCopy {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewCopy($$parsedSource as Partial<ReviewCopy>);
+    }
+}
+
+/**
+ * ReviewData is everything the Review screen draws for one request.
+ */
+export class ReviewData {
+    "period": core$0.ReviewPeriod;
+
+    /**
+     * "Week of 5 to 11 Oct 2026"
+     */
+    "title": string;
+
+    /**
+     * "Gloamlog 2026-W41"
+     */
+    "fileName": string;
+    "countsLine": string;
+    "tasksLine": string;
+    "counts": core$0.ReviewCounts;
+    "notLogged": number;
+    "empty": boolean;
+    "emptyText": string;
+    "canPrev": boolean;
+    "canNext": boolean;
+    "isCurrent": boolean;
+    "today": string;
+    "minWords": number;
+
+    /**
+     * "Catch up this week"
+     */
+    "catchUpLabel": string;
+
+    /**
+     * the unlogged days of the period, oldest first
+     */
+    "missingDays": string[];
+
+    /**
+     * week only
+     */
+    "tiles": ReviewTile[];
+    "days": ReviewDayView[];
+    "groups": ReviewGroupView[];
+
+    /**
+     * year only
+     */
+    "months": ReviewMonthView[];
+
+    /** Creates a new ReviewData instance. */
+    constructor($$source: Partial<ReviewData> = {}) {
+        if (!("period" in $$source)) {
+            this["period"] = (new core$0.ReviewPeriod());
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("fileName" in $$source)) {
+            this["fileName"] = "";
+        }
+        if (!("countsLine" in $$source)) {
+            this["countsLine"] = "";
+        }
+        if (!("tasksLine" in $$source)) {
+            this["tasksLine"] = "";
+        }
+        if (!("counts" in $$source)) {
+            this["counts"] = (new core$0.ReviewCounts());
+        }
+        if (!("notLogged" in $$source)) {
+            this["notLogged"] = 0;
+        }
+        if (!("empty" in $$source)) {
+            this["empty"] = false;
+        }
+        if (!("emptyText" in $$source)) {
+            this["emptyText"] = "";
+        }
+        if (!("canPrev" in $$source)) {
+            this["canPrev"] = false;
+        }
+        if (!("canNext" in $$source)) {
+            this["canNext"] = false;
+        }
+        if (!("isCurrent" in $$source)) {
+            this["isCurrent"] = false;
+        }
+        if (!("today" in $$source)) {
+            this["today"] = "";
+        }
+        if (!("minWords" in $$source)) {
+            this["minWords"] = 0;
+        }
+        if (!("catchUpLabel" in $$source)) {
+            this["catchUpLabel"] = "";
+        }
+        if (!("missingDays" in $$source)) {
+            this["missingDays"] = [];
+        }
+        if (!("tiles" in $$source)) {
+            this["tiles"] = [];
+        }
+        if (!("days" in $$source)) {
+            this["days"] = [];
+        }
+        if (!("groups" in $$source)) {
+            this["groups"] = [];
+        }
+        if (!("months" in $$source)) {
+            this["months"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewData instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewData {
+        const $$createField0_0 = $$createType13;
+        const $$createField5_0 = $$createType14;
+        const $$createField15_0 = $$createType6;
+        const $$createField16_0 = $$createType16;
+        const $$createField17_0 = $$createType18;
+        const $$createField18_0 = $$createType20;
+        const $$createField19_0 = $$createType22;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("period" in $$parsedSource) {
+            $$parsedSource["period"] = $$createField0_0($$parsedSource["period"]);
+        }
+        if ("counts" in $$parsedSource) {
+            $$parsedSource["counts"] = $$createField5_0($$parsedSource["counts"]);
+        }
+        if ("missingDays" in $$parsedSource) {
+            $$parsedSource["missingDays"] = $$createField15_0($$parsedSource["missingDays"]);
+        }
+        if ("tiles" in $$parsedSource) {
+            $$parsedSource["tiles"] = $$createField16_0($$parsedSource["tiles"]);
+        }
+        if ("days" in $$parsedSource) {
+            $$parsedSource["days"] = $$createField17_0($$parsedSource["days"]);
+        }
+        if ("groups" in $$parsedSource) {
+            $$parsedSource["groups"] = $$createField18_0($$parsedSource["groups"]);
+        }
+        if ("months" in $$parsedSource) {
+            $$parsedSource["months"] = $$createField19_0($$parsedSource["months"]);
+        }
+        return new ReviewData($$parsedSource as Partial<ReviewData>);
+    }
+}
+
+/**
+ * ReviewDayView is a day's writing for "Group by Day". HTML is the page as shown, ready to draw.
+ */
+export class ReviewDayView {
+    "day": string;
+
+    /**
+     * "Mon 5 Oct"
+     */
+    "label": string;
+
+    /**
+     * "Monday 5 October"
+     */
+    "spoken": string;
+    "status": core$0.DayStatus;
+    "words": number;
+    "skipReason": string;
+    "html": string;
+
+    /** Creates a new ReviewDayView instance. */
+    constructor($$source: Partial<ReviewDayView> = {}) {
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("spoken" in $$source)) {
+            this["spoken"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = core$0.DayStatus.$zero;
+        }
+        if (!("words" in $$source)) {
+            this["words"] = 0;
+        }
+        if (!("skipReason" in $$source)) {
+            this["skipReason"] = "";
+        }
+        if (!("html" in $$source)) {
+            this["html"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewDayView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewDayView {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewDayView($$parsedSource as Partial<ReviewDayView>);
+    }
+}
+
+/**
+ * ReviewExportInfo says what an export would hold, for the sheet. Nothing is written.
+ */
+export class ReviewExportInfo {
+    /**
+     * "Gloamlog 2026-W41"
+     */
+    "name": string;
+    "days": number;
+    "images": number;
+
+    /**
+     * "5 days, 2 images. Skipped days included. Jots left out."
+     */
+    "detail": string;
+
+    /** Creates a new ReviewExportInfo instance. */
+    constructor($$source: Partial<ReviewExportInfo> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("days" in $$source)) {
+            this["days"] = 0;
+        }
+        if (!("images" in $$source)) {
+            this["images"] = 0;
+        }
+        if (!("detail" in $$source)) {
+            this["detail"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewExportInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewExportInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewExportInfo($$parsedSource as Partial<ReviewExportInfo>);
+    }
+}
+
+/**
+ * ReviewGroupView is one roll-up of "Group by Section".
+ */
+export class ReviewGroupView {
+    /**
+     * without a leading emoji or mark
+     */
+    "title": string;
+    "kind": core$0.ReviewGroupKind;
+    "items": ReviewItemView[];
+
+    /** Creates a new ReviewGroupView instance. */
+    constructor($$source: Partial<ReviewGroupView> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = core$0.ReviewGroupKind.$zero;
+        }
+        if (!("items" in $$source)) {
+            this["items"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewGroupView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewGroupView {
+        const $$createField2_0 = $$createType24;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("items" in $$parsedSource) {
+            $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
+        }
+        return new ReviewGroupView($$parsedSource as Partial<ReviewGroupView>);
+    }
+}
+
+export class ReviewItemView {
+    "day": string;
+
+    /**
+     * "Mon 5"
+     */
+    "label": string;
+    "text": string;
+    "html": string;
+
+    /** Creates a new ReviewItemView instance. */
+    constructor($$source: Partial<ReviewItemView> = {}) {
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("html" in $$source)) {
+            this["html"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewItemView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewItemView {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewItemView($$parsedSource as Partial<ReviewItemView>);
+    }
+}
+
+/**
+ * ReviewMonthView is one row of a Year.
+ */
+export class ReviewMonthView {
+    /**
+     * "2026-09"
+     */
+    "month": string;
+
+    /**
+     * "September"
+     */
+    "name": string;
+
+    /**
+     * "20 logged · 1 skipped · 2 not logged", or "–"
+     */
+    "line": string;
+    "counts": core$0.ReviewCounts;
+    "isFuture": boolean;
+
+    /**
+     * not started or nothing to count: shown as a dash
+     */
+    "inert": boolean;
+    "spoken": string;
+
+    /** Creates a new ReviewMonthView instance. */
+    constructor($$source: Partial<ReviewMonthView> = {}) {
+        if (!("month" in $$source)) {
+            this["month"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = "";
+        }
+        if (!("counts" in $$source)) {
+            this["counts"] = (new core$0.ReviewCounts());
+        }
+        if (!("isFuture" in $$source)) {
+            this["isFuture"] = false;
+        }
+        if (!("inert" in $$source)) {
+            this["inert"] = false;
+        }
+        if (!("spoken" in $$source)) {
+            this["spoken"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewMonthView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewMonthView {
+        const $$createField3_0 = $$createType14;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("counts" in $$parsedSource) {
+            $$parsedSource["counts"] = $$createField3_0($$parsedSource["counts"]);
+        }
+        return new ReviewMonthView($$parsedSource as Partial<ReviewMonthView>);
+    }
+}
+
+/**
+ * ReviewRequest says which review the screen wants. The screen keeps scale + day (or from/to for a range) and sends them back
+ * every time; Shift steps to the previous (-1) or next (1) period first, and the answer carries the period it landed on.
+ */
+export class ReviewRequest {
+    /**
+     * week, month, year or range
+     */
+    "scale": string;
+
+    /**
+     * any day of the week, month or year ("" = today)
+     */
+    "day": string;
+
+    /**
+     * range only
+     */
+    "from": string;
+    "to": string;
+    "shift": number;
+    "includeSkipped": boolean;
+    "includeJots": boolean;
+
+    /**
+     * false = group by day
+     */
+    "bySection": boolean;
+
+    /** Creates a new ReviewRequest instance. */
+    constructor($$source: Partial<ReviewRequest> = {}) {
+        if (!("scale" in $$source)) {
+            this["scale"] = "";
+        }
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("from" in $$source)) {
+            this["from"] = "";
+        }
+        if (!("to" in $$source)) {
+            this["to"] = "";
+        }
+        if (!("shift" in $$source)) {
+            this["shift"] = 0;
+        }
+        if (!("includeSkipped" in $$source)) {
+            this["includeSkipped"] = false;
+        }
+        if (!("includeJots" in $$source)) {
+            this["includeJots"] = false;
+        }
+        if (!("bySection" in $$source)) {
+            this["bySection"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewRequest($$parsedSource as Partial<ReviewRequest>);
+    }
+}
+
+/**
+ * ReviewSaved is what a finished export says.
+ */
+export class ReviewSaved {
+    /**
+     * "Saved 5 days and 2 images."
+     */
+    "line": string;
+
+    /**
+     * the file, folder or zip that was made: Show in Finder points at it
+     */
+    "path": string;
+
+    /** Creates a new ReviewSaved instance. */
+    constructor($$source: Partial<ReviewSaved> = {}) {
+        if (!("line" in $$source)) {
+            this["line"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewSaved instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewSaved {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewSaved($$parsedSource as Partial<ReviewSaved>);
+    }
+}
+
+/**
+ * ReviewTile is one day of the week strip.
+ */
+export class ReviewTile {
+    "day": string;
+
+    /**
+     * "Mon"
+     */
+    "weekday": string;
+    "number": number;
+    "status": core$0.DayStatus;
+
+    /**
+     * "63 words", "Write", the skip reason, or ""
+     */
+    "bottom": string;
+    "isToday": boolean;
+
+    /**
+     * false for days that have not happened yet
+     */
+    "opens": boolean;
+    "spoken": string;
+
+    /** Creates a new ReviewTile instance. */
+    constructor($$source: Partial<ReviewTile> = {}) {
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("weekday" in $$source)) {
+            this["weekday"] = "";
+        }
+        if (!("number" in $$source)) {
+            this["number"] = 0;
+        }
+        if (!("status" in $$source)) {
+            this["status"] = core$0.DayStatus.$zero;
+        }
+        if (!("bottom" in $$source)) {
+            this["bottom"] = "";
+        }
+        if (!("isToday" in $$source)) {
+            this["isToday"] = false;
+        }
+        if (!("opens" in $$source)) {
+            this["opens"] = false;
+        }
+        if (!("spoken" in $$source)) {
+            this["spoken"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewTile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewTile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewTile($$parsedSource as Partial<ReviewTile>);
     }
 }
 
@@ -498,12 +1512,135 @@ export class Suggestions {
      * Creates a new Suggestions instance from a string or object.
      */
     static createFrom($$source: any = {}): Suggestions {
-        const $$createField3_0 = $$createType7;
+        const $$createField3_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("result" in $$parsedSource) {
             $$parsedSource["result"] = $$createField3_0($$parsedSource["result"]);
         }
         return new Suggestions($$parsedSource as Partial<Suggestions>);
+    }
+}
+
+/**
+ * SyncStatus is what the sidebar chip and Storage settings show. Quiet by design: nothing to say when both counts are 0.
+ */
+export class SyncStatus {
+    /**
+     * "local", "icloud", "cloud" or "network"
+     */
+    "kind": string;
+
+    /**
+     * "Local", "iCloud Drive", "Dropbox", "Network or external drive"
+     */
+    "kindLabel": string;
+
+    /**
+     * "iCloud", the provider's name, or "your cloud folder": "Downloading from iCloud…"
+     */
+    "source": string;
+
+    /**
+     * conflict copies to review
+     */
+    "conflicts": number;
+    "conflictDays": string[];
+
+    /**
+     * days with something still on its way, oldest first
+     */
+    "pendingDays": string[];
+
+    /**
+     * days with no local page at all: not written to, not "unlogged"
+     */
+    "blockedDays": string[];
+
+    /** Creates a new SyncStatus instance. */
+    constructor($$source: Partial<SyncStatus> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("kindLabel" in $$source)) {
+            this["kindLabel"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("conflicts" in $$source)) {
+            this["conflicts"] = 0;
+        }
+        if (!("conflictDays" in $$source)) {
+            this["conflictDays"] = [];
+        }
+        if (!("pendingDays" in $$source)) {
+            this["pendingDays"] = [];
+        }
+        if (!("blockedDays" in $$source)) {
+            this["blockedDays"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SyncStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SyncStatus {
+        const $$createField4_0 = $$createType6;
+        const $$createField5_0 = $$createType6;
+        const $$createField6_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("conflictDays" in $$parsedSource) {
+            $$parsedSource["conflictDays"] = $$createField4_0($$parsedSource["conflictDays"]);
+        }
+        if ("pendingDays" in $$parsedSource) {
+            $$parsedSource["pendingDays"] = $$createField5_0($$parsedSource["pendingDays"]);
+        }
+        if ("blockedDays" in $$parsedSource) {
+            $$parsedSource["blockedDays"] = $$createField6_0($$parsedSource["blockedDays"]);
+        }
+        return new SyncStatus($$parsedSource as Partial<SyncStatus>);
+    }
+}
+
+/**
+ * UpdateResult is the answer of a check. State: "none" (no release published, 404), "error", "uptodate" or "available".
+ */
+export class UpdateResult {
+    "state": string;
+    "current": string;
+
+    /**
+     * only for "available"; Notes are at most 600 characters
+     */
+    "release": core$0.ReleaseInfo;
+
+    /** Creates a new UpdateResult instance. */
+    constructor($$source: Partial<UpdateResult> = {}) {
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("current" in $$source)) {
+            this["current"] = "";
+        }
+        if (!("release" in $$source)) {
+            this["release"] = (new core$0.ReleaseInfo());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UpdateResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): UpdateResult {
+        const $$createField2_0 = $$createType26;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("release" in $$parsedSource) {
+            $$parsedSource["release"] = $$createField2_0($$parsedSource["release"]);
+        }
+        return new UpdateResult($$parsedSource as Partial<UpdateResult>);
     }
 }
 
@@ -527,7 +1664,7 @@ export class Week {
      * Creates a new Week instance from a string or object.
      */
     static createFrom($$source: any = {}): Week {
-        const $$createField0_0 = $$createType8;
+        const $$createField0_0 = $$createType27;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
             $$parsedSource["summary"] = $$createField0_0($$parsedSource["summary"]);
@@ -539,10 +1676,29 @@ export class Week {
 // Private type creation functions
 const $$createType0 = CatchUpDay.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = core$0.StreakResult.createFrom;
-const $$createType4 = core$0.FolderSummary.createFrom;
-const $$createType5 = core$0.CarryCard.createFrom;
-const $$createType6 = $Create.Nullable($$createType5);
-const $$createType7 = sources$0.ScanResult.createFrom;
-const $$createType8 = core$0.WeekSummary.createFrom;
+const $$createType2 = ConflictSide.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);
+const $$createType4 = core$0.MarkedLine.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $Create.Array($Create.Any);
+const $$createType7 = FoundLogs.createFrom;
+const $$createType8 = $Create.Nullable($$createType7);
+const $$createType9 = core$0.StreakResult.createFrom;
+const $$createType10 = core$0.FolderSummary.createFrom;
+const $$createType11 = core$0.CarryCard.createFrom;
+const $$createType12 = $Create.Nullable($$createType11);
+const $$createType13 = core$0.ReviewPeriod.createFrom;
+const $$createType14 = core$0.ReviewCounts.createFrom;
+const $$createType15 = ReviewTile.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = ReviewDayView.createFrom;
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = ReviewGroupView.createFrom;
+const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = ReviewMonthView.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = ReviewItemView.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = sources$0.ScanResult.createFrom;
+const $$createType26 = core$0.ReleaseInfo.createFrom;
+const $$createType27 = core$0.WeekSummary.createFrom;

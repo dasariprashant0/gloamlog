@@ -10,7 +10,6 @@ import (
 	"github.com/dasariprashant0/gloamlog/internal/core"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/icons"
 )
 
 // The built frontend (npm run build in desktop/frontend).
@@ -143,15 +142,23 @@ func main() {
 	registerJot(notes.Settings())
 	notes.OnSettings = registerJot
 
-	tray := app.SystemTray.New()
-	tray.SetTemplateIcon(icons.SystrayMacTemplate)
-	menu := app.NewMenu()
-	menu.Add("Open Gloamlog").OnClick(func(*application.Context) { showMain() })
-	menu.Add("Jot…").OnClick(func(*application.Context) { showJot() })
-	menu.Add("Settings…").OnClick(func(*application.Context) { showSettings() })
-	menu.AddSeparator()
-	menu.Add("Quit Gloamlog").OnClick(func(*application.Context) { app.Quit() })
-	tray.SetMenu(menu)
+	// Reminders chain onto OnSettings, so they start after the shortcut hook is set (reminders.go).
+	startReminders(app, notes)
+
+	// Quick capture: journal replay, the Claude inbox (every 15 s) and notes typed into the open page (capture.go).
+	startCapture(app, notes)
+	// gloamlog://refresh (the optional Claude Code Stop hook): drain the inbox and look at today's work again.
+	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(e *application.ApplicationEvent) {
+		handleURL(notes, e.Context().URL())
+	})
+
+	// iCloud / Dropbox: watch the folder and tell every window when it changed (notes_sync.go).
+	startSync(notes, func(event string) { app.Event.Emit(event) })
+
+	// The menu bar item: today's status and the common actions (menubar.go). Settings can turn it off.
+	if notes.Settings().ShowMenuBar {
+		setupMenuBar(app, notes, app.SystemTray.New())
+	}
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

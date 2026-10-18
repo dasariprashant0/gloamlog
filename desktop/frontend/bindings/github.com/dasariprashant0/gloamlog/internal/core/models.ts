@@ -312,6 +312,34 @@ export class HotKeySpec {
 }
 
 /**
+ * MarkedLine is one line of a version for the conflict dialog: whether the other version lacks it.
+ */
+export class MarkedLine {
+    "text": string;
+    "differs": boolean;
+
+    /** Creates a new MarkedLine instance. */
+    constructor($$source: Partial<MarkedLine> = {}) {
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("differs" in $$source)) {
+            this["differs"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MarkedLine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MarkedLine {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MarkedLine($$parsedSource as Partial<MarkedLine>);
+    }
+}
+
+/**
  * MonthCell is one square of the month grid.
  */
 export class MonthCell {
@@ -359,6 +387,53 @@ export class MonthCell {
 }
 
 /**
+ * ReleaseInfo is the part of a GitHub release the updater needs.
+ */
+export class ReleaseInfo {
+    /**
+     * "0.6.1" (a leading "v" removed)
+     */
+    "version": string;
+    "notes": string;
+    "pageURL": string;
+    "zipURL": string;
+
+    /**
+     * "" = the release has no checksum file
+     */
+    "shaURL": string;
+
+    /** Creates a new ReleaseInfo instance. */
+    constructor($$source: Partial<ReleaseInfo> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("notes" in $$source)) {
+            this["notes"] = "";
+        }
+        if (!("pageURL" in $$source)) {
+            this["pageURL"] = "";
+        }
+        if (!("zipURL" in $$source)) {
+            this["zipURL"] = "";
+        }
+        if (!("shaURL" in $$source)) {
+            this["shaURL"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReleaseInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReleaseInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReleaseInfo($$parsedSource as Partial<ReleaseInfo>);
+    }
+}
+
+/**
  * ReminderMode is how hard the end-of-day reminder nags. Swift enum ReminderMode.
  */
 export enum ReminderMode {
@@ -369,6 +444,105 @@ export enum ReminderMode {
 
     ModeStrict = "strict",
     ModeGentle = "gentle",
+};
+
+/**
+ * ReviewCounts: Logged + Skipped + Started + Unlogged = the scheduled days that have happened (plus pages written on days off).
+ * "Not logged" is Started + Unlogged; today is never counted as unlogged while it is still going.
+ */
+export class ReviewCounts {
+    "logged": number;
+    "skipped": number;
+    "started": number;
+    "unlogged": number;
+
+    /** Creates a new ReviewCounts instance. */
+    constructor($$source: Partial<ReviewCounts> = {}) {
+        if (!("logged" in $$source)) {
+            this["logged"] = 0;
+        }
+        if (!("skipped" in $$source)) {
+            this["skipped"] = 0;
+        }
+        if (!("started" in $$source)) {
+            this["started"] = 0;
+        }
+        if (!("unlogged" in $$source)) {
+            this["unlogged"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewCounts instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewCounts {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewCounts($$parsedSource as Partial<ReviewCounts>);
+    }
+}
+
+/**
+ * ReviewGroupKind says what a group is.
+ */
+export enum ReviewGroupKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    GroupHeading = "heading",
+    GroupJots = "jots",
+    GroupOther = "other",
+    GroupSkipped = "skipped",
+};
+
+/**
+ * ReviewPeriod is an inclusive span of day keys ("2026-10-05" ... "2026-10-11").
+ */
+export class ReviewPeriod {
+    "scale": ReviewScale;
+    "start": string;
+    "end": string;
+
+    /** Creates a new ReviewPeriod instance. */
+    constructor($$source: Partial<ReviewPeriod> = {}) {
+        if (!("scale" in $$source)) {
+            this["scale"] = ReviewScale.$zero;
+        }
+        if (!("start" in $$source)) {
+            this["start"] = "";
+        }
+        if (!("end" in $$source)) {
+            this["end"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewPeriod instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewPeriod {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewPeriod($$parsedSource as Partial<ReviewPeriod>);
+    }
+}
+
+/**
+ * ReviewScale is week, month, year or a custom range.
+ */
+export enum ReviewScale {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ScaleWeek = "week",
+    ScaleMonth = "month",
+    ScaleYear = "year",
+    ScaleRange = "range",
 };
 
 /**

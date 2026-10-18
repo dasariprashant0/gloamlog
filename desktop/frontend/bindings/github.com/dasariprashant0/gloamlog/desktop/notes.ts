@@ -66,6 +66,15 @@ export function ChangeFolder(path: string, mode: string): $CancellablePromise<$m
 }
 
 /**
+ * CheckForUpdates asks GitHub for the latest release. Only the "Check for Updates" click calls it.
+ */
+export function CheckForUpdates(): $CancellablePromise<$models.UpdateResult> {
+    return $Call.ByID(1180917662).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+/**
  * ChooseFolder asks for a folder (message says what it is for); "" when the user cancels.
  */
 export function ChooseFolder(message: string): $CancellablePromise<string> {
@@ -73,11 +82,92 @@ export function ChooseFolder(message: string): $CancellablePromise<string> {
 }
 
 /**
+ * ClaudeCopyText is the text behind "Copy command" ("setup"), "Copy instructions" ("instructions") and "Copy hook" ("hook").
+ * The page puts it on the clipboard.
+ */
+export function ClaudeCopyText(kind: string): $CancellablePromise<string> {
+    return $Call.ByID(263198135, kind);
+}
+
+/**
+ * ClaudeStatus is "connected", "moved", "notConnected" or "noClaude" with its text. It runs `claude`, so call it off the render path.
+ */
+export function ClaudeStatus(): $CancellablePromise<$models.ClaudeInfo> {
+    return $Call.ByID(3039873403).then(($result: any) => {
+        return $$createType8($result);
+    });
+}
+
+/**
+ * ConnectClaude does the three steps of "Connect Claude Code" (the page asks first): register the helper, add the CLAUDE.md
+ * block, and move "Jots go under" from its default "Jots" to "What I did" so Claude's entries land with the rest of the day.
+ */
+export function ConnectClaude(): $CancellablePromise<$models.ClaudeResult> {
+    return $Call.ByID(808203645).then(($result: any) => {
+        return $$createType9($result);
+    });
+}
+
+/**
+ * CurrentReminderNotice is the slim notice now (the "reminder-notice" event carries every later change).
+ */
+export function CurrentReminderNotice(): $CancellablePromise<$models.ReminderNoticeState> {
+    return $Call.ByID(429543842).then(($result: any) => {
+        return $$createType10($result);
+    });
+}
+
+/**
+ * DisconnectClaude undoes steps 1 and 2.
+ */
+export function DisconnectClaude(): $CancellablePromise<$models.ClaudeResult> {
+    return $Call.ByID(3345412083).then(($result: any) => {
+        return $$createType9($result);
+    });
+}
+
+/**
+ * DownloadAll asks the provider for every file that is not here yet ("Download all" in Settings > Storage). It returns at once.
+ */
+export function DownloadAll(): $CancellablePromise<void> {
+    return $Call.ByID(3518325210);
+}
+
+/**
+ * DownloadDay asks the provider for one day's page now ("Try again" on the still-downloading page). It returns at once.
+ */
+export function DownloadDay(day: string): $CancellablePromise<void> {
+    return $Call.ByID(1925932235, day);
+}
+
+/**
+ * EditorClosed: the page for `day` is gone and everything it held is saved (call it after the last write).
+ */
+export function EditorClosed(day: string): $CancellablePromise<void> {
+    return $Call.ByID(866093290, day);
+}
+
+/**
+ * EditorOpened: the main window's page for `day` exists (even while it loads) and owns that day's text until EditorClosed.
+ * Notes that were waiting for it go in now.
+ */
+export function EditorOpened(day: string): $CancellablePromise<void> {
+    return $Call.ByID(2423165887, day);
+}
+
+/**
+ * EditorSaved: the page just wrote `day` with this body. Notes whose line is in it are done.
+ */
+export function EditorSaved(day: string, body: string): $CancellablePromise<void> {
+    return $Call.ByID(3018971661, day, body);
+}
+
+/**
  * Heatmap is the last `weeks` weeks, for the streak popover and the menu bar.
  */
 export function Heatmap(weeks: number): $CancellablePromise<core$0.HeatCell[][]> {
     return $Call.ByID(2743609837, weeks).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType13($result);
     });
 }
 
@@ -89,6 +179,40 @@ export function HotKeyStatus(): $CancellablePromise<string> {
 }
 
 /**
+ * InstallUpdate downloads, verifies and installs `release` (from CheckForUpdates), then restarts the app. Progress comes as
+ * "update-progress" events. It returns only when nothing was installed.
+ */
+export function InstallUpdate(release: core$0.ReleaseInfo): $CancellablePromise<$models.InstallOutcome> {
+    return $Call.ByID(2376121907, release).then(($result: any) => {
+        return $$createType14($result);
+    });
+}
+
+/**
+ * Jot adds a note to today's page: durable in the journal first, then placed (see the file header).
+ */
+export function Jot(text: string): $CancellablePromise<$models.JotResult> {
+    return $Call.ByID(2423984816, text).then(($result: any) => {
+        return $$createType15($result);
+    });
+}
+
+/**
+ * JotPlaced is the page's answer to "jot-into-page": result is the editor's appendResult ("appended", "alreadyPresent",
+ * "stale") or "notLoaded"; markdown is the editor's markdown after an "appended". An answer that comes after the timeout is ignored.
+ */
+export function JotPlaced(id: string, result: string, markdown: string): $CancellablePromise<void> {
+    return $Call.ByID(299339813, id, result, markdown);
+}
+
+/**
+ * JotsWaiting is how many notes are journaled but not in a page yet.
+ */
+export function JotsWaiting(): $CancellablePromise<number> {
+    return $Call.ByID(1873601092);
+}
+
+/**
  * JumpTo reads "yesterday", "fri", "12 oct", "2026-10-12"... into a day key ("" when it means nothing).
  */
 export function JumpTo(input: string): $CancellablePromise<string> {
@@ -96,17 +220,47 @@ export function JumpTo(input: string): $CancellablePromise<string> {
 }
 
 /**
+ * MarkWhatsNewSeen remembers that the sheet was shown. Other keys in state.json stay.
+ */
+export function MarkWhatsNewSeen(): $CancellablePromise<void> {
+    return $Call.ByID(719247518);
+}
+
+/**
  * Month is the sidebar calendar for one month (month 1...12).
  */
 export function Month(year: number, month: number): $CancellablePromise<core$0.MonthCell[][]> {
     return $Call.ByID(1347049071, year, month).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType18($result);
+    });
+}
+
+/**
+ * NextReminder is "Thu 8 Oct, 4:55 pm", the first reminder of the plan the Mac holds, or "none planned".
+ */
+export function NextReminder(): $CancellablePromise<string> {
+    return $Call.ByID(3761522268);
+}
+
+/**
+ * NotificationStatus is "allowed", "denied" or "unknown" (not asked yet, or no notification service in this build).
+ */
+export function NotificationStatus(): $CancellablePromise<string> {
+    return $Call.ByID(2839452430);
+}
+
+/**
+ * OnboardingInfo looks at `folder` ("" = the default folder) for existing day pages and says whether iCloud Drive exists.
+ */
+export function OnboardingInfo(folder: string): $CancellablePromise<$models.OnboardingInfo> {
+    return $Call.ByID(116298394, folder).then(($result: any) => {
+        return $$createType19($result);
     });
 }
 
 export function Open(day: string): $CancellablePromise<$models.Page> {
     return $Call.ByID(2356740839, day).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType20($result);
     });
 }
 
@@ -117,15 +271,22 @@ export function OpenLoginItems(): $CancellablePromise<void> {
     return $Call.ByID(2956516592);
 }
 
+/**
+ * OpenReleasePage opens a release page in the browser (github.com only).
+ */
+export function OpenReleasePage(url: string): $CancellablePromise<void> {
+    return $Call.ByID(1274429943, url);
+}
+
 export function Overview(): $CancellablePromise<$models.Overview> {
     return $Call.ByID(3639484436).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType21($result);
     });
 }
 
 export function PlanFolderChange(path: string): $CancellablePromise<$models.FolderPlan> {
     return $Call.ByID(3440431704, path).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType22($result);
     });
 }
 
@@ -136,10 +297,34 @@ export function RecreateFolder(): $CancellablePromise<void> {
     return $Call.ByID(2076429230);
 }
 
+/**
+ * RequestNotifications asks macOS for permission (it shows the system prompt once) and returns the new status.
+ */
+export function RequestNotifications(): $CancellablePromise<string> {
+    return $Call.ByID(1427084312);
+}
+
+/**
+ * ResolveConflict settles one conflict copy: choice is "keep-mine", "keep-theirs" or "keep-both". The other copy is kept under
+ * backups/conflicts first and never deleted; the page's old text goes into its version history. A failure leaves everything as it was
+ * and its message is the sentence to show. The UI saves the open page before the call, refuses while it has unsaved edits, and reloads
+ * the day afterwards.
+ */
+export function ResolveConflict(name: string, choice: string): $CancellablePromise<void> {
+    return $Call.ByID(923461343, name, choice);
+}
+
 export function Restore(day: string, backup: core$0.BackupInfo): $CancellablePromise<core$0.DayDocument> {
     return $Call.ByID(323430763, day, backup).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType23($result);
     });
+}
+
+/**
+ * RetryJots delivers what is waiting now ("Try now").
+ */
+export function RetryJots(): $CancellablePromise<number> {
+    return $Call.ByID(2953002545);
 }
 
 /**
@@ -150,11 +335,56 @@ export function Reveal(paths: string[]): $CancellablePromise<void> {
 }
 
 /**
+ * Review builds the review the screen asked for.
+ */
+export function Review(req: $models.ReviewRequest): $CancellablePromise<$models.ReviewData> {
+    return $Call.ByID(2244216675, req).then(($result: any) => {
+        return $$createType24($result);
+    });
+}
+
+/**
+ * ReviewChoosePlace asks where to save ("markdown", "zip") or which folder to put the new folder in ("folder").
+ * "" means the person cancelled.
+ */
+export function ReviewChoosePlace(req: $models.ReviewRequest, kind: string): $CancellablePromise<string> {
+    return $Call.ByID(54195209, req, kind);
+}
+
+/**
+ * ReviewCopyText puts plain text on the clipboard (the page writes the rich flavour itself, in the click that asked for it).
+ */
+export function ReviewCopyText(text: string): $CancellablePromise<void> {
+    return $Call.ByID(659622497, text);
+}
+
+export function ReviewExportInfo(req: $models.ReviewRequest): $CancellablePromise<$models.ReviewExportInfo> {
+    return $Call.ByID(655962401, req).then(($result: any) => {
+        return $$createType25($result);
+    });
+}
+
+export function ReviewText(req: $models.ReviewRequest, flavor: string): $CancellablePromise<$models.ReviewCopy> {
+    return $Call.ByID(2363290852, req, flavor).then(($result: any) => {
+        return $$createType26($result);
+    });
+}
+
+/**
+ * ReviewWrite writes the export to the place chosen by ReviewChoosePlace (also what Try again calls, with the same place).
+ */
+export function ReviewWrite(req: $models.ReviewRequest, kind: string, path: string): $CancellablePromise<$models.ReviewSaved> {
+    return $Call.ByID(2309565206, req, kind, path).then(($result: any) => {
+        return $$createType27($result);
+    });
+}
+
+/**
  * Save writes the page. The editor sends the whole markdown body; the store adds the "# day" title and keeps a safety copy.
  */
 export function Save(day: string, body: string): $CancellablePromise<core$0.SaveOutcome> {
     return $Call.ByID(3438292470, day, body).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType28($result);
     });
 }
 
@@ -167,13 +397,13 @@ export function SaveImage(day: string, name: string, mime: string, dataBase64: s
 
 export function SaveSettings(s: core$0.Settings): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1865548995, s).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType29($result);
     });
 }
 
 export function Search(query: string): $CancellablePromise<$models.Hit[]> {
     return $Call.ByID(2621087907, query).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType31($result);
     });
 }
 
@@ -182,19 +412,19 @@ export function Search(query: string): $CancellablePromise<$models.Hit[]> {
  */
 export function SetLoginItem(on: boolean): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1272266701, on).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType32($result);
     });
 }
 
 export function Settings(): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1674428486).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType29($result);
     });
 }
 
 export function SettingsInfo(): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1358861334).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType32($result);
     });
 }
 
@@ -219,11 +449,27 @@ export function SkipRange($from: string, to: string, reason: string): $Cancellab
 }
 
 /**
+ * SkipToday writes today's skip marker (no reason) and cancels what the Mac holds for today. Refused when today has writing.
+ */
+export function SkipToday(): $CancellablePromise<void> {
+    return $Call.ByID(1794985457);
+}
+
+/**
+ * SnoozeReminder is the notice's snooze button (⇧⌘L, the menu bar). It returns the notice as it is afterwards; Strict allows 2 a day.
+ */
+export function SnoozeReminder(): $CancellablePromise<$models.ReminderNoticeState> {
+    return $Call.ByID(4254313947).then(($result: any) => {
+        return $$createType10($result);
+    });
+}
+
+/**
  * SourceProjects lists Claude Code's projects and the repositories under the added Git folders, for Settings > Sources.
  */
 export function SourceProjects(): $CancellablePromise<sources$0.SourceProject[]> {
     return $Call.ByID(1562696260).then(($result: any) => {
-        return $$createType23($result);
+        return $$createType34($result);
     });
 }
 
@@ -239,7 +485,26 @@ export function SuggestionLines(bullets: sources$0.SuggestedBullet[]): $Cancella
  */
 export function Suggestions(day: string, again: boolean): $CancellablePromise<$models.Suggestions> {
     return $Call.ByID(2074390080, day, again).then(($result: any) => {
-        return $$createType24($result);
+        return $$createType35($result);
+    });
+}
+
+/**
+ * SyncConflicts is the conflict copies to review, by day, each with both versions read from disk now. The UI saves the open page
+ * first, so "this Mac" includes what was typed a moment ago.
+ */
+export function SyncConflicts(): $CancellablePromise<$models.ConflictItem[]> {
+    return $Call.ByID(716264447).then(($result: any) => {
+        return $$createType37($result);
+    });
+}
+
+/**
+ * SyncState looks at the folder now and says what is waiting: conflict copies to review and days still downloading.
+ */
+export function SyncState(): $CancellablePromise<$models.SyncStatus> {
+    return $Call.ByID(98923633).then(($result: any) => {
+        return $$createType38($result);
     });
 }
 
@@ -254,8 +519,15 @@ export function Unskip(days: string[]): $CancellablePromise<string[]> {
  */
 export function Week(day: string, shift: number, bySection: boolean): $CancellablePromise<$models.Week> {
     return $Call.ByID(490576683, day, shift, bySection).then(($result: any) => {
-        return $$createType25($result);
+        return $$createType39($result);
     });
+}
+
+/**
+ * WhatsNewSeen reports whether the What's new sheet for this release was already shown (or skipped by first-run setup).
+ */
+export function WhatsNewSeen(): $CancellablePromise<boolean> {
+    return $Call.ByID(238091703);
 }
 
 /**
@@ -273,22 +545,36 @@ const $$createType3 = core$0.BackupInfo.createFrom;
 const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = $models.CatchUpData.createFrom;
 const $$createType6 = $models.FolderResult.createFrom;
-const $$createType7 = core$0.HeatCell.createFrom;
-const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = core$0.MonthCell.createFrom;
-const $$createType11 = $Create.Array($$createType10);
+const $$createType7 = $models.UpdateResult.createFrom;
+const $$createType8 = $models.ClaudeInfo.createFrom;
+const $$createType9 = $models.ClaudeResult.createFrom;
+const $$createType10 = $models.ReminderNoticeState.createFrom;
+const $$createType11 = core$0.HeatCell.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $models.Page.createFrom;
-const $$createType14 = $models.Overview.createFrom;
-const $$createType15 = $models.FolderPlan.createFrom;
-const $$createType16 = core$0.DayDocument.createFrom;
-const $$createType17 = core$0.SaveOutcome.createFrom;
-const $$createType18 = core$0.Settings.createFrom;
-const $$createType19 = $models.Hit.createFrom;
-const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = $models.SettingsInfo.createFrom;
-const $$createType22 = sources$0.SourceProject.createFrom;
-const $$createType23 = $Create.Array($$createType22);
-const $$createType24 = $models.Suggestions.createFrom;
-const $$createType25 = $models.Week.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = $models.InstallOutcome.createFrom;
+const $$createType15 = $models.JotResult.createFrom;
+const $$createType16 = core$0.MonthCell.createFrom;
+const $$createType17 = $Create.Array($$createType16);
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = $models.OnboardingInfo.createFrom;
+const $$createType20 = $models.Page.createFrom;
+const $$createType21 = $models.Overview.createFrom;
+const $$createType22 = $models.FolderPlan.createFrom;
+const $$createType23 = core$0.DayDocument.createFrom;
+const $$createType24 = $models.ReviewData.createFrom;
+const $$createType25 = $models.ReviewExportInfo.createFrom;
+const $$createType26 = $models.ReviewCopy.createFrom;
+const $$createType27 = $models.ReviewSaved.createFrom;
+const $$createType28 = core$0.SaveOutcome.createFrom;
+const $$createType29 = core$0.Settings.createFrom;
+const $$createType30 = $models.Hit.createFrom;
+const $$createType31 = $Create.Array($$createType30);
+const $$createType32 = $models.SettingsInfo.createFrom;
+const $$createType33 = sources$0.SourceProject.createFrom;
+const $$createType34 = $Create.Array($$createType33);
+const $$createType35 = $models.Suggestions.createFrom;
+const $$createType36 = $models.ConflictItem.createFrom;
+const $$createType37 = $Create.Array($$createType36);
+const $$createType38 = $models.SyncStatus.createFrom;
+const $$createType39 = $models.Week.createFrom;

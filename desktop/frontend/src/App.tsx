@@ -1,6 +1,6 @@
 // The main window: sidebar on the left, the routed page on the right.
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {Banner, Empty, Shell, Toast} from '@personal/ui/react';
+import {Banner, Shell, Toast} from '@personal/ui/react';
 import {Notes, Windows, addDays, type Overview} from './api';
 import {Sidebar, type Route} from './components/Sidebar';
 import {DayPage} from './screens/DayPage';
@@ -9,6 +9,13 @@ import {CatchUpView} from './screens/CatchUp';
 import {SessionBar} from './screens/SessionBar';
 import {SkipDialog} from './screens/SkipDialog';
 import {RestoreDialog} from './screens/RestoreDialog';
+import {Review} from './screens/Review';
+import {Onboarding} from './screens/Onboarding';
+import {WhatsNew} from './screens/WhatsNew';
+import {UpdateDialog} from './screens/UpdateDialog';
+import {ConflictDialog} from './screens/ConflictDialog';
+import {ConflictBanner, SyncChip, useSyncState} from './screens/SyncChip';
+import {on} from './events';
 
 type ToastState = {message: string; undo?: () => void} | null;
 
@@ -26,6 +33,12 @@ export function App() {
     const [skipDays, setSkipDays] = useState<string[] | null>(null);
     const [restoreDay, setRestoreDay] = useState<string | null>(null);
     const [pageKey, setPageKey] = useState(0);
+    const [onboarding, setOnboarding] = useState<'first' | 'again' | null>(null);
+    const [whatsNew, setWhatsNew] = useState(false);
+    const [updateOpen, setUpdateOpen] = useState(false);
+    const [conflictsOpen, setConflictsOpen] = useState(false);
+    const [syncKey, setSyncKey] = useState(0);
+    const sync = useSyncState(syncKey);
     const searchRef = useRef<HTMLInputElement>(null);
     const before = useRef<Route | null>(null);
 
@@ -41,6 +54,28 @@ export function App() {
         window.addEventListener('focus', reload);
         return () => { clearInterval(t); window.removeEventListener('focus', reload); };
     }, [reload]);
+
+    // First run: onboarding. An existing user on a new version: What's new, once.
+    const checkedIntro = useRef(false);
+    useEffect(() => {
+        if (!overview || checkedIntro.current) return;
+        checkedIntro.current = true;
+        if (!overview.onboarded) setOnboarding('first');
+        else Notes.WhatsNewSeen().then(seen => !seen && setWhatsNew(true), () => {}); // not knowing: don't nag
+    }, [overview]);
+
+    // Events from Go: the folder changed (sync), a note was captured, the tray asks for today, a reminder opens a day.
+    useEffect(() => {
+        const offs = [
+            on('folder-changed', () => { reload(); setSyncKey(k => k + 1); setPageKey(k => k + 1); }),
+            on('capture-changed', reload),
+            on('open-today', () => Notes.Overview().then(o => go({kind: 'day', day: o.today}), () => {})),
+            on<string>('reminder-open-day', d => go({kind: 'day', day: d})),
+            on('check-updates', () => setUpdateOpen(true)),
+            on('run-setup', () => setOnboarding('again')),
+        ];
+        return () => offs.forEach(off => off());
+    }, [reload]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const today = overview?.today ?? '';
     useEffect(() => {
@@ -82,6 +117,12 @@ export function App() {
                 ']': () => day && day < today && go({kind: 'day', day: addDays(day, 1)}),
                 f: () => searchRef.current?.focus(), ',': () => void Windows.ShowSettings(),
             };
+            if (e.shiftKey && e.key.toLowerCase() === 't') { // ⇧⌘T: go to date
+                e.preventDefault();
+                if (day) go({kind: 'day', day});
+                setTimeout(() => document.getElementById('jump')?.focus(), 0);
+                return;
+            }
             const f = !e.shiftKey && keys[e.key];
             if (f) { e.preventDefault(); f(); }
         };
@@ -90,11 +131,13 @@ export function App() {
     });
 
     const r = route ?? {kind: 'day', day: today};
-    const side = <Sidebar overview={overview} route={r} query={query} searchRef={searchRef} version={version} onQuery={onQuery} onGo={go}/>;
+    const side = <Sidebar overview={overview} route={r} query={query} searchRef={searchRef} version={version} onQuery={onQuery} onGo={go}
+                          foot={sync && <SyncChip state={sync} onReview={() => setConflictsOpen(true)} onOpenStorage={() => void Windows.ShowSettings()}/>}/>;
 
     return (
         <Shell side={side}>
             {error && <Banner tone="danger"><strong>Gloamlog can't read your log folder.</strong> {error}</Banner>}
+            {sync && <ConflictBanner state={sync} folder={overview?.folder ?? ''} onReview={() => setConflictsOpen(true)}/>}
             {session && day && r.kind === 'day' && (
                 <SessionBar days={session} current={day} onGo={d => go({kind: 'day', day: d})} onEnd={() => go({kind: 'catchup'})}
                             onSkip={d => setSkipDays([d])} onFinish={finishSession}/>
@@ -112,7 +155,8 @@ export function App() {
                              onReview={() => go({kind: 'review'})} onOpenCalendar={() => go({kind: 'day', day: today})}
                              onLogStart={() => void Windows.ShowSettings()}/>
             )}
-            {r.kind === 'review' && <Empty title={['Review']}>The week, month and year review arrives in the next build.</Empty>}
+            {r.kind === 'review' && today && <Review today={today} onToast={notify} onOpenDay={d => go({kind: 'day', day: d})}
+                                                     onCatchUp={() => go({kind: 'catchup'})}/>}
             {skipDays && <SkipDialog open days={skipDays} today={today} onClose={() => setSkipDays(null)}
                         onSkipped={(days, reason) => {
                             reload();
@@ -122,6 +166,12 @@ export function App() {
                         }}/>}
             {restoreDay && <RestoreDialog open day={restoreDay} onClose={() => setRestoreDay(null)}
                            onRestored={() => { setPageKey(k => k + 1); reload(); notify('Restored the earlier version. The one it replaced is under Restore previous version.'); }}/>}
+            {onboarding && <Onboarding open firstRun={onboarding === 'first'}
+                                       onDone={() => { setOnboarding(null); reload(); setPageKey(k => k + 1); if (today) go({kind: 'day', day: today}); }}/>}
+            <WhatsNew open={whatsNew} onClose={() => setWhatsNew(false)} onSettings={() => { setWhatsNew(false); void Windows.ShowSettings(); }}/>
+            {updateOpen && <UpdateDialog open onClose={() => setUpdateOpen(false)}/>}
+            {conflictsOpen && <ConflictDialog open onClose={() => setConflictsOpen(false)}
+                                              onResolved={() => { reload(); setSyncKey(k => k + 1); setPageKey(k => k + 1); }}/>}
             {toast && <Toast message={toast.message} action={toast.undo ? 'Undo' : undefined}
                              onAction={() => { toast.undo?.(); setToast(null); }} onDone={() => setToast(null)}/>}
         </Shell>

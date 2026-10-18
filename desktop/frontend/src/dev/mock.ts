@@ -4,6 +4,11 @@
 import type {BackupInfo, CarryCard, Hit, MonthCell, Overview, Page, Settings, Week} from '../api';
 import {settingsMock} from './mock-settings';
 import {catchupMock} from './mock-catchup';
+import {captureMock} from './mock-capture';
+import {onboardingMock} from './mock-onboarding';
+import {remindersMock} from './mock-reminders';
+import {reviewMock} from './mock-review';
+import {syncMock} from './mock-sync';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -162,6 +167,11 @@ export const Notes = {
     HotKeyStatus: () => later(''),
     ...settingsMock,
     ...catchupMock,
+    ...onboardingMock,
+    ...captureMock, // after onboarding: its ClaudeStatus / ConnectClaude are the full ones
+    ...remindersMock,
+    ...reviewMock,
+    ...syncMock,
 };
 
 export const Windows = {

@@ -4,9 +4,13 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Banner, Button, Display} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
-import {Notes, plural, relativeDay, type Page} from '../api';
+import {Notes, Windows, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
 import {SuggestionsStrip} from './SuggestionsStrip';
+import {DownloadingPage} from './SyncChip';
+import {ReminderNotice} from './ReminderNotice';
+import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
+import {on} from '../events';
 
 const SAVE_DELAY = 600;
 
@@ -34,6 +38,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const save = useCallback((d: string, md: string) => {
         chain.current = chain.current.then(() => Notes.Save(d, md)).then(out => {
             if (loaded.current === d) lastSaved.current = md;
+            void Notes.EditorSaved(d, md); // capture: jots now on the page are done
             setSaveError('');
             setSavedAt(Date.now());
             if (out?.backupWarning) onToast(out.backupWarning);
@@ -59,7 +64,10 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     useEffect(() => {
         let live = true;
         (async () => {
+            const previous = loaded.current;
             await flush();
+            if (previous && previous !== day) void Notes.EditorClosed(previous);
+            void Notes.EditorOpened(day); // from now on a jot for this day comes through the editor, not the file
             const p = await Notes.Open(day);
             if (!live) return;
             setPage(p);
@@ -89,6 +97,20 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         if (!d) return;
         appending.current = count;
         editor.appendToSection(`add-${Date.now()}`, d, heading, markdown, {unlessPresent: true});
+    }, []);
+
+    // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
+    useEffect(() => on<{id: string; day: string; heading: string; markdown: string}>('jot-into-page', j => {
+        if (loaded.current === j.day && !editor.isRawFallback()) editor.appendToSection(j.id, j.day, j.heading, j.markdown, {unlessPresent: true});
+        else void Notes.JotPlaced(j.id, 'notLoaded', '');
+    }), []);
+
+    // Today's reminder notice (reminders.go); dismissed stays dismissed until the next notice.
+    const [notice, setNotice] = useState<ReminderNoticeState | null>(null);
+    const [noticeGone, setNoticeGone] = useState(false);
+    useEffect(() => {
+        Notes.CurrentReminderNotice().then(setNotice, () => {}); // no notice is the normal state
+        return on<ReminderNoticeState>('reminder-notice', n => { setNotice(n); setNoticeGone(false); });
     }, []);
 
     // Leaving the page (search, catch up, review) or the window: write now.
@@ -130,6 +152,11 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 break;
             case 'appendResult': {
                 const d = loaded.current;
+                if (!m.id.startsWith('add-')) { // a jot from the panel or Claude (capture.go asked via jot-into-page)
+                    void Notes.JotPlaced(m.id, m.result, m.markdown ?? '');
+                    if (m.result === 'appended' && d && m.markdown != null) { void save(d, m.markdown); Notes.Words(m.markdown).then(setWords, () => {}); }
+                    break;
+                }
                 if (m.result === 'appended' && d && m.markdown != null) {
                     void save(d, m.markdown);
                     Notes.Words(m.markdown).then(setWords, () => {}); // an append emits no change event
@@ -185,6 +212,12 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             {loadError && <Banner tone="danger" action={<Button variant="line" size="sm" onClick={() => onDay(day)}>Try again</Button>}><strong>This page couldn't be opened for editing.</strong> {loadError}</Banner>}
             {raw && <Banner tone="warning"><strong>This page can't be edited safely.</strong> Its text is shown as it is in the file, which is untouched.</Banner>}
 
+            {notice?.visible && !noticeGone && day === today && !skipped && (
+                <ReminderNotice notice={notice} onDismiss={() => setNoticeGone(true)}
+                                onSnooze={() => Notes.SnoozeReminder().then(setNotice, e => onToast(String(e?.message ?? e)))}
+                                onSkipDay={() => onSkip([day])}/>
+            )}
+
             <header className="page-head">
                 {label && <p className="label">{label}</p>}
                 {page && <Display key={day} lines={[weekday, rest.join(' ')]}/>}
@@ -216,7 +249,8 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                     </div>
                 </section>
             )}
-            <div hidden={skipped}><Editor onMessage={onMessage} label={`Page for ${page?.title ?? day}`}/></div>
+            {page?.notLocal && <DownloadingPage day={day} title={page.title} source={''} onOpenStorage={() => void Windows.ShowSettings()}/>}
+            <div hidden={skipped || !!page?.notLocal}><Editor onMessage={onMessage} label={`Page for ${page?.title ?? day}`}/></div>
 
             {page && !skipped && (
                 <footer className="page-foot row-gap">
