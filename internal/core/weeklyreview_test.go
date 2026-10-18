@@ -253,6 +253,8 @@ func TestReviewGroupsListAndClassicPagesIntoDoneNextBlocked(t *testing.T) {
 	other := byTitle[WeekOtherTitle]
 	expect(t, len(other) == 2 && strings.Contains(other[0].Text, "an idea") && strings.Contains(other[1].Text, "note outside"), "%+v", other)
 
+	expect(t, equal(sum.Tasks.OpenAtEnd, []string{"new next", "new block"}), "open at the end comes from the last list page's marks: %v", sum.Tasks.OpenAtEnd)
+
 	s.Template = ClassicTemplate
 	sum = BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
 	expect(t, sum.Groups[0].Title == "What I did", "a classic template keeps the Swift groups: %v", sum.Groups[0].Title)

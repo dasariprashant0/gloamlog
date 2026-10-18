@@ -380,7 +380,7 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		}
 	}
 	if haveLogged {
-		if items := CarryItems(lastLoggedBody, settings.CarryOverHeadings); len(items) > 0 {
+		if items, _ := OpenItems(lastLoggedBody, settings.CarryOverHeadings); len(items) > 0 { // a list page: its open lines
 			summary.Tasks.OpenAtEnd = items
 		}
 	}

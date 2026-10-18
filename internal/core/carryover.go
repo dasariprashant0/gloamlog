@@ -70,6 +70,23 @@ func CarryItems(body string, headings []string) []string {
 	return out
 }
 
+// OpenItems is what a page still has open: on a list page its #next / #blocked / unticked lines with their marks, otherwise
+// the items under the carry-over headings (marks nil). Cleaned and de-duplicated the same way either way.
+func OpenItems(body string, headings []string) (items []string, marks []LogMark) {
+	if !IsLogPage(body) {
+		return CarryItems(body, headings), nil
+	}
+	seen := map[string]bool{}
+	for _, l := range OpenLines(body) {
+		text := Collapse(RemoveNoise(l.Text))
+		if key := ItemKey(text); key != "" && !seen[key] {
+			seen[key] = true
+			items, marks = append(items, text), append(marks, l.Mark)
+		}
+	}
+	return items, marks
+}
+
 // CarryCardBefore builds the card for `today` from the most recent logged day. load returns nil for a day without a page.
 func CarryCardBefore(today string, cal Calendar, settings Settings, load func(day string) *DayDocument) *CarryCard {
 	d := today
@@ -83,20 +100,7 @@ func CarryCardBefore(today string, cal Calendar, settings Settings, load func(da
 		if doc == nil || doc.IsSkipped || doc.Status(settings.MinWords) != StatusLogged {
 			continue
 		}
-		var items []string
-		var marks []LogMark
-		if IsLogPage(doc.Body) {
-			seen := map[string]bool{}
-			for _, l := range OpenLines(doc.Body) {
-				text := Collapse(RemoveNoise(l.Text)) // the same cleaning and de-duplication as CarryItems
-				if key := ItemKey(text); key != "" && !seen[key] {
-					seen[key] = true
-					items, marks = append(items, text), append(marks, l.Mark)
-				}
-			}
-		} else {
-			items = CarryItems(doc.Body, settings.CarryOverHeadings)
-		}
+		items, marks := OpenItems(doc.Body, settings.CarryOverHeadings)
 		if len(items) == 0 {
 			return nil
 		}
