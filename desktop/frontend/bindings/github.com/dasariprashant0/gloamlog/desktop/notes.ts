@@ -41,6 +41,13 @@ export function Backups(day: string): $CancellablePromise<core$0.BackupInfo[]> {
 }
 
 /**
+ * CarryDismiss drops one item from day's "From yesterday" offer.
+ */
+export function CarryDismiss(day: string, text: string): $CancellablePromise<void> {
+    return $Call.ByID(2394475842, day, text);
+}
+
+/**
  * CarryOver returns the body with the carried items added under the carry heading (the page saves it like any edit).
  */
 export function CarryOver(card: core$0.CarryCard, body: string): $CancellablePromise<string> {
