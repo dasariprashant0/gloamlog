@@ -112,7 +112,7 @@ func (j *CaptureJournal) writeLine(line []byte) error {
 	if sizeBefore == 0 { // a new file: make its directory entry durable too
 		if d, err := os.Open(j.Dir); err == nil {
 			_ = syncFile(d) // best effort: the record itself is already fsynced
-			d.Close()
+			d.Close()       // a directory handle opened only to sync it
 		}
 	}
 	return nil

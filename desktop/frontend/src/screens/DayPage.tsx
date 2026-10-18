@@ -86,7 +86,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             const previous = loaded.current;
             await flush();
             // capture.go is told which page owns which day; if it misses this, jots fall back to the file (still kept)
-            if (previous && previous !== day) void Notes.EditorClosed(previous).catch(() => {});
+            if (previous && previous !== day) void Notes.EditorClosed(previous).catch(() => {}); // see above: jots fall back to the file
             void Notes.EditorOpened(day).catch(() => {}); // from now on a jot for this day comes through the editor
             const p = await Notes.Open(day);
             if (!live) return;

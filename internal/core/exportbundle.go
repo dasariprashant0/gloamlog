@@ -216,8 +216,8 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		os.Remove(dst)
+		out.Close()    // best effort: the copy error below is what's returned
+		os.Remove(dst) // drop the partial export file; the source is untouched
 		return err
 	}
 	return out.Close()
