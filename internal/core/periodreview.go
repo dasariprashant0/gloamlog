@@ -250,7 +250,15 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 	}
 	summary.Counts = count(p.Start, p.End)
 
+	// List grouping when the template is a list page, or when any page of the period is one (switching the template back to
+	// the five headings must not dump the list pages into "Other notes"). A period of classic pages under a classic template
+	// is exactly the Swift review.
 	listMode := IsLogPage(settings.Template)
+	for k, d := range documents {
+		if !listMode && k >= p.Start && k <= p.End && !d.IsSkipped && IsLogPage(d.Body) {
+			listMode = true
+		}
+	}
 	template := TemplateHeadings(settings.Template)
 	if listMode {
 		// The five classic headings are always recognised (old pages), then any other heading of the template.

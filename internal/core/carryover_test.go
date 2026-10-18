@@ -172,6 +172,10 @@ func TestCarryCardFromAListPageCarriesItsOpenLines(t *testing.T) {
 	card = CarryCardBefore("2026-10-17", cal, s, load)
 	expect(t, card != nil && equal(card.Items, []string{"write the test"}) && equal(card.Marks, []LogMark{MarkNext}), "the same line twice is carried once: %+v", card)
 
+	pages["2026-10-16"].Body = "## What I did\n\nshipped the export today\n\n## Log\n\n- 10:00 note\n\n## To do next\n\n- call Sam"
+	card = CarryCardBefore("2026-10-17", cal, s, load)
+	expect(t, card != nil && equal(card.Items, []string{"call Sam"}), "a page with a Log heading still carries its To do next: %+v", card)
+
 	pages["2026-10-16"].Body = "## Log\n\n- 09:00 shipped the export today, all done"
 	expect(t, CarryCardBefore("2026-10-17", cal, s, load) == nil, "nothing open, no card")
 }

@@ -284,7 +284,12 @@ func writable(md string, s core.Settings) string {
 }
 
 // Words counts the words that count toward "logged" (the live progress line on the page).
-func (n *Notes) Words(body string) int { return core.CountWords(body) }
+func (n *Notes) Words(body string) int {
+	if core.IsLogPage(body) {
+		return core.DayDocument{Body: body}.Words() // the label must agree with "logged": times and marks are not words
+	}
+	return core.CountWords(body)
+}
 
 // CarryOver returns the body with the carried items added under the carry heading (the page saves it like any edit).
 func (n *Notes) CarryOver(card core.CarryCard, body string) string {

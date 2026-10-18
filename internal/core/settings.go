@@ -69,7 +69,7 @@ const (
 	// ClassicTemplate is the five-heading page every day used before the list page (still offered in Settings > Page).
 	ClassicTemplate   = "## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next"
 	DefaultTemplate   = "## " + LogHeading // new days are list pages
-	DefaultSourcesHdg = "What I did"       // SourcesPrefs.defaultHeading: exists in the default template, so a click adds bullets there
+	DefaultSourcesHdg = "What I did"       // SourcesPrefs.defaultHeading on classic pages; a list page takes suggestions under Log
 )
 
 // SnoozeChoices are the snooze lengths (minutes) the UI offers; anything else normalizes to 15.

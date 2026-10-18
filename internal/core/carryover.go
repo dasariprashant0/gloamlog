@@ -70,19 +70,24 @@ func CarryItems(body string, headings []string) []string {
 	return out
 }
 
-// OpenItems is what a page still has open: on a list page its #next / #blocked / unticked lines with their marks, otherwise
-// the items under the carry-over headings (marks nil). Cleaned and de-duplicated the same way either way.
+// OpenItems is what a page still has open: on a list page its #next / #blocked / unticked lines with their marks, then any
+// items under the carry-over headings (as next); otherwise just those items (marks nil). Cleaned and de-duplicated the same way either way.
 func OpenItems(body string, headings []string) (items []string, marks []LogMark) {
 	if !IsLogPage(body) {
 		return CarryItems(body, headings), nil
 	}
 	seen := map[string]bool{}
-	for _, l := range OpenLines(body) {
-		text := Collapse(RemoveNoise(l.Text))
+	add := func(text string, m LogMark) {
 		if key := ItemKey(text); key != "" && !seen[key] {
 			seen[key] = true
-			items, marks = append(items, text), append(marks, l.Mark)
+			items, marks = append(items, text), append(marks, m)
 		}
+	}
+	for _, l := range OpenLines(body) {
+		add(Collapse(RemoveNoise(l.Text)), l.Mark)
+	}
+	for _, t := range CarryItems(body, headings) { // a page that also has carry-over headings keeps carrying them
+		add(t, MarkNext)
 	}
 	return items, marks
 }

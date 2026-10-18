@@ -361,7 +361,7 @@ function ClaudeControl({claude, note, confirming, onAsk, onCancel, onConnect}: {
                 <ol>
                     <li>Register its small helper with Claude Code for all your projects (it runs claude mcp add).</li>
                     <li>Add a short section to ~/.claude/CLAUDE.md that tells Claude when to write a log entry.</li>
-                    <li>Make quick notes and Claude's entries go under "What I did".</li>
+                    <li>Put Claude's entries in your day's list (on a Daily review page, under "What I did").</li>
                 </ol>
                 Nothing is sent anywhere, and Disconnect undoes steps 1 and 2. Start a new Claude Code session afterwards.
             </Banner>

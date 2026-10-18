@@ -257,5 +257,8 @@ func TestReviewGroupsListAndClassicPagesIntoDoneNextBlocked(t *testing.T) {
 
 	s.Template = ClassicTemplate
 	sum = BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
+	expect(t, sum.Groups[0].Title == "Done", "a period with a list page groups by mark even under a classic template: %v", sum.Groups[0].Title)
+	delete(docs, "2026-10-13")
+	sum = BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
 	expect(t, sum.Groups[0].Title == "What I did", "a classic template keeps the Swift groups: %v", sum.Groups[0].Title)
 }
