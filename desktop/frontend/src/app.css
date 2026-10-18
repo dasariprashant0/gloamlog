@@ -4,3 +4,45 @@
 /* The jot panel: one field, no chrome. */
 .jot-body { background: var(--background); }
 .jot { display: grid; gap: var(--s3); padding: var(--s4); height: 100vh; grid-template-rows: auto 1fr auto; }
+
+/* Sidebar */
+.search { margin-bottom: var(--s3); }
+.cal { margin: var(--s4) 0 var(--s3); padding: 0 var(--s1); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s1) var(--s2); }
+.cal-step { width: 24px; height: 24px; color: var(--muted); }
+.cal-step:hover:not(:disabled) { color: var(--foreground); }
+.cal-step:disabled { opacity: 0.35; cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-dow { font-size: var(--text-xs); color: var(--muted); text-align: center; padding-bottom: var(--s1); }
+.cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center; font-size: var(--text-xs); }
+.cal-day.out { color: var(--muted); opacity: 0.6; }
+.cal-day.future { color: var(--muted); opacity: 0.45; }
+button.cal-day:hover { background: var(--wash-2); }
+.cal-day[aria-current="date"] { box-shadow: inset 0 0 0 1px var(--foreground); }
+.cal-day.today { font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+/* Status marks, as in the Swift calendar: logged filled, started half, not logged outlined, skipped dashed, off dotted. */
+.cal-day::after { content: ""; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; }
+.cal-day.mark-logged::after { background: var(--accent); }
+.cal-day.mark-partial::after { background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--accent); }
+.cal-day.mark-missed::after { box-shadow: inset 0 0 0 1px var(--warning); }
+.cal-day.mark-skipped::after { height: 2px; bottom: 4px; background: var(--muted); }
+.cal-day.mark-off::after { width: 2px; height: 2px; bottom: 4px; background: var(--ink-4); }
+
+/* Day page: a reading column with the editor under its header. */
+.page { max-width: calc(720px + 2 * var(--s7)); }
+.page-nav { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); margin-bottom: var(--s6); flex-wrap: wrap; }
+.jump { display: grid; gap: var(--s1); width: min(260px, 100%); }
+.page > .banner { margin-bottom: var(--s4); }
+.page-head { display: grid; gap: var(--s3); margin-bottom: var(--s5); }
+.page-progress { min-height: 1.55em; }
+.page-saved { color: var(--accent-text); }
+.carry { display: grid; gap: var(--s3); justify-items: start; padding: var(--s4) 0 var(--s5); margin-bottom: var(--s4); }
+.carry-items { display: grid; gap: var(--s1); font-size: var(--text-sm); }
+.carry-items li::before { content: "– "; color: var(--muted); }
+.skipped { display: grid; gap: var(--s4); padding: var(--s6) 0; max-width: var(--measure); }
+.page-editor { margin: 0 calc(-1 * var(--s7)); }
+.page-editor .milkdown .ProseMirror { margin: 0; min-height: 50vh; padding-bottom: 20vh; }   /* left-aligned with the header, not centred */
+.page-foot { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid var(--rule); }
+
+/* Search */
+.snippet mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; padding: 0 2px; }

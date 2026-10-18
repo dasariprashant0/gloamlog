@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "dev:mock": "vite --mode mock"
   },
   "dependencies": {
     "@milkdown/crepe": "7.22.2",

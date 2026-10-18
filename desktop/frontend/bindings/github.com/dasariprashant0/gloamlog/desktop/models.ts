@@ -10,6 +10,219 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as core$0 from "../internal/core/models.js";
 
 /**
+ * BackupVersion is a safety copy with the first words of what it holds. Pass Date, Path and Words back to Restore.
+ */
+export class BackupVersion {
+    "date": string;
+    "path": string;
+    "words": number;
+
+    /**
+     * up to 120 characters of plain text
+     */
+    "preview": string;
+
+    /** Creates a new BackupVersion instance. */
+    constructor($$source: Partial<BackupVersion> = {}) {
+        if (!("date" in $$source)) {
+            this["date"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("words" in $$source)) {
+            this["words"] = 0;
+        }
+        if (!("preview" in $$source)) {
+            this["preview"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BackupVersion instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BackupVersion {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BackupVersion($$parsedSource as Partial<BackupVersion>);
+    }
+}
+
+export class CatchUpData {
+    "days": CatchUpDay[];
+
+    /**
+     * the day the log starts ("" = no pages yet)
+     */
+    "since": string;
+
+    /** Creates a new CatchUpData instance. */
+    constructor($$source: Partial<CatchUpData> = {}) {
+        if (!("days" in $$source)) {
+            this["days"] = [];
+        }
+        if (!("since" in $$source)) {
+            this["since"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CatchUpData instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CatchUpData {
+        const $$createField0_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("days" in $$parsedSource) {
+            $$parsedSource["days"] = $$createField0_0($$parsedSource["days"]);
+        }
+        return new CatchUpData($$parsedSource as Partial<CatchUpData>);
+    }
+}
+
+/**
+ * CatchUpDay is one unlogged working day for the Catch up list.
+ */
+export class CatchUpDay {
+    "day": string;
+
+    /**
+     * the first day of its week, for the "Week of 5 Oct" groups
+     */
+    "weekStart": string;
+
+    /**
+     * partly written: shown as "N of 20 words" with Continue
+     */
+    "started": boolean;
+
+    /**
+     * words so far when started, else 0
+     */
+    "words": number;
+
+    /** Creates a new CatchUpDay instance. */
+    constructor($$source: Partial<CatchUpDay> = {}) {
+        if (!("day" in $$source)) {
+            this["day"] = "";
+        }
+        if (!("weekStart" in $$source)) {
+            this["weekStart"] = "";
+        }
+        if (!("started" in $$source)) {
+            this["started"] = false;
+        }
+        if (!("words" in $$source)) {
+            this["words"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CatchUpDay instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CatchUpDay {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CatchUpDay($$parsedSource as Partial<CatchUpDay>);
+    }
+}
+
+/**
+ * FolderPlan says what a change to `path` would meet, so the window can ask the right question.
+ */
+export class FolderPlan {
+    "path": string;
+    "name": string;
+
+    /**
+     * already the log folder
+     */
+    "same": boolean;
+
+    /**
+     * false: nothing can be saved there
+     */
+    "writable": boolean;
+
+    /**
+     * day files in the current folder
+     */
+    "mine": number;
+
+    /**
+     * day files already in the new folder
+     */
+    "theirs": number;
+
+    /** Creates a new FolderPlan instance. */
+    constructor($$source: Partial<FolderPlan> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("same" in $$source)) {
+            this["same"] = false;
+        }
+        if (!("writable" in $$source)) {
+            this["writable"] = false;
+        }
+        if (!("mine" in $$source)) {
+            this["mine"] = 0;
+        }
+        if (!("theirs" in $$source)) {
+            this["theirs"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FolderPlan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FolderPlan {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FolderPlan($$parsedSource as Partial<FolderPlan>);
+    }
+}
+
+/**
+ * FolderResult is what a folder change did, in words, plus the days that already existed in the new folder.
+ */
+export class FolderResult {
+    "text": string;
+    "conflicts": string[];
+
+    /** Creates a new FolderResult instance. */
+    constructor($$source: Partial<FolderResult> = {}) {
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("conflicts" in $$source)) {
+            this["conflicts"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FolderResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FolderResult {
+        const $$createField1_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("conflicts" in $$parsedSource) {
+            $$parsedSource["conflicts"] = $$createField1_0($$parsedSource["conflicts"]);
+        }
+        return new FolderResult($$parsedSource as Partial<FolderResult>);
+    }
+}
+
+/**
  * Hit is a search result cut into three strings, so the UI can mark the match without byte offsets.
  */
 export class Hit {
@@ -105,10 +318,10 @@ export class Overview {
      * Creates a new Overview instance from a string or object.
      */
     static createFrom($$source: any = {}): Overview {
-        const $$createField2_0 = $$createType0;
-        const $$createField3_0 = $$createType1;
-        const $$createField4_0 = $$createType0;
-        const $$createField8_0 = $$createType2;
+        const $$createField2_0 = $$createType2;
+        const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType2;
+        const $$createField8_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("catchUp" in $$parsedSource) {
             $$parsedSource["catchUp"] = $$createField2_0($$parsedSource["catchUp"]);
@@ -194,12 +407,56 @@ export class Page {
      * Creates a new Page instance from a string or object.
      */
     static createFrom($$source: any = {}): Page {
-        const $$createField9_0 = $$createType4;
+        const $$createField9_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("carry" in $$parsedSource) {
             $$parsedSource["carry"] = $$createField9_0($$parsedSource["carry"]);
         }
         return new Page($$parsedSource as Partial<Page>);
+    }
+}
+
+/**
+ * SettingsInfo is what the Settings window shows that is not a setting.
+ */
+export class SettingsInfo {
+    "version": string;
+    "backupDir": string;
+    "backupDirExists": boolean;
+    "defaultFolder": string;
+
+    /**
+     * the login item is registered with macOS
+     */
+    "loginEnabled": boolean;
+
+    /** Creates a new SettingsInfo instance. */
+    constructor($$source: Partial<SettingsInfo> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("backupDir" in $$source)) {
+            this["backupDir"] = "";
+        }
+        if (!("backupDirExists" in $$source)) {
+            this["backupDirExists"] = false;
+        }
+        if (!("defaultFolder" in $$source)) {
+            this["defaultFolder"] = "";
+        }
+        if (!("loginEnabled" in $$source)) {
+            this["loginEnabled"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SettingsInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SettingsInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SettingsInfo($$parsedSource as Partial<SettingsInfo>);
     }
 }
 
@@ -223,7 +480,7 @@ export class Week {
      * Creates a new Week instance from a string or object.
      */
     static createFrom($$source: any = {}): Week {
-        const $$createField0_0 = $$createType5;
+        const $$createField0_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
             $$parsedSource["summary"] = $$createField0_0($$parsedSource["summary"]);
@@ -233,9 +490,11 @@ export class Week {
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = core$0.StreakResult.createFrom;
-const $$createType2 = core$0.FolderSummary.createFrom;
-const $$createType3 = core$0.CarryCard.createFrom;
-const $$createType4 = $Create.Nullable($$createType3);
-const $$createType5 = core$0.WeekSummary.createFrom;
+const $$createType0 = CatchUpDay.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = core$0.StreakResult.createFrom;
+const $$createType4 = core$0.FolderSummary.createFrom;
+const $$createType5 = core$0.CarryCard.createFrom;
+const $$createType6 = $Create.Nullable($$createType5);
+const $$createType7 = core$0.WeekSummary.createFrom;

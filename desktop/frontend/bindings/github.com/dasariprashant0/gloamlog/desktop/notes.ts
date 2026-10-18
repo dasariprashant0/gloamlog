@@ -13,9 +13,18 @@ import * as core$0 from "../internal/core/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * BackupVersions lists the safety copies of a day, newest first, each with a short preview.
+ */
+export function BackupVersions(day: string): $CancellablePromise<$models.BackupVersion[]> {
+    return $Call.ByID(2268935856, day).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
 export function Backups(day: string): $CancellablePromise<core$0.BackupInfo[]> {
     return $Call.ByID(2779159358, day).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType3($result);
     });
 }
 
@@ -27,11 +36,36 @@ export function CarryOver(card: core$0.CarryCard, body: string): $CancellablePro
 }
 
 /**
+ * CatchUp lists the unlogged working days in the last windowDays days (0 = the Settings value), oldest first.
+ */
+export function CatchUp(windowDays: number): $CancellablePromise<$models.CatchUpData> {
+    return $Call.ByID(3496980667, windowDays).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
+ * ChangeFolder switches the log folder. mode: "use" (just switch), "copy" or "move" (bring the logs and images along first).
+ */
+export function ChangeFolder(path: string, mode: string): $CancellablePromise<$models.FolderResult> {
+    return $Call.ByID(2806158987, path, mode).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
+ * ChooseFolder asks for a folder (message says what it is for); "" when the user cancels.
+ */
+export function ChooseFolder(message: string): $CancellablePromise<string> {
+    return $Call.ByID(2544075486, message);
+}
+
+/**
  * Heatmap is the last `weeks` weeks, for the streak popover and the menu bar.
  */
 export function Heatmap(weeks: number): $CancellablePromise<core$0.HeatCell[][]> {
     return $Call.ByID(2743609837, weeks).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType8($result);
     });
 }
 
@@ -47,26 +81,53 @@ export function JumpTo(input: string): $CancellablePromise<string> {
  */
 export function Month(year: number, month: number): $CancellablePromise<core$0.MonthCell[][]> {
     return $Call.ByID(1347049071, year, month).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType11($result);
     });
 }
 
 export function Open(day: string): $CancellablePromise<$models.Page> {
     return $Call.ByID(2356740839, day).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType12($result);
     });
+}
+
+/**
+ * OpenLoginItems opens System Settings at Login Items (for "Approve Gloamlog...").
+ */
+export function OpenLoginItems(): $CancellablePromise<void> {
+    return $Call.ByID(2956516592);
 }
 
 export function Overview(): $CancellablePromise<$models.Overview> {
     return $Call.ByID(3639484436).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType13($result);
     });
+}
+
+export function PlanFolderChange(path: string): $CancellablePromise<$models.FolderPlan> {
+    return $Call.ByID(3440431704, path).then(($result: any) => {
+        return $$createType14($result);
+    });
+}
+
+/**
+ * RecreateFolder makes the log folder again when it went missing ("Create it again").
+ */
+export function RecreateFolder(): $CancellablePromise<void> {
+    return $Call.ByID(2076429230);
 }
 
 export function Restore(day: string, backup: core$0.BackupInfo): $CancellablePromise<core$0.DayDocument> {
     return $Call.ByID(323430763, day, backup).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType15($result);
     });
+}
+
+/**
+ * Reveal shows the paths selected in Finder.
+ */
+export function Reveal(paths: string[]): $CancellablePromise<void> {
+    return $Call.ByID(1667137406, paths);
 }
 
 /**
@@ -74,7 +135,7 @@ export function Restore(day: string, backup: core$0.BackupInfo): $CancellablePro
  */
 export function Save(day: string, body: string): $CancellablePromise<core$0.SaveOutcome> {
     return $Call.ByID(3438292470, day, body).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType16($result);
     });
 }
 
@@ -87,19 +148,34 @@ export function SaveImage(day: string, name: string, mime: string, dataBase64: s
 
 export function SaveSettings(s: core$0.Settings): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1865548995, s).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType17($result);
     });
 }
 
 export function Search(query: string): $CancellablePromise<$models.Hit[]> {
     return $Call.ByID(2621087907, query).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType19($result);
+    });
+}
+
+/**
+ * SetLoginItem registers or removes the login item and remembers the result in the settings.
+ */
+export function SetLoginItem(on: boolean): $CancellablePromise<$models.SettingsInfo> {
+    return $Call.ByID(1272266701, on).then(($result: any) => {
+        return $$createType20($result);
     });
 }
 
 export function Settings(): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1674428486).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType17($result);
+    });
+}
+
+export function SettingsInfo(): $CancellablePromise<$models.SettingsInfo> {
+    return $Call.ByID(1358861334).then(($result: any) => {
+        return $$createType20($result);
     });
 }
 
@@ -109,13 +185,23 @@ export function Skip(day: string, reason: string): $CancellablePromise<void> {
 
 export function SkipDays(days: string[], reason: string): $CancellablePromise<string[]> {
     return $Call.ByID(865620331, days, reason).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType21($result);
+    });
+}
+
+/**
+ * SkipRange writes one skip marker for every scheduled day from..to (both included) and returns the days it skipped.
+ * Days with writing are left alone.
+ */
+export function SkipRange($from: string, to: string, reason: string): $CancellablePromise<string[]> {
+    return $Call.ByID(4254315077, $from, to, reason).then(($result: any) => {
+        return $$createType21($result);
     });
 }
 
 export function Unskip(days: string[]): $CancellablePromise<string[]> {
     return $Call.ByID(2412791907, days).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType21($result);
     });
 }
 
@@ -124,7 +210,7 @@ export function Unskip(days: string[]): $CancellablePromise<string[]> {
  */
 export function Week(day: string, shift: number, bySection: boolean): $CancellablePromise<$models.Week> {
     return $Call.ByID(490576683, day, shift, bySection).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType22($result);
     });
 }
 
@@ -136,20 +222,26 @@ export function Words(body: string): $CancellablePromise<number> {
 }
 
 // Private type creation functions
-const $$createType0 = core$0.BackupInfo.createFrom;
+const $$createType0 = $models.BackupVersion.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = core$0.HeatCell.createFrom;
+const $$createType2 = core$0.BackupInfo.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = core$0.MonthCell.createFrom;
-const $$createType6 = $Create.Array($$createType5);
+const $$createType4 = $models.CatchUpData.createFrom;
+const $$createType5 = $models.FolderResult.createFrom;
+const $$createType6 = core$0.HeatCell.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $models.Page.createFrom;
-const $$createType9 = $models.Overview.createFrom;
-const $$createType10 = core$0.DayDocument.createFrom;
-const $$createType11 = core$0.SaveOutcome.createFrom;
-const $$createType12 = core$0.Settings.createFrom;
-const $$createType13 = $models.Hit.createFrom;
-const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = $Create.Array($Create.Any);
-const $$createType16 = $models.Week.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = core$0.MonthCell.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $models.Page.createFrom;
+const $$createType13 = $models.Overview.createFrom;
+const $$createType14 = $models.FolderPlan.createFrom;
+const $$createType15 = core$0.DayDocument.createFrom;
+const $$createType16 = core$0.SaveOutcome.createFrom;
+const $$createType17 = core$0.Settings.createFrom;
+const $$createType18 = $models.Hit.createFrom;
+const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = $models.SettingsInfo.createFrom;
+const $$createType21 = $Create.Array($Create.Any);
+const $$createType22 = $models.Week.createFrom;

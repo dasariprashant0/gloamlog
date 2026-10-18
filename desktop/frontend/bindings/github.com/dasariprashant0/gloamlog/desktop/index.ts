@@ -9,8 +9,14 @@ export {
 };
 
 export {
+    BackupVersion,
+    CatchUpData,
+    CatchUpDay,
+    FolderPlan,
+    FolderResult,
     Hit,
     Overview,
     Page,
+    SettingsInfo,
     Week
 } from "./models.js";
