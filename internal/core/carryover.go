@@ -86,8 +86,13 @@ func CarryCardBefore(today string, cal Calendar, settings Settings, load func(da
 		var items []string
 		var marks []LogMark
 		if IsLogPage(doc.Body) {
+			seen := map[string]bool{}
 			for _, l := range OpenLines(doc.Body) {
-				items, marks = append(items, Collapse(l.Text)), append(marks, l.Mark)
+				text := Collapse(RemoveNoise(l.Text)) // the same cleaning and de-duplication as CarryItems
+				if key := ItemKey(text); key != "" && !seen[key] {
+					seen[key] = true
+					items, marks = append(items, text), append(marks, l.Mark)
+				}
 			}
 		} else {
 			items = CarryItems(doc.Body, settings.CarryOverHeadings)

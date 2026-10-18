@@ -168,6 +168,10 @@ func TestCarryCardFromAListPageCarriesItsOpenLines(t *testing.T) {
 	expect(t, card != nil && equal(card.Items, []string{"write the test", "keys from ops", "call Sam"}), "%+v", card)
 	expect(t, equal(card.Marks, []LogMark{MarkNext, MarkBlocked, MarkNext}), "marks travel with the items: %+v", card.Marks)
 
+	pages["2026-10-16"].Body = "## Log\n\n- 10:00 write the test #next\n- 11:00 Write  the test #blocked"
+	card = CarryCardBefore("2026-10-17", cal, s, load)
+	expect(t, card != nil && equal(card.Items, []string{"write the test"}) && equal(card.Marks, []LogMark{MarkNext}), "the same line twice is carried once: %+v", card)
+
 	pages["2026-10-16"].Body = "## Log\n\n- 09:00 shipped the export today, all done"
 	expect(t, CarryCardBefore("2026-10-17", cal, s, load) == nil, "nothing open, no card")
 }
