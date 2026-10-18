@@ -45,16 +45,17 @@ function minutes(t: string): number | null {
     return Number(m[1]) * 60 + Number(m[2]);
 }
 
+const isEmptyNew = (l: Line | undefined) => !!l && l.raw === '' && l.text === '' && !l.mark && !l.other;
+
+// History never holds an empty new line: undo would bring it back as a real (saved) line.
 function record(s: State, lines: Line[]): State {
-    return {...s, lines, past: [...s.past, s.lines].slice(-HISTORY), future: []};
+    return {...s, lines, past: [...s.past, s.lines.filter(l => !isEmptyNew(l))].slice(-HISTORY), future: []};
 }
 
 // The first line keeps the blank lines after the heading.
 function withHeadGap(lines: Line[], gap: number): Line[] {
     return lines.map((l, i) => (i === 0 && l.blank !== gap ? {...l, blank: gap} : l));
 }
-
-const isEmptyNew = (l: Line | undefined) => !!l && l.raw === '' && l.text === '' && !l.mark && !l.other;
 
 /** Write the draft back into its line. A new line left empty goes away. */
 export function commit(s: State): State {

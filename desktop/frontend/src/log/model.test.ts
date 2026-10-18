@@ -82,6 +82,12 @@ test('undo and redo work across lines, and undo while typing takes the typing ba
     assert.deepEqual(texts(s), ['one', 'two']);
 });
 
+test('undo never brings back an empty new line', () => {
+    let s = M.newLineAfter(M.focus(M.fresh([L('a', {blank: 1})]), 0), 0, '10:00');
+    s = M.undo(M.removeLine(s, 1));
+    assert.deepEqual(texts(s), ['a']);
+});
+
 test('setTime moves a line before the first later time; untimed lines are passed over; bad times are ignored', () => {
     const s = M.fresh([L('a', {time: '09:00', blank: 1}), L('untimed'), L('c', {time: '11:00'})]);
     const t = M.setTime(s, 2, '08:30');
