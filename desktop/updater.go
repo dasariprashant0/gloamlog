@@ -89,7 +89,7 @@ var theUpdater = newUpdater()
 
 func newUpdater() *updater {
 	return &updater{
-		client:    &http.Client{},
+		client:    &http.Client{Timeout: 15 * time.Minute}, // the zip download; a stalled connection must end, not hang the install
 		latestURL: core.UpdateLatestURL,
 		current:   version,
 		bundleID:  bundleID,

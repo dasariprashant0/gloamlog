@@ -107,8 +107,11 @@ type pageHandle struct {
 	day string
 }
 
-func (p *pageHandle) Day() string    { return p.day }
-func (p *pageHandle) IsLoaded() bool { return true } // the page itself answers "notLoaded" while its editor starts
+func (p *pageHandle) Day() string { return p.day }
+
+// IsLoaded is part of core.EditorLookup's page interface. The handle can't see the editor, so it says yes and the page
+// itself answers "notLoaded" (through JotPlaced) while its editor is still starting.
+func (p *pageHandle) IsLoaded() bool { return true }
 
 // AppendJot hands the line to the page through the "jot-into-page" event. The page's answer comes back as JotPlaced; no answer
 // within the timeout means the page is gone: forget it and let the writer re-route (to the file).

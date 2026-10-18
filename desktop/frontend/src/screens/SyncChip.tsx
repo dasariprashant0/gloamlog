@@ -91,7 +91,7 @@ export function DownloadingPage({day, title, source, onOpenStorage}: Downloading
                 so nothing you wrote on another Mac gets overwritten. It opens by itself when it arrives.
             </p>
             <div className="row-gap">
-                <Button onClick={() => void Notes.DownloadDay(day)}>Try again</Button>
+                <Button onClick={() => void Notes.DownloadDay(day).catch(() => {})}>Try again</Button>{/* a failed request: the page stays here and the next scan asks again */}
                 <Button variant="ghost" onClick={onOpenStorage}>Open Storage settings</Button>
             </div>
         </div>

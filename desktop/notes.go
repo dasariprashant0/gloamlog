@@ -234,7 +234,7 @@ func (n *Notes) Open(day string) (Page, error) {
 		p.Body = s.Template
 	}
 	if day == core.DayKeyString(now, time.Local) && !p.IsSkipped {
-		load := func(d string) *core.DayDocument { doc, _ := n.store.Load(d); return doc }
+		load := func(d string) *core.DayDocument { doc, _ := n.store.Load(d); return doc } // an unreadable day offers no carry-over; nothing is written
 		if c := core.CarryCardBefore(day, cal, s, load); c != nil {
 			p.Carry, p.CarryApplied = c, core.IsCarryApplied(*c, p.Body)
 		}

@@ -40,7 +40,7 @@ func AtomicWrite(data []byte, dest, tempDir string) error {
 	}
 	tmp := filepath.Join(tempDir, fmt.Sprintf("%s%d-%s", AtomicTempPrefix, os.Getpid(), newUUID()))
 	if err := writeAndRename(data, tmp, dest); err != nil {
-		os.Remove(tmp)
+		os.Remove(tmp) // best effort: the write error is what's returned; a stale temp is swept later
 		return err
 	}
 	if OwnWriteHook != nil {
@@ -82,7 +82,7 @@ func AtomicSweep(dir string) {
 	}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), AtomicTempPrefix) && isStaleTemp(e.Name()) {
-			os.RemoveAll(filepath.Join(dir, e.Name()))
+			os.RemoveAll(filepath.Join(dir, e.Name())) // sweeping a dead process's temp file: best effort
 		}
 	}
 }

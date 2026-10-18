@@ -42,7 +42,7 @@ func (n *Notes) CatchUp(windowDays int) (CatchUpData, error) {
 			item.WeekStart = core.DayKeyString(cal.StartOfWeek(t), time.Local)
 		}
 		if item.Started {
-			if doc, _ := n.store.Load(d); doc != nil {
+			if doc, _ := n.store.Load(d); doc != nil { // a word count only: an unreadable day shows none
 				item.Words = doc.Words()
 			}
 		}

@@ -99,7 +99,7 @@ export function App() {
     // A catch-up session ends with nothing left: count how its days ended up, then show "All caught up".
     async function finishSession() {
         const days = session ?? [];
-        const pages = await Promise.all(days.map(d => Notes.Open(d).catch(() => null)));
+        const pages = await Promise.all(days.map(d => Notes.Open(d).catch(() => null)) /* a summary count only */);
         setFinished({logged: pages.filter(p => p?.status === 'logged').length, skipped: pages.filter(p => p?.isSkipped).length});
         setSession(null);
         setRoute({kind: 'catchup'});

@@ -128,6 +128,8 @@ export const Notes = {
             words: f ? words(f.body) : 0, notLocal: false, carry, carryApplied: !!carry && body.includes('Carried over')} as Page);
     },
     Save: (day: string, body: string) => {
+        // test switch: window.__failSaves = true makes every save fail, like an offline folder
+        if ((window as unknown as {__failSaves?: boolean}).__failSaves) return Promise.reject(new Error('The log folder is offline.'));
         if (body.trim()) days.set(day, {body}); else days.delete(day);
         return later({backedUp: true, backupWarning: ''});
     },

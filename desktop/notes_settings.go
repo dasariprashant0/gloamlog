@@ -269,18 +269,18 @@ func copyNew(src, dst string, move bool) error {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		os.Remove(dst)
+		out.Close()    // best effort: the copy failed; the original is untouched
+		os.Remove(dst) // drop the partial copy
 		return err
 	}
 	// On disk before the original can go: a move must never leave a day only in a page cache.
 	if err := out.Sync(); err != nil {
-		out.Close()
-		os.Remove(dst)
+		out.Close()    // best effort: the copy failed; the original is untouched
+		os.Remove(dst) // drop the partial copy
 		return err
 	}
 	if err := out.Close(); err != nil {
-		os.Remove(dst)
+		os.Remove(dst) // drop the partial copy; the original is untouched
 		return err
 	}
 	if move && sameBytes(src, dst) {

@@ -4,7 +4,6 @@
 package core
 
 import (
-	"regexp"
 	"strings"
 	"unicode"
 )
@@ -19,8 +18,6 @@ const (
 	// ClaudeMdBlock is the instruction between its markers.
 	ClaudeMdBlock = ClaudeMdBegin + "\n" + ClaudeMdInstruction + "\n" + ClaudeMdEnd
 )
-
-var blankRunRE = regexp.MustCompile(`\n{3,}`)
 
 // ClaudeMdIsPresent is true when the text already carries our block, or an older hand-written section that mentions `log_work`.
 func ClaudeMdIsPresent(text string) bool {
@@ -55,8 +52,13 @@ func ClaudeMdRemove(text string) string {
 	if !ok {
 		return text
 	}
-	out := text[:lo] + text[hi:]
-	out = blankRunRE.ReplaceAllLiteralString(out, "\n\n")
+	// Tidy only the seam where the block was: the rest of the user's file (blank lines inside their own code fences
+	// included) stays byte for byte. Swift collapsed blank runs across the whole file; that rewrote other people's text.
+	before, after := strings.TrimRight(text[:lo], "\n"), strings.TrimLeft(text[hi:], "\n")
+	out := before + after
+	if before != "" && after != "" {
+		out = before + "\n\n" + after
+	}
 	out = trimTrailingSpace(out)
 	if out == "" {
 		return ""

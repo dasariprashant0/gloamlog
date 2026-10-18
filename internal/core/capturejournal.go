@@ -111,7 +111,7 @@ func (j *CaptureJournal) writeLine(line []byte) error {
 	}
 	if sizeBefore == 0 { // a new file: make its directory entry durable too
 		if d, err := os.Open(j.Dir); err == nil {
-			_ = syncFile(d)
+			_ = syncFile(d) // best effort: the record itself is already fsynced
 			d.Close()
 		}
 	}
@@ -124,7 +124,7 @@ func (j *CaptureJournal) writeLine(line []byte) error {
 func (j *CaptureJournal) Pending() []CaptureItem {
 	data, err := os.ReadFile(j.Path())
 	if err != nil {
-		return nil
+		return nil // no journal (or unreadable): nothing pending; Append reports a real write failure
 	}
 	live, acked := scanJournal(data)
 	var out []CaptureItem

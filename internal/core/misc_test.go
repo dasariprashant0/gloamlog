@@ -71,3 +71,22 @@ func TestUpdateCheckVersionsReleaseJSONChecksumTrustedHosts(t *testing.T) {
 	expect(t, IsTrustedDownload("https://github.com/x") && !IsTrustedDownload("http://github.com/x") &&
 		!IsTrustedDownload("https://evilgithub.com/x") && !IsTrustedDownload("https://github.com.evil.io/x"), "only https github.com")
 }
+
+// Removing the Gloamlog block touches only the seam where it was: blank runs elsewhere in the user's CLAUDE.md (here inside
+// their own code fence) stay exactly as they were.
+func TestClaudeMdRemoveLeavesTheRestOfTheFileAlone(t *testing.T) {
+	mine := "# My rules\n\n```text\nline one\n\n\n\nline two after three blank lines\n```\n"
+	withBlock := ClaudeMdApply(mine)
+	if withBlock == mine {
+		t.Fatal("apply added nothing")
+	}
+	if got := ClaudeMdRemove(withBlock); got != mine {
+		t.Errorf("remove changed the user's text:\n got %q\nwant %q", got, mine)
+	}
+	// a block in the middle: the text either side is joined by one blank line, nothing else moves
+	mid := "# A\n\n\n\nkeep these three blank lines above\n\n" + ClaudeMdBegin + "\nx\n" + ClaudeMdEnd + "\n\n## B\n"
+	want := "# A\n\n\n\nkeep these three blank lines above\n\n## B\n"
+	if got := ClaudeMdRemove(mid); got != want {
+		t.Errorf("middle block:\n got %q\nwant %q", got, want)
+	}
+}

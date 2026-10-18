@@ -34,31 +34,50 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const timer = useRef(0);
     const chain = useRef<Promise<unknown>>(Promise.resolve());
     const appending = useRef(0);                  // lines being added by the suggestions strip, for the reply
+    // Pages whose save failed, by day (Swift's "orphans"): their text is kept here, never dropped, and saved again on every
+    // flush and every 30 s until it succeeds. Switching days after a failed save used to lose that text.
+    const orphans = useRef(new Map<string, string>());
+    const [orphanCount, setOrphanCount] = useState(0);
 
-    const save = useCallback((d: string, md: string) => {
-        chain.current = chain.current.then(() => Notes.Save(d, md)).then(out => {
+    // Saves one page; resolves true when it reached the file. Saves run one at a time.
+    const save = useCallback((d: string, md: string): Promise<boolean> => {
+        const run = chain.current.then(() => Notes.Save(d, md)).then(out => {
             if (loaded.current === d) lastSaved.current = md;
-            void Notes.EditorSaved(d, md); // capture: jots now on the page are done
+            if (orphans.current.delete(d)) setOrphanCount(orphans.current.size);
+            void Notes.EditorSaved(d, md).catch(() => {}); // capture also checks the file every 15 s
             setSaveError('');
             setSavedAt(Date.now());
             if (out?.backupWarning) onToast(out.backupWarning);
             onSaved();
-        }, err => setSaveError(String(err?.message ?? err)));
-        return chain.current;
+            return true;
+        }, err => {
+            setSaveError(String(err?.message ?? err));
+            return false;
+        });
+        chain.current = run;
+        return run;
     }, [onSaved, onToast]);
 
-    // Writes whatever is unsaved now: a scheduled save, or text typed so recently the editor has not reported it yet.
-    const flush = useCallback(() => {
+    // Writes whatever is unsaved now: pages left unsaved earlier, a scheduled save, or text typed so recently the editor has
+    // not reported it yet. A save that fails keeps its text in orphans, so leaving the page never loses it.
+    const flush = useCallback(async () => {
         clearTimeout(timer.current);
         const p = pending.current;
         pending.current = null;
+        for (const [od, omd] of [...orphans.current]) await save(od, omd);
         const d = loaded.current;
+        let unsaved: {day: string; md: string} | null = null;
         if (d && !editor.isRawFallback()) {
             const md = editor.getMarkdown();
-            if (md !== baseline.current && md !== lastSaved.current) return save(d, md);
-        } else if (p) return save(p.day, p.md);
-        return chain.current;
+            if (md !== baseline.current && md !== lastSaved.current) unsaved = {day: d, md};
+        } else if (p) unsaved = p;
+        if (unsaved && !(await save(unsaved.day, unsaved.md))) orphans.current.set(unsaved.day, unsaved.md);
+        setOrphanCount(orphans.current.size);
     }, [save]);
+    useEffect(() => {
+        const t = setInterval(() => { if (orphans.current.size) void flush(); }, 30_000);
+        return () => clearInterval(t);
+    }, [flush]);
 
     // Open the day: save the old one first, then swap the document in the editor.
     useEffect(() => {
@@ -66,8 +85,9 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         (async () => {
             const previous = loaded.current;
             await flush();
-            if (previous && previous !== day) void Notes.EditorClosed(previous);
-            void Notes.EditorOpened(day); // from now on a jot for this day comes through the editor, not the file
+            // capture.go is told which page owns which day; if it misses this, jots fall back to the file (still kept)
+            if (previous && previous !== day) void Notes.EditorClosed(previous).catch(() => {});
+            void Notes.EditorOpened(day).catch(() => {}); // from now on a jot for this day comes through the editor
             const p = await Notes.Open(day);
             if (!live) return;
             setPage(p);
@@ -76,7 +96,11 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             setLoadError('');
             setWriteAnyway(false);
             loaded.current = null;
-            if (!p.isSkipped) show(p.day, p.body, p.exists, p.notLocal);
+            if (!p.isSkipped) {
+                const kept = orphans.current.get(p.day);
+                show(p.day, kept ?? p.body, p.exists, p.notLocal);
+                if (kept !== undefined) baseline.current = ''; // the kept text is unsaved: the next flush writes it
+            }
         })().catch(e => live && setLoadError(String(e?.message ?? e)));
         return () => { live = false; };
     }, [day, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -102,7 +126,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
     useEffect(() => on<{id: string; day: string; heading: string; markdown: string}>('jot-into-page', j => {
         if (loaded.current === j.day && !editor.isRawFallback()) editor.appendToSection(j.id, j.day, j.heading, j.markdown, {unlessPresent: true});
-        else void Notes.JotPlaced(j.id, 'notLoaded', '');
+        else void Notes.JotPlaced(j.id, 'notLoaded', '').catch(() => {}); // no answer: capture.go writes the file after 4 s
     }), []);
 
     // Today's reminder notice (reminders.go); dismissed stays dismissed until the next notice.
@@ -153,7 +177,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             case 'appendResult': {
                 const d = loaded.current;
                 if (!m.id.startsWith('add-')) { // a jot from the panel or Claude (capture.go asked via jot-into-page)
-                    void Notes.JotPlaced(m.id, m.result, m.markdown ?? '');
+                    void Notes.JotPlaced(m.id, m.result, m.markdown ?? '').catch(() => {}); // no answer: capture.go re-routes after 4 s
                     if (m.result === 'appended' && d && m.markdown != null) { void save(d, m.markdown); Notes.Words(m.markdown).then(setWords, () => {}); } // count is a hint: the old one stays
                     break;
                 }
@@ -209,6 +233,9 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             {saveError && <Banner tone="danger" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
                 <Button variant="line" size="sm" onClick={() => navigator.clipboard.writeText(`# ${day}\n\n${editor.getMarkdown()}`)}>Copy my text</Button></div>}>
                 <strong>Couldn't save this page.</strong> {saveError}</Banner>}
+            {orphanCount > 0 && <Banner tone="warning" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
+                <Button variant="line" size="sm" onClick={() => navigator.clipboard.writeText([...orphans.current].map(([d, md]) => `# ${d}\n\n${md}`).join('\n\n'))}>Copy my text</Button></div>}>
+                <strong>{orphanCount === 1 ? "A page you left couldn't be saved yet." : `${orphanCount} pages you left couldn't be saved yet.`}</strong> Its text is kept here and saved as soon as it can be.</Banner>}
             {loadError && <Banner tone="danger" action={<Button variant="line" size="sm" onClick={() => onDay(day)}>Try again</Button>}><strong>This page couldn't be opened for editing.</strong> {loadError}</Banner>}
             {raw && <Banner tone="warning"><strong>This page can't be edited safely.</strong> Its text is shown as it is in the file, which is untouched.</Banner>}
 
