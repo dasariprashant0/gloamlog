@@ -70,6 +70,13 @@ export function Heatmap(weeks: number): $CancellablePromise<core$0.HeatCell[][]>
 }
 
 /**
+ * HotKeyStatus says why the Jot shortcut isn't working ("" when it is, or when it is off).
+ */
+export function HotKeyStatus(): $CancellablePromise<string> {
+    return $Call.ByID(3658427899);
+}
+
+/**
  * JumpTo reads "yesterday", "fri", "12 oct", "2026-10-12"... into a day key ("" when it means nothing).
  */
 export function JumpTo(input: string): $CancellablePromise<string> {

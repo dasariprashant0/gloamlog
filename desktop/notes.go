@@ -26,6 +26,10 @@ type Notes struct {
 	settings     core.Settings
 	store        *core.LogStore
 	now          func() time.Time
+
+	// OnSettings runs after every saved settings change (main.go re-registers the Jot shortcut). Called without the lock.
+	OnSettings func(core.Settings)
+	hotKeyErr  string // why the Jot shortcut could not be registered ("" = fine or off)
 }
 
 // NewNotes loads settings.json, or imports the Swift app's preferences once when there is none.
@@ -81,13 +85,32 @@ func (n *Notes) Settings() core.Settings {
 
 func (n *Notes) SaveSettings(s core.Settings) (core.Settings, error) {
 	n.mu.Lock()
-	defer n.mu.Unlock()
 	s = s.Normalized()
 	if err := s.Save(n.settingsPath); err != nil {
-		return n.settings, err
+		old := n.settings
+		n.mu.Unlock()
+		return old, err
 	}
 	n.apply(s)
+	hook := n.OnSettings
+	n.mu.Unlock()
+	if hook != nil {
+		hook(s)
+	}
 	return s, nil
+}
+
+// HotKeyStatus says why the Jot shortcut isn't working ("" when it is, or when it is off).
+func (n *Notes) HotKeyStatus() string {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.hotKeyErr
+}
+
+func (n *Notes) setHotKeyErr(msg string) {
+	n.mu.Lock()
+	n.hotKeyErr = msg
+	n.mu.Unlock()
 }
 
 // ---- overview: sidebar and menu bar ----

@@ -7,6 +7,7 @@ import (
 	"embed"
 	"log"
 
+	"github.com/dasariprashant0/gloamlog/internal/core"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/icons"
@@ -117,6 +118,30 @@ func main() {
 	showJot = func() { jot.Show(); jot.Focus() }
 	showSettings = func() { settings.Show(); settings.Focus() }
 	hideJot = func() { jot.Hide() }
+
+	// The Jot shortcut from Settings (⌃⌥J by default), registered now and again whenever Settings change it.
+	current := ""
+	registerJot := func(st core.Settings) {
+		acc, ok := accelerator(st.Capture.HotKey)
+		if acc == current {
+			return
+		}
+		if current != "" {
+			_ = app.GlobalShortcut.Unregister(current) // already gone is fine
+			current = ""
+		}
+		notes.setHotKeyErr("")
+		if !ok {
+			return
+		}
+		if err := app.GlobalShortcut.Register(acc, showJot); err != nil {
+			notes.setHotKeyErr("Another app is using this shortcut. Pick a different one.")
+			return
+		}
+		current = acc
+	}
+	registerJot(notes.Settings())
+	notes.OnSettings = registerJot
 
 	tray := app.SystemTray.New()
 	tray.SetTemplateIcon(icons.SystrayMacTemplate)
