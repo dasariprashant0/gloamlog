@@ -25,6 +25,9 @@ lipo -create $PARTS -output "$APP/Contents/MacOS/Gloamlog"
 rm $PARTS
 
 cp ../app/Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# The log_work helper Claude Code runs. Same path inside the bundle as the Swift build, because users who already
+# connected Claude Code have this path in their Claude config.
+cp -R resources/claude "$APP/Contents/Resources/claude"
 [ -f ../THIRD_PARTY_LICENSES.md ] && cp ../THIRD_PARTY_LICENSES.md "$APP/Contents/Resources/THIRD_PARTY_LICENSES.md"
 
 cat > "$APP/Contents/Info.plist" <<PLIST

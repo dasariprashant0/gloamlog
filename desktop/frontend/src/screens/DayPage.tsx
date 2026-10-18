@@ -132,6 +132,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 const d = loaded.current;
                 if (m.result === 'appended' && d && m.markdown != null) {
                     void save(d, m.markdown);
+                    Notes.Words(m.markdown).then(setWords, () => {}); // an append emits no change event
                     onToast(`Added ${plural(appending.current, 'line')}.`);
                 } else if (m.result === 'alreadyPresent') onToast('Those lines are already on the page.');
                 else onToast('The page changed while adding. Try again.');
