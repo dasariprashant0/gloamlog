@@ -88,7 +88,7 @@ export function SettingsWindow() {
         return () => window.removeEventListener('keydown', key);
     }, [pane, go]);
 
-    const props = s && info ? {s, set, info, overview, reload: () => { reload().catch(() => undefined); }} : null;
+    const props = s && info ? {s, set, info, overview, reload: () => { reload().catch(() => undefined); }} : null; // reload shows its own error banner
     return (
         <div style={{display: 'flex', flexDirection: 'column', height: '100vh'}}>
             <header style={{padding: 'var(--s3) var(--s5) 0'}}>
@@ -97,7 +97,7 @@ export function SettingsWindow() {
             <main className="main" style={{flex: 1, minHeight: 0, padding: 'var(--s5) var(--s5) var(--s8)'}}>
                 {error && (
                     <div style={{marginBottom: 'var(--s5)'}}>
-                        <Banner tone="danger" action={<Button size="sm" variant="line" onClick={() => { setError(''); reload().catch(() => undefined); }}>Show saved settings</Button>}>
+                        <Banner tone="danger" action={<Button size="sm" variant="line" onClick={() => { setError(''); reload().catch(() => undefined); }}/* reload shows its own error banner */>Show saved settings</Button>}>
                             <strong>Can't save.</strong> {error} Your last change may not be kept.
                         </Banner>
                     </div>

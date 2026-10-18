@@ -25,7 +25,7 @@ export function Jot() {
     // The time the note will carry, when time stamps are on. Read again each time the panel comes forward.
     const refresh = useCallback(() => {
         setStamp(clock(new Date()));
-        Notes.Settings().then(s => { if (!s.capture.timestamps) setStamp(''); }).catch(() => undefined);
+        Notes.Settings().then(s => { if (!s.capture.timestamps) setStamp(''); }).catch(() => undefined); // keep showing the time stamp
     }, []); // keep showing the time stamp
 
     useEffect(() => {
