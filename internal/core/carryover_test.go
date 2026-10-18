@@ -6,6 +6,7 @@ package core
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func loader(t *testing.T, s *LogStore) func(day string) *DayDocument {
@@ -153,4 +154,20 @@ func TestCarryOverApplyIsIdempotentAndNeverChangesTheWordCount(t *testing.T) {
 		edited := strings.Replace(once, "- [ ] alpha beta", "- [x] alpha beta and a long rewrite of it", 1)
 		expect(t, W(edited) == W(body) && ApplyCarryOver(*card, edited) == edited, "edited carried item")
 	}
+}
+
+func TestCarryCardFromAListPageCarriesItsOpenLines(t *testing.T) {
+	cal := NewCalendar(time.UTC, 2)
+	s := DefaultSettings("/Users/someone")
+	s.MinWords = 3
+	pages := map[string]*DayDocument{
+		"2026-10-16": {Day: "2026-10-16", Body: "## Log\n\n- 09:00 shipped the export today\n- 10:00 write the test #next\n- 11:00 keys from ops #blocked\n- [ ] call Sam"},
+	}
+	load := func(d string) *DayDocument { return pages[d] }
+	card := CarryCardBefore("2026-10-17", cal, s, load)
+	expect(t, card != nil && equal(card.Items, []string{"write the test", "keys from ops", "call Sam"}), "%+v", card)
+	expect(t, equal(card.Marks, []LogMark{MarkNext, MarkBlocked, MarkNext}), "marks travel with the items: %+v", card.Marks)
+
+	pages["2026-10-16"].Body = "## Log\n\n- 09:00 shipped the export today, all done"
+	expect(t, CarryCardBefore("2026-10-17", cal, s, load) == nil, "nothing open, no card")
 }

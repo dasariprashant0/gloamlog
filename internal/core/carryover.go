@@ -8,6 +8,7 @@
 //	    settings.CarryOverHeadings (matched with NormalizeHeading; deeper sub-headings stay included),
 //	    list/checkbox markers stripped, ticked tasks ("- [x]") and code/images skipped, de-duplicated.
 //	    nil when that day has nothing to carry.
+//	    On a list page the items are its open lines (OpenLines) and Marks says which is next or blocked.
 //	CarryHeading(card, today, cal) -> "Yesterday" | "Friday" | "2 Oct 2026"
 //	ApplyCarryOver(card, body) string
 //	    Inserts "## Carried over from Fri 2 Oct" + "- [ ] item" lines at the TOP of `body`. Idempotent: returns `body`
@@ -29,9 +30,10 @@ const (
 
 // CarryCard is the "Yesterday" card: the items of the last logged day that are still open.
 type CarryCard struct {
-	SourceDay   string   `json:"sourceDay"`
-	SourceLabel string   `json:"sourceLabel"` // "Mon 5 Oct"
-	Items       []string `json:"items"`
+	SourceDay   string    `json:"sourceDay"`
+	SourceLabel string    `json:"sourceLabel"` // "Mon 5 Oct"
+	Items       []string  `json:"items"`
+	Marks       []LogMark `json:"marks"` // list-page source only: Items[i] is Marks[i]; nil for a classic source
 }
 
 // HeadingText is the heading ApplyCarryOver inserts: "Carried over from Mon 5 Oct".
@@ -81,11 +83,19 @@ func CarryCardBefore(today string, cal Calendar, settings Settings, load func(da
 		if doc == nil || doc.IsSkipped || doc.Status(settings.MinWords) != StatusLogged {
 			continue
 		}
-		items := CarryItems(doc.Body, settings.CarryOverHeadings)
+		var items []string
+		var marks []LogMark
+		if IsLogPage(doc.Body) {
+			for _, l := range OpenLines(doc.Body) {
+				items, marks = append(items, Collapse(l.Text)), append(marks, l.Mark)
+			}
+		} else {
+			items = CarryItems(doc.Body, settings.CarryOverHeadings)
+		}
 		if len(items) == 0 {
 			return nil
 		}
-		return &CarryCard{SourceDay: d, SourceLabel: DayKeyFormat(d, "EEE d MMM", cal.location()), Items: items}
+		return &CarryCard{SourceDay: d, SourceLabel: DayKeyFormat(d, "EEE d MMM", cal.location()), Items: items, Marks: marks}
 	}
 	return nil
 }
