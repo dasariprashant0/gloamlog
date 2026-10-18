@@ -13,5 +13,6 @@
     "resolveJsonModule": true,
     "preserveSymlinks": true
   },
-  "include": ["src", "bindings"]
+  "include": ["src", "bindings"],
+  "exclude": ["src/**/*.test.ts"]
 }
