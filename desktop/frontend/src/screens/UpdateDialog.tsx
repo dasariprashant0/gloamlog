@@ -55,7 +55,7 @@ export function UpdateDialog({open, onClose}: Props) {
         }
     }
     const openPage = (res: UpdateResult) => Notes.OpenReleasePage(res.release.pageURL).catch(e => setError(errText(e)));
-    const again = () => { setPhase({kind: 'checking'}); Notes.CheckForUpdates().then(res => setPhase({kind: 'result', res})).catch(e => setError(errText(e))); };
+    const again = () => { setPhase({kind: 'checking'}); Notes.CheckForUpdates().then(res => setPhase({kind: 'result', res})).catch(e => { setError(errText(e)); setPhase({kind: 'result', res: {state: 'error', current: '', release: null} as unknown as UpdateResult}); }); };
 
     const close = <Button variant="line" onClick={onClose}>Close</Button>;
     let title = 'Check for updates', body: React.ReactNode = null, actions: React.ReactNode = close, dismiss = onClose;

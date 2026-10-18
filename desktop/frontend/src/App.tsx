@@ -137,6 +137,7 @@ export function App() {
     return (
         <Shell side={side}>
             {error && <Banner tone="danger"><strong>Gloamlog can't read your log folder.</strong> {error}</Banner>}
+            {overview?.settingsNote && <Banner tone="warning"><strong>Settings reset.</strong> {overview.settingsNote}</Banner>}
             {sync && <ConflictBanner state={sync} folder={overview?.folder ?? ''} onReview={() => setConflictsOpen(true)}/>}
             {session && day && r.kind === 'day' && (
                 <SessionBar days={session} current={day} onGo={d => go({kind: 'day', day: d})} onEnd={() => go({kind: 'catchup'})}
@@ -162,7 +163,7 @@ export function App() {
                             reload();
                             setPageKey(k => k + 1);
                             notify(days.length === 1 ? `Skipped ${days[0] === today ? 'today' : 'this day'}${reason ? ' as ' + reason : ''}.` : `Skipped ${days.length} days${reason ? ' as ' + reason : ''}.`,
-                                () => Notes.Unskip(days).then(() => { reload(); setPageKey(k => k + 1); }));
+                                () => Notes.Unskip(days).then(() => { reload(); setPageKey(k => k + 1); }, e => notify(`Couldn't undo the skip: ${String(e?.message ?? e)}`)));
                         }}/>}
             {restoreDay && <RestoreDialog open day={restoreDay} onClose={() => setRestoreDay(null)}
                            onRestored={() => { setPageKey(k => k + 1); reload(); notify('Restored the earlier version. The one it replaced is under Restore previous version.'); }}/>}

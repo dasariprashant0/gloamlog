@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -30,6 +31,9 @@ type Notes struct {
 	// OnSettings runs after every saved settings change (main.go re-registers the Jot shortcut). Called without the lock.
 	OnSettings func(core.Settings)
 	hotKeyErr  string // why the Jot shortcut could not be registered ("" = fine or off)
+
+	settingsNote    string // a damaged settings.json was set aside: say so on the page
+	settingsBlocked bool   // ...and it couldn't even be moved: never save over it
 }
 
 // NewNotes loads settings.json, or imports the Swift app's preferences once when there is none.
@@ -39,6 +43,9 @@ func NewNotes() (*Notes, error) {
 		return nil, err
 	}
 	support := filepath.Join(home, "Library", "Application Support", "Gloamlog")
+	// Very old versions kept their support files under "Daily Log": move them over first (only when the new folder doesn't
+	// exist yet), as the Swift app did on each launch.
+	core.MigrateSupportFolder(filepath.Dir(support))
 	n := &Notes{
 		home:         home,
 		settingsPath: filepath.Join(support, "settings.json"),
@@ -55,6 +62,7 @@ func NewNotes() (*Notes, error) {
 			return nil, err
 		}
 	}
+	n.settingsNote, n.settingsBlocked = setAsideDamagedSettings(n.settingsPath, time.Now())
 	n.apply(core.LoadSettings(n.settingsPath, home))
 	return n, nil
 }
@@ -85,6 +93,11 @@ func (n *Notes) Settings() core.Settings {
 
 func (n *Notes) SaveSettings(s core.Settings) (core.Settings, error) {
 	n.mu.Lock()
+	if n.settingsBlocked {
+		old := n.settings
+		n.mu.Unlock()
+		return old, errors.New("Your settings file couldn't be read or moved aside, so it isn't saved over. " + n.settingsNote)
+	}
 	s = s.Normalized()
 	if err := s.Save(n.settingsPath); err != nil {
 		old := n.settings
@@ -116,22 +129,23 @@ func (n *Notes) setHotKeyErr(msg string) {
 // ---- overview: sidebar and menu bar ----
 
 type Overview struct {
-	Today       string             `json:"today"`
-	TodayStatus core.DayStatus     `json:"todayStatus"`
-	CatchUp     []string           `json:"catchUp"`
-	Streak      core.StreakResult  `json:"streak"`
-	Recent      []string           `json:"recent"` // newest pages first, today left out (the calendar reaches older ones)
-	Folder      string             `json:"folder"`
-	FolderError string             `json:"folderError"` // "" = the folder is there and writable
-	Onboarded   bool               `json:"onboarded"`
-	Summary     core.FolderSummary `json:"summary"`
+	Today        string             `json:"today"`
+	TodayStatus  core.DayStatus     `json:"todayStatus"`
+	CatchUp      []string           `json:"catchUp"`
+	Streak       core.StreakResult  `json:"streak"`
+	Recent       []string           `json:"recent"` // newest pages first, today left out (the calendar reaches older ones)
+	Folder       string             `json:"folder"`
+	FolderError  string             `json:"folderError"` // "" = the folder is there and writable
+	Onboarded    bool               `json:"onboarded"`
+	Summary      core.FolderSummary `json:"summary"`
+	SettingsNote string             `json:"settingsNote"` // "" unless a damaged settings file was set aside
 }
 
 func (n *Notes) Overview() (Overview, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	now, cal, s := n.now(), n.cal(), n.settings
-	o := Overview{Today: core.DayKeyString(now, time.Local), Folder: s.StorageFolder, Onboarded: s.Onboarded}
+	o := Overview{Today: core.DayKeyString(now, time.Local), Folder: s.StorageFolder, Onboarded: s.Onboarded, SettingsNote: n.settingsNote}
 	if err := n.store.CheckFolder(true); err != nil {
 		o.FolderError = core.LogErrorDetail(err)
 		return o, nil
@@ -392,4 +406,27 @@ func (n *Notes) serveAssets(next http.Handler) http.Handler {
 		}
 		http.ServeFile(w, r, path)
 	})
+}
+
+// setAsideDamagedSettings protects a settings.json that exists but can't be used. LoadSettings would fall back to the
+// defaults (notes folder ~/Gloamlog, not onboarded) and the next save would overwrite the real file, so the person's folder
+// choice and template would be lost and their notes would look gone. The damaged file is moved to
+// settings.json.damaged-<time> first. It returns a sentence for the page, and blocked when even the move failed (then
+// nothing may save over it). A missing file is the normal first run: "", false.
+func setAsideDamagedSettings(path string, now time.Time) (note string, blocked bool) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", false
+	}
+	if err == nil {
+		var probe core.Settings
+		if json.Unmarshal(data, &probe) == nil {
+			return "", false // readable and well formed
+		}
+	}
+	aside := path + ".damaged-" + now.Format("20060102-150405")
+	if rerr := os.Rename(path, aside); rerr != nil {
+		return "Gloamlog couldn't read its settings file (" + path + "), so it is using defaults for now and leaving the file as it is.", true
+	}
+	return "Gloamlog couldn't read its settings file, so it is using defaults. The old file is kept as " + filepath.Base(aside) + " next to it.", false
 }

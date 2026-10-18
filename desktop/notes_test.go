@@ -1,7 +1,11 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dasariprashant0/gloamlog/internal/core"
 )
@@ -23,5 +27,36 @@ func TestWritableDecidesWhatReachesDisk(t *testing.T) {
 		if got := writable(c.in, s); got != c.want {
 			t.Errorf("writable(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// A settings.json that can't be decoded is moved aside before the defaults take over, so the next save can't erase it.
+func TestDamagedSettingsAreSetAsideNotOverwritten(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	now := time.Date(2026, 10, 18, 17, 30, 0, 0, time.UTC)
+
+	if note, blocked := setAsideDamagedSettings(path, now); note != "" || blocked {
+		t.Fatalf("missing file is a first run: %q %v", note, blocked)
+	}
+	if err := os.WriteFile(path, []byte(`{"storageFolder":"/Users/someone/Notes","minWords":30}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if note, _ := setAsideDamagedSettings(path, now); note != "" {
+		t.Fatalf("a good file must stay: %q", note)
+	}
+	damaged := `{"storageFolder":"/Users/someone/Notes","minWords":"thirty"` // wrong type and cut off
+	if err := os.WriteFile(path, []byte(damaged), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	note, blocked := setAsideDamagedSettings(path, now)
+	if blocked || !strings.Contains(note, "settings.json.damaged-20261018-173000") {
+		t.Fatalf("note %q blocked %v", note, blocked)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the damaged file should have moved away, stat err = %v", err)
+	}
+	if got, err := os.ReadFile(path + ".damaged-20261018-173000"); err != nil || string(got) != damaged {
+		t.Errorf("set-aside copy: %q, %v", got, err)
 	}
 }

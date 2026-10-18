@@ -641,6 +641,11 @@ export class Overview {
     "onboarded": boolean;
     "summary": core$0.FolderSummary;
 
+    /**
+     * "" unless a damaged settings file was set aside
+     */
+    "settingsNote": string;
+
     /** Creates a new Overview instance. */
     constructor($$source: Partial<Overview> = {}) {
         if (!("today" in $$source)) {
@@ -669,6 +674,9 @@ export class Overview {
         }
         if (!("summary" in $$source)) {
             this["summary"] = (new core$0.FolderSummary());
+        }
+        if (!("settingsNote" in $$source)) {
+            this["settingsNote"] = "";
         }
 
         Object.assign(this, $$source);
