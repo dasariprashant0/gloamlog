@@ -116,7 +116,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                     pending.current = null;
                     if (p && p.md !== lastSaved.current) void save(p.day, p.md);
                 }, SAVE_DELAY);
-                Notes.Words(m.markdown).then(setWords, () => {});
+                Notes.Words(m.markdown).then(setWords, () => {}); // the count is a hint: on failure the old one stays
                 break;
             }
             case 'uploadImage': {

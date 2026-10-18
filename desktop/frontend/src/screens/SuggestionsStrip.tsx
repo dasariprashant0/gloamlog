@@ -17,6 +17,7 @@ export function SuggestionsStrip({day, pageMarkdown, onInsert, onToast}: {
 }) {
     const [data, setData] = useState<Suggestions | null>(null);
     const [looking, setLooking] = useState(false);
+    const [error, setError] = useState('');
     const [added, setAdded] = useState<string[]>([]);
     const [ticked, setTicked] = useState<string[]>([]);
     const [open, setOpen] = useState(() => read(OPEN_KEY, true));
@@ -30,11 +31,17 @@ export function SuggestionsStrip({day, pageMarkdown, onInsert, onToast}: {
             const bullets = s.result?.bullets ?? [];
             setAdded(bullets.length ? await Notes.AlreadyAdded(bullets, pageMarkdown()) : []);
             setTicked([]);
-        } catch { /* a newer look replaced this one */ }
+            setError('');
+        } catch (e) {
+            // A newer look replaced this one (context canceled): nothing to show. Anything else is a real failure.
+            const msg = String((e as Error)?.message ?? e);
+            if (!/cancel/i.test(msg)) setError(msg);
+        }
         setLooking(false);
     }
     useEffect(() => { setData(null); void look(false); }, [day]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    if (error && !data) return <p className="small danger suggest" role="alert">Couldn't look at your work: {error}</p>;
     if (!data || data.off || hidden.includes(day)) return null;
     const bullets = (data.result?.bullets ?? []).filter(b => !added.includes(b.id));
     const chosen = bullets.filter(b => ticked.includes(b.id));

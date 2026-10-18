@@ -108,7 +108,7 @@ func NewRedactor(home string) Redactor { return Redactor{home: home} }
 
 // StandardRedactor uses the real home folder, like Swift's Redactor.standard.
 func StandardRedactor() Redactor {
-	h, _ := os.UserHomeDir()
+	h, _ := os.UserHomeDir() // no home: "" means home paths are simply not folded to "~"; secrets are still hidden
 	return NewRedactor(h)
 }
 
