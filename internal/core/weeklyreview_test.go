@@ -229,3 +229,31 @@ func TestWeekMissingDaysIsCatchUpMissingRestrictedToTheWeek(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewGroupsListAndClassicPagesIntoDoneNextBlocked(t *testing.T) {
+	cal := NewCalendar(time.UTC, 2)
+	s := DefaultSettings("/Users/someone") // list template
+	s.MinWords = 1
+	docs := map[string]DayDocument{
+		"2026-10-12": {Day: "2026-10-12", Body: "## What I did\n\nold work\n\n## To do next\n\n- [ ] old next\n\n## Pending / blocked\n\nold block\n\n## Ideas\n\nan idea"},
+		"2026-10-13": {Day: "2026-10-13", Body: "## Log\n\n- 09:00 new work\n- 10:00 new next #next\n- 11:00 new block #blocked\n\n## Aside\n\nnote outside"},
+	}
+	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	p := ReviewPeriodContaining(ScaleWeek, time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC), cal)
+	sum := BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
+	var titles []string
+	byTitle := map[string][]ReviewItem{}
+	for _, g := range sum.Groups {
+		titles = append(titles, g.Title)
+		byTitle[g.Title] = g.Items
+	}
+	expect(t, equal(titles, []string{"Done", "Next", "Blocked", WeekOtherTitle}), "groups: %v", titles)
+	expect(t, len(byTitle["Done"]) == 2 && byTitle["Done"][0].Text == "old work" && byTitle["Done"][1].Text == "- new work", "%+v", byTitle["Done"])
+	expect(t, byTitle["Next"][1].Text == "- new next" && byTitle["Blocked"][1].Text == "- new block", "marks dropped: %+v %+v", byTitle["Next"], byTitle["Blocked"])
+	other := byTitle[WeekOtherTitle]
+	expect(t, len(other) == 2 && strings.Contains(other[0].Text, "an idea") && strings.Contains(other[1].Text, "note outside"), "%+v", other)
+
+	s.Template = ClassicTemplate
+	sum = BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
+	expect(t, sum.Groups[0].Title == "What I did", "a classic template keeps the Swift groups: %v", sum.Groups[0].Title)
+}

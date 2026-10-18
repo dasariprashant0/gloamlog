@@ -171,6 +171,31 @@ func SplitJots(body, heading string) (rest, jots string) {
 
 // ---- build ----
 
+// The list page's review groups, and where the classic default headings go when the template is a list template.
+var (
+	listGroupTitles = []string{"Done", "Next", "Blocked"}
+	classicGroupOf  = map[string]int{"what i did": 0, "finished": 0, "started": 0, "to do next": 1, "pending blocked": 2}
+)
+
+func markGroup(m LogMark) int {
+	switch m {
+	case MarkNext:
+		return 1
+	case MarkBlocked:
+		return 2
+	}
+	return 0
+}
+
+// outsideLog is a list page without its Log section: what Before holds above the heading, and After.
+func outsideLog(p LogPage) string {
+	before := ""
+	if i := strings.LastIndexByte(p.Before, '\n'); i >= 0 {
+		before = p.Before[:i]
+	}
+	return TrimBody(strings.TrimSpace(before + "\n\n" + p.After))
+}
+
 // BuildReview turns the day files of a period into a summary (see the header). now decides which days are over.
 func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[string]DayStatus, settings Settings,
 	options ReviewOptions, cal Calendar, now time.Time) ReviewSummary {
@@ -225,12 +250,43 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 	}
 	summary.Counts = count(p.Start, p.End)
 
+	listMode := IsLogPage(settings.Template)
 	template := TemplateHeadings(settings.Template)
+	if listMode {
+		// The five classic headings are always recognised (old pages), then any other heading of the template.
+		template = append(TemplateHeadings(ClassicTemplate), template...)
+	}
 	norm := make([]string, len(template))
 	for i, t := range template {
 		norm[i] = NormalizeHeading(t)
 	}
-	buckets := make([][]ReviewItem, len(template))
+	// slot is where a template heading's text goes: its own index; in list mode a Done / Next / Blocked group (0-2) for a
+	// classic heading and 3+ for any other heading of the template.
+	slot := func(i int) int { return i }
+	nSlots := len(template)
+	var slotTitles []string
+	if listMode {
+		slotTitles = append([]string{}, listGroupTitles...)
+		extra := map[string]int{}
+		for _, t := range template {
+			n := NormalizeHeading(t)
+			if _, classic := classicGroupOf[n]; !classic && n != NormalizeHeading(LogHeading) && extra[n] == 0 {
+				slotTitles = append(slotTitles, t)
+				extra[n] = len(slotTitles) - 1 // 3 or more, so 0 means "not seen"
+			}
+		}
+		slot = func(i int) int {
+			if g, ok := classicGroupOf[norm[i]]; ok {
+				return g
+			}
+			if s, ok := extra[norm[i]]; ok {
+				return s
+			}
+			return -1 // the Log heading itself: never matched on a classic page
+		}
+		nSlots = len(slotTitles)
+	}
+	buckets := make([][]ReviewItem, nSlots)
 	var other, jots, skipped []ReviewItem
 	seenDone := map[string]bool{}
 	lastLoggedBody, haveLogged := "", false
@@ -273,10 +329,26 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 			lastLoggedBody, haveLogged = shown, true
 		}
 
-		matched, otherText := PartitionBody(rest, norm, SubheadingBoldLabel)
+		var otherText string
 		per := map[int][]string{}
-		for _, m := range matched {
-			per[m.Index] = append(per[m.Index], m.Text)
+		if page, ok := ParseLog(rest); ok && listMode {
+			marked := map[int][]string{}
+			for _, l := range page.Lines {
+				g := markGroup(l.Mark)
+				marked[g] = append(marked[g], l.Plain())
+			}
+			for g, texts := range marked {
+				per[g] = []string{strings.Join(texts, "\n")} // one list per group per day
+			}
+			otherText = outsideLog(page)
+		} else {
+			var matched []PartitionMatch
+			matched, otherText = PartitionBody(rest, norm, SubheadingBoldLabel)
+			for _, m := range matched {
+				if s := slot(m.Index); s >= 0 {
+					per[s] = append(per[s], m.Text)
+				}
+			}
 		}
 		var idx []int
 		for i := range per {
@@ -313,10 +385,15 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		}
 	}
 
-	for i := range template {
-		if len(buckets[i]) > 0 {
-			summary.Groups = append(summary.Groups, ReviewGroup{Title: template[i], Kind: GroupHeading, Items: buckets[i]})
+	for i, items := range buckets {
+		if len(items) == 0 {
+			continue
 		}
+		title := template[i]
+		if listMode {
+			title = slotTitles[i]
+		}
+		summary.Groups = append(summary.Groups, ReviewGroup{Title: title, Kind: GroupHeading, Items: items})
 	}
 	if len(jots) > 0 {
 		summary.Groups = append(summary.Groups, ReviewGroup{Title: jotsHeadingText(settings.Capture.JotsHeading), Kind: GroupJots, Items: jots})
