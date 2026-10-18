@@ -127,3 +127,38 @@ func TestParseLogReadsWhitespaceOnlyLinesAsBlank(t *testing.T) {
 	p, _ := ParseLog("## Log\n  \n- a")
 	expect(t, p.Markdown() == "## Log\n\n- a", "%q", p.Markdown())
 }
+
+func logTexts(ls []LogLine) []string {
+	var out []string
+	for _, l := range ls {
+		out = append(out, l.Text)
+	}
+	return out
+}
+
+func TestInsertTimedKeepsTimeOrder(t *testing.T) {
+	p, _ := ParseLog("## Log\n\n- 09:00 a\n- note without time\n- 11:00 c")
+	got := InsertTimed(p.Lines, LogLine{Time: "10:30", Text: "b"})
+	expect(t, equal(logTexts(got), []string{"a", "note without time", "b", "c"}), "before the first later time: %v", logTexts(got))
+	got = InsertTimed(p.Lines, LogLine{Time: "8:15", Text: "first"})
+	expect(t, equal(logTexts(got), []string{"first", "a", "note without time", "c"}), "%v", logTexts(got))
+	expect(t, got[0].Blank == 1 && got[1].Blank == 0, "the new first line takes the blank line after the heading")
+	expect(t, p.Lines[0].Blank == 1, "the input is not changed")
+	got = InsertTimed(p.Lines, LogLine{Text: "untimed"})
+	expect(t, logTexts(got)[3] == "untimed", "an untimed line goes at the end")
+	got = InsertTimed(nil, LogLine{Time: "09:00", Text: "only"})
+	expect(t, len(got) == 1 && got[0].Blank == 1, "the first line of an empty Log gets a blank line before it")
+	p2, _ := ParseLog("## Log")
+	p2.Lines = InsertTimed(p2.Lines, LogLine{Time: "09:00", Text: "x"})
+	expect(t, p2.Markdown() == "## Log\n\n- 09:00 x", "%q", p2.Markdown())
+}
+
+func TestOpenLinesAreNextBlockedAndOpenTasks(t *testing.T) {
+	body := "## Log\n- 09:00 done thing\n- 10:00 later #next\n- [ ] a task\n- [x] ticked\n- stuck #blocked\n\nParagraph"
+	var got []string
+	for _, l := range OpenLines(body) {
+		got = append(got, string(l.Mark)+":"+l.Text)
+	}
+	expect(t, equal(got, []string{"next:later", "next:a task", "blocked:stuck"}), "%v", got)
+	expect(t, len(OpenLines("## To do next\n- [ ] x")) == 0, "a classic page has no log lines")
+}

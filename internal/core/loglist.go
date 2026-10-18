@@ -252,3 +252,43 @@ func (p LogPage) Markdown() string {
 	}
 	return strings.Join(out, "\n")
 }
+
+// InsertTimed returns lines with l placed before the first line whose time is later than l's; untimed lines are passed
+// over, and an untimed l goes at the end. lines is not changed.
+func InsertTimed(lines []LogLine, l LogLine) []LogLine {
+	out := append([]LogLine{}, lines...)
+	at := len(out)
+	if k, ok := timeKey(l.Time); ok {
+		for i, x := range out {
+			if xk, ok := timeKey(x.Time); ok && xk > k {
+				at = i
+				break
+			}
+		}
+	}
+	switch {
+	case len(out) == 0 && l.Blank == 0:
+		l.Blank = 1 // a blank line between the heading and the first line
+	case at == 0:
+		l.Blank, out[0].Blank = out[0].Blank, 0
+	}
+	out = append(out, LogLine{})
+	copy(out[at+1:], out[at:])
+	out[at] = l
+	return out
+}
+
+// OpenLines are the lines still to do on a list page: #next, #blocked and unticked tasks, in page order.
+func OpenLines(body string) []LogLine {
+	p, ok := ParseLog(body)
+	if !ok {
+		return nil
+	}
+	var out []LogLine
+	for _, l := range p.Lines {
+		if !l.Other && l.Mark != MarkDone {
+			out = append(out, l)
+		}
+	}
+	return out
+}
