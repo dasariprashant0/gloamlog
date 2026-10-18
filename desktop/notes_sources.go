@@ -44,10 +44,10 @@ func (c *scanCache) get(home string) *sources.Scanner {
 // Suggestions scans day for work to suggest. again forces a fresh look ("Look again").
 func (n *Notes) Suggestions(day string, again bool) (Suggestions, error) {
 	n.mu.Lock()
-	s, cal, home, now := n.settings, n.cal(), n.home, n.now()
+	s, cal, home, now, store := n.settings, n.cal(), n.home, n.now(), n.store
 	n.mu.Unlock()
 	prefs := s.Sources
-	out := Suggestions{Heading: prefs.HeadingText()}
+	out := Suggestions{Heading: pageHeading(store, day, prefs.HeadingText())} // a list page takes them under Log
 	if !prefs.AnyOn() || !prefs.Consented {
 		out.Off = true
 		return out, nil

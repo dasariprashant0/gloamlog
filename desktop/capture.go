@@ -103,7 +103,13 @@ func (c *captureState) syncFolder() bool {
 // headingFor is the heading a note goes under on `day`: Log on a list page (or a new day that starts as one), else the configured one.
 // It reads the day's file through the writer's own store, outside n.mu, like the other store reads here.
 func (c *captureState) headingFor(day, configured string) string {
-	doc, err := c.store.Load(day)
+	return pageHeading(c.store, day, configured)
+}
+
+// pageHeading is the section new lines go under on day's page: Log on a list page (or a new day that starts as one), else
+// configured. An unreadable file falls back to configured. Used by capture and by the suggestions strip.
+func pageHeading(store *core.LogStore, day, configured string) string {
+	doc, err := store.Load(day)
 	if err != nil {
 		return configured
 	}
