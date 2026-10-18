@@ -100,6 +100,20 @@ func (c *captureState) syncFolder() bool {
 	return true
 }
 
+// headingFor is the heading a note goes under on `day`: Log on a list page (or a new day that starts as one), else the configured one.
+// It reads the day's file through the writer's own store, outside n.mu, like the other store reads here.
+func (c *captureState) headingFor(day, configured string) string {
+	doc, err := c.store.Load(day)
+	if err != nil {
+		return configured
+	}
+	body := ""
+	if doc != nil {
+		body = doc.Body
+	}
+	return core.JotsHeadingFor(body, configured)
+}
+
 // ---- the open pages (core.EditorLookup / core.PageHandle) ----
 
 type pageHandle struct {
@@ -123,6 +137,7 @@ func (p *pageHandle) AppendJot(item core.CaptureItem, done func(core.JotAppendRe
 	c.n.mu.Lock()
 	heading := c.n.settings.Capture.JotsHeading
 	c.n.mu.Unlock()
+	heading = c.headingFor(p.day, heading)
 	time.AfterFunc(c.answerTimeout, func() {
 		c.mu.Lock()
 		cb := c.replies[item.ID]
@@ -231,6 +246,7 @@ func (c *captureState) jot(text, source string) JotResult {
 	heading := c.n.settings.Capture.JotsHeading
 	c.n.mu.Unlock()
 	day := core.DayKeyString(c.n.now(), time.Local)
+	heading = c.headingFor(day, heading)
 	res := JotResult{Outcome: "empty", Day: day, Heading: heading}
 	rec, ok := c.writer.Capture(text, source)
 	if !ok {

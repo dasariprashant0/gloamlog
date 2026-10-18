@@ -692,3 +692,22 @@ func TestConcurrentCapturesAllArriveExactlyOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestNotesGoUnderLogOnListPages(t *testing.T) {
+	defer SetJotsRules(JotsRules{Heading: "Jots"})
+	SetJotsRules(JotsRules{Heading: "Jots", NewDaysLog: true})
+	c := newCapCore(t)
+	w := c.writer(newCapLookup(), func() time.Time { return mk(2026, 10, 14, 14, 32) })
+	day := "2026-10-14"
+
+	w.Capture("first note from Claude", "claude")
+	got := c.body(day)
+	expect(t, strings.HasPrefix(got, "## Log\n\n- ") && strings.HasSuffix(got, " first note from Claude"), "a new day starts as a list page: %q", got)
+
+	w.Capture("second note", "claude")
+	got = c.body(day)
+	expect(t, strings.Count(got, "## Log") == 1 && !strings.Contains(got, "## Jots") && strings.HasSuffix(got, " second note"), "%q", got)
+
+	save(t, c.store, "2026-10-13", "## What I did\n\nwords")
+	expect(t, JotsHeadingFor(load(t, c.store, "2026-10-13").Body, "Jots") == "Jots", "a classic page keeps the Jots heading")
+}

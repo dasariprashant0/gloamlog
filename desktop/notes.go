@@ -70,6 +70,9 @@ func NewNotes() (*Notes, error) {
 func (n *Notes) apply(s core.Settings) {
 	n.settings = s
 	n.store = core.NewLogStore(s.StorageFolder, n.backupDir, 10*time.Minute, n.now)
+	// the process-wide jot rules, as the Swift app set them on every settings change (it was never set in the port)
+	core.SetJotsRules(core.JotsRules{Heading: s.Capture.JotsHeading, CountTowardLogged: s.Capture.JotsCountTowardLogged,
+		NewDaysLog: core.IsLogPage(s.Template)})
 }
 
 func (n *Notes) cal() core.Calendar { return core.NewCalendar(time.Local, n.settings.WeekStart) }

@@ -219,7 +219,7 @@ func (w *DayWriter) AcknowledgeSaved(day, body string) {
 	if len(mine) == 0 {
 		return
 	}
-	keys := JotKeys(body, w.prefs().JotsHeading)
+	keys := JotKeys(body, JotsHeadingFor(body, w.prefs().JotsHeading))
 	for _, it := range mine {
 		if w.holds(it, keys) {
 			w.ack(it)
@@ -378,7 +378,6 @@ func (w *DayWriter) routeAll(resend bool) {
 // routePass delivers what it can through the files and returns the notes to hand to live pages.
 func (w *DayWriter) routePass(resend bool) []pendingSend {
 	w.persistUnjournaled()
-	heading := w.prefs().JotsHeading
 	var days []string
 	seen := map[string]bool{}
 	for _, it := range w.queue {
@@ -398,7 +397,7 @@ func (w *DayWriter) routePass(resend bool) []pendingSend {
 		if page := w.pages.Page(day); page != nil {
 			sends = append(sends, w.prepareSends(items, page, resend)...)
 		} else {
-			w.deliverToFile(day, items, heading)
+			w.deliverToFile(day, items)
 		}
 	}
 	return sends
@@ -441,7 +440,7 @@ func (w *DayWriter) completed(item CaptureItem, page PageHandle, r JotAppendResu
 	reroute := false
 	switch r.Kind {
 	case JotAppended:
-		if k, ok := LastJotKey(r.NormalizedMarkdown, w.prefs().JotsHeading); ok { // the note is the last item of that section
+		if k, ok := LastJotKey(r.NormalizedMarkdown, JotsHeadingFor(r.NormalizedMarkdown, w.prefs().JotsHeading)); ok { // the note is the last item of that section
 			w.editorKeys[item.ID] = k
 		}
 		w.sent[item.ID] = sentNote{page: page, at: w.clock(), confirmed: true} // the editor's autosave writes it; AcknowledgeSaved acks it
@@ -476,12 +475,12 @@ func (w *DayWriter) fileHolds(item CaptureItem) bool {
 	if err != nil || doc == nil || doc.IsSkipped {
 		return false
 	}
-	return w.holds(item, JotKeys(doc.Body, w.prefs().JotsHeading))
+	return w.holds(item, JotKeys(doc.Body, JotsHeadingFor(doc.Body, w.prefs().JotsHeading)))
 }
 
 // deliverToFile is the file path: nobody has this day open. Load once, add every pending note that is not in the page yet, save
 // once, acknowledge. Any failure (folder missing or read-only, unreadable page, failed write) leaves every note pending.
-func (w *DayWriter) deliverToFile(day string, items []CaptureItem, heading string) {
+func (w *DayWriter) deliverToFile(day string, items []CaptureItem) {
 	doc, err := w.store.Load(day) // nil = no file yet
 	if err != nil {
 		return // stays in the journal: ReplayJournal delivers it when the folder (or the page) is back
@@ -490,6 +489,7 @@ func (w *DayWriter) deliverToFile(day string, items []CaptureItem, heading strin
 	if doc != nil {
 		body = doc.Body // a skip marker has an empty body: it is written over
 	}
+	heading := JotsHeadingFor(body, w.prefs().JotsHeading) // Log on a list page, or on a new day when new days are list pages
 	changed := false
 	for _, it := range items {
 		if !w.isPending(it.ID) {
