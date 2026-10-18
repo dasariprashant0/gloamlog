@@ -102,6 +102,9 @@ func TestParseLogRoundTripsAwkwardPages(t *testing.T) {
 		"### 📝 Log\n\n\n- a\n\n\n- b\n\n",
 		"## Log\n- a\nlazy continuation\n- [ ] t\n#### sub\n- c",
 		"## Done\n- x\n## Log\n- y\n## Later\n- z",
+		"## Log\n- a\n<!-- c\nd -->\n- b",
+		"## Log\n<!-- one -->\n- a",
+		"## Log\n<!-- unclosed\n- a",
 	} {
 		p, ok := ParseLog(body)
 		expect(t, ok && p.Markdown() == body, "%q -> %q", body, p.Markdown())
@@ -118,4 +121,9 @@ func TestParseLogEditsRenderOnlyTheChangedLine(t *testing.T) {
 	p, _ := ParseLog(body)
 	p.Lines[1].Mark = MarkBlocked
 	expect(t, p.Markdown() == "## Log\n\n*  09:40  a\n- 10:00 b #blocked\n", "%q", p.Markdown())
+}
+
+func TestParseLogReadsWhitespaceOnlyLinesAsBlank(t *testing.T) {
+	p, _ := ParseLog("## Log\n  \n- a")
+	expect(t, p.Markdown() == "## Log\n\n- a", "%q", p.Markdown())
 }

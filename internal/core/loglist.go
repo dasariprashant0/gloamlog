@@ -172,7 +172,7 @@ func (l LogLine) Plain() string {
 type LogPage struct {
 	Before string    `json:"before"` // the page up to and including the Log heading line
 	Lines  []LogLine `json:"lines"`
-	Trail  int       `json:"trail"` // blank lines after the last line, before After
+	Trail  int       `json:"trail"` // blank lines after the last line (a trailing newline counts as one), before After
 	After  string    `json:"after"` // the page from the heading that ends the section; "" when it runs to the end
 }
 
@@ -182,6 +182,8 @@ func IsLogPage(body string) bool {
 }
 
 // ParseLog splits body around its first Log section (see the header). ok=false when there is none.
+// A whitespace-only line reads as blank and is written back as "": a deliberate exception to byte for byte (markdown ignores it,
+// and a page is only rewritten after a real edit). A comment line is not blank: ScanBody blanks it, so the raw text decides.
 func ParseLog(body string) (LogPage, bool) {
 	text := strings.ReplaceAll(body, "\r\n", "\n")
 	lines := strings.Split(text, "\n")
@@ -203,7 +205,7 @@ func ParseLog(body string) (LogPage, bool) {
 		}
 		l := LogLine{Other: true, Text: strings.Join(rows, "\n")}
 		if bullet {
-			l, _ = parseLogRows(rows)
+			l, _ = parseLogRows(rows) // rows[0] was already checked as a bullet
 		}
 		l.Blank = startBlank
 		p.Lines = append(p.Lines, l)
@@ -211,18 +213,17 @@ func ParseLog(body string) (LogPage, bool) {
 	}
 	for i := b.heading + 1; i < b.end; i++ {
 		l := scanned[i]
-		if l.Kind == LineBlank {
+		if l.Kind != LineCode && strings.TrimSpace(lines[i]) == "" { // a blank inside a fence is code
 			flush()
 			blank++
 			continue
 		}
-		indent, isItem := listItemIndent(lines[i])
-		top := l.Kind == LineText && isItem && indent < 2 && strings.IndexByte("-*+", strings.TrimLeft(lines[i], " \t")[0]) >= 0
+		_, isBullet := parseLogRows([]string{lines[i]})
 		switch {
-		case top:
+		case l.Kind == LineText && isBullet:
 			flush()
 			rows, bullet, startBlank, blank = []string{lines[i]}, true, blank, 0
-		case rows != nil && (!bullet || l.Kind == LineText):
+		case rows != nil && !bullet, rows != nil && l.Kind == LineText:
 			rows = append(rows, lines[i]) // a continuation row, or more of an Other block
 		default:
 			flush()
