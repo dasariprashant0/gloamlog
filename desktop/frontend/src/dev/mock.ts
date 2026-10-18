@@ -9,6 +9,7 @@ import {onboardingMock} from './mock-onboarding';
 import {remindersMock} from './mock-reminders';
 import {reviewMock} from './mock-review';
 import {syncMock} from './mock-sync';
+import {logMock, parseLog, dismissed} from './mock-log';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -21,7 +22,7 @@ const words = (body: string) => body.split('\n').filter(l => !l.trim().startsWit
 const settings: Settings = {
     reminderMinutes: 1015, weekdays: [2, 3, 4, 5, 6], mode: 'strict' as Settings['mode'], snoozeMinutes: 15,
     storageFolder: '/Users/someone/Gloamlog', launchAtLogin: true,
-    template: '## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next',
+    template: '## Log',
     logTemplateSeen: true, carryOverHeadings: ['To do next', 'Pending / blocked'], minWords: 20, onboarded: true, appearance: 'system' as Settings['appearance'],
     catchUpWindowDays: 30, closedAppReminders: true, showMenuBar: true,
     capture: {hotKey: {keyCode: 38, carbonModifiers: 6144}, timestamps: true, todoShorthand: true, jotsHeading: 'Jots', jotsCountTowardLogged: false},
@@ -41,6 +42,10 @@ const days = new Map<string, {body: string; skipped?: string}>();
         if (i === 9) { days.set(d, {body: '', skipped: 'Holiday'}); continue; }
         const short = i % 7 === 3;
         const done = lines[i % lines.length];
+        if (i <= 3) {
+            days.set(d, {body: `## Log\n\n- 09:40 ${done}\n- 11:15 ${lines[(i + 2) % lines.length]}\n- 15:30 Waiting on the API keys from ops #blocked\n- 17:45 Write the migration test #next`});
+            continue;
+        }
         days.set(d, {body: short ? `## What I did\n- Looked at ${done.toLowerCase()}` :
             `## What I did\n- ${done}\n- ${lines[(i + 2) % lines.length]}\n\n## To do next\n- [ ] Tidy the ${['sidebar', 'calendar', 'review', 'jot panel'][i % 4]}\n- [ ] Answer the open questions`});
     }
@@ -117,6 +122,13 @@ export const Notes = {
             for (let d = add(day, -1); d > add(day, -10); d = add(d, -1)) {
                 const prev = days.get(d);
                 if (prev && !prev.skipped) {
+                    const list = parseLog(prev.body);
+                    if (list.ok) {
+                        const open = list.page.lines.filter(l => !l.other && l.mark && !dismissed.has(`${day}|${l.text.toLowerCase()}`));
+                        if (open.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}),
+                            items: open.map(l => l.text), marks: open.map(l => l.mark)} as unknown as CarryCard;
+                        break;
+                    }
                     const items = prev.body.split('\n## To do next\n')[1]?.split('\n').filter(l => l.startsWith('- ')).map(l => l.replace(/^- (\[ \] )?/, '')) ?? [];
                     if (items.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}), items, marks: []};
                     break;
@@ -174,6 +186,7 @@ export const Notes = {
     ...remindersMock,
     ...reviewMock,
     ...syncMock,
+    ...logMock,
 };
 
 export const Windows = {
