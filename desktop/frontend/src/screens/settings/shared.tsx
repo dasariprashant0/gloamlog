@@ -37,7 +37,10 @@ export function tilde(path: string, info: Info): string {
     return home && path.startsWith(home + '/') ? '~' + path.slice(home.length) : path;
 }
 
-export const DEFAULT_TEMPLATE = '## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next';
+/** The five-heading page every day used before the list page. Still offered as "Daily review". */
+export const CLASSIC_TEMPLATE = '## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next';
+/** New days: the list page (internal/core DefaultTemplate). */
+export const DEFAULT_TEMPLATE = '## Log';
 export const DEFAULT_CARRY = ['To do next', 'Pending / blocked'];
 
 /** A group of settings under a title. */

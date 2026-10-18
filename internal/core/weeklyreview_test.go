@@ -22,6 +22,7 @@ func weekFixture(t *testing.T, minWords int, template *string) (WeekSummary, *Lo
 	save(t, store, "2026-09-30", lorem(30, "outside"))
 	s := defaults()
 	s.MinWords = minWords
+	s.Template = ClassicTemplate
 	if template != nil {
 		s.Template = *template
 	}

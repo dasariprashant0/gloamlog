@@ -24,6 +24,7 @@ func captureNotes(t *testing.T, folderExists bool) (n *Notes, c *captureState, f
 	n = &Notes{home: home, settingsPath: filepath.Join(home, "settings.json"), backupDir: filepath.Join(home, "backups"),
 		now: func() time.Time { return time.Date(2026, 10, 14, 10, 32, 0, 0, time.Local) }}
 	s := core.DefaultSettings(home)
+	s.Template = core.ClassicTemplate // these tests are about the Jots block on a five-heading page
 	s.StorageFolder = folder
 	n.apply(s)
 	c = captureFor(n)

@@ -8,11 +8,13 @@ import {Banner, Button, Dialog, Field, Segmented, Switch} from '@personal/ui/rea
 import {Notes, Windows, plural} from '../api';
 import type {Settings} from '../api';
 import type {ClaudeInfo, FolderPlan, OnboardingInfo} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
-import {DAY_NAMES, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, errText, systemWeekStart} from './settings/shared';
+import {CLASSIC_TEMPLATE, DAY_NAMES, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, errText, systemWeekStart} from './settings/shared';
 
 type Preset = {id: string; title: string; detail: string; markdown: string; carry: string[]; preview: string[]};
 const PRESETS: Preset[] = [
-    {id: 'review', title: 'Daily review', detail: 'Five prompts for the end of the day.', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY,
+    {id: 'log', title: 'Log list', detail: 'One list through the day. Mark lines next or blocked.', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY,
+        preview: ['09:40 Fixed the login loop', '17:45 Write the test #next']},
+    {id: 'review', title: 'Daily review', detail: 'Five prompts for the end of the day.', markdown: CLASSIC_TEMPLATE, carry: DEFAULT_CARRY,
         preview: ['What I did', 'Finished', 'Started', 'Pending / blocked', 'To do next']},
     {id: 'standup', title: 'Standup', detail: "What moved, what's next, what's stuck.", markdown: '## Yesterday\n\n## Today\n\n## Blockers',
         carry: ['Today', 'Blockers'], preview: ['Yesterday', 'Today', 'Blockers']},
@@ -45,7 +47,7 @@ export function Onboarding({open, firstRun, onDone}: Props) {
     const [saved, setSaved] = useState<Settings | null>(null);
     const [loginNow, setLoginNow] = useState(false);
     const [info, setInfo] = useState<OnboardingInfo | null>(null);
-    const [preset, setPreset] = useState<string | null>('review');     // null: your own template, kept on a re-run
+    const [preset, setPreset] = useState<string | null>('log');     // null: your own template, kept on a re-run
     const [touched, setTouched] = useState(false);
     const [minutes, setMinutes] = useState(1015);
     const [days, setDays] = useState<number[]>(FALLBACK_DAYS);
@@ -80,7 +82,7 @@ export function Onboarding({open, firstRun, onDone}: Props) {
             setMinutes(s.reminderMinutes); setDays(s.weekdays.length ? s.weekdays : FALLBACK_DAYS);
             setMode(String(s.mode) === 'gentle' ? 'gentle' : 'strict'); setMinWords(s.minWords);
             setLoginNow(si.loginEnabled);
-            if (firstRun) { setPreset('review'); setChoice('local'); setCustom(''); setLogin(false); return; }
+            if (firstRun) { setPreset('log'); setChoice('local'); setCustom(''); setLogin(false); return; }
             setPreset(PRESETS.find(p => p.markdown === s.template)?.id ?? null);
             setLogin(si.loginEnabled);
             const here = s.storageFolder.replace(/\/$/, '');

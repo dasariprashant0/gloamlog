@@ -17,7 +17,7 @@ const home = "/Users/test"
 func TestSettingsDefaultsRoundTripTolerantDecodeNormalize(t *testing.T) {
 	d := DefaultSettings(home)
 	expect(t, d.Mode == ModeStrict && d.MinWords == 20 && equal(d.CarryOverHeadings, []string{"To do next", "Pending / blocked"}) && d.ReminderMinutes == 16*60+55, "defaults")
-	expect(t, d.Template == "## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next", "default template")
+	expect(t, d.Template == "## Log", "default template")
 	expect(t, d.SnoozeMinutes == 15 && equal(d.Weekdays, workdays) && d.LaunchAtLogin && !d.Onboarded && d.ClosedAppReminders && d.ShowMenuBar, "more defaults")
 	path := filepath.Join(t.TempDir(), "sub", "settings.json")
 	expect(t, equal(LoadSettings(path, home), DefaultSettings(home)), "defaults when the file is missing")
@@ -166,4 +166,18 @@ func TestDamagedSourcesNeverCostTheOtherSettings(t *testing.T) {
 	s = DecodeSettings([]byte(`{"minWords":44,"sources":{"claude":true,"git":"yes","allowed":7}}`), home)
 	expect(t, s.MinWords == 44 && s.Sources.Claude && !s.Sources.Git && len(s.Sources.Allowed) == 0, "bad fields keep their defaults, good ones are read: %+v", s.Sources)
 	expect(t, DefaultSourcesPrefs().HeadingText() == "What I did" && (SourcesPrefs{Heading: "  "}).HeadingText() == "What I did" && !DefaultSourcesPrefs().AnyOn(), "helpers")
+}
+
+func TestNewDaysAreListPagesAndOldDefaultsMoveOnce(t *testing.T) {
+	home := "/Users/someone"
+	expect(t, DefaultTemplate == "## Log" && DefaultSettings(home).LogTemplateSeen, "fresh installs start on the list page")
+
+	old := DecodeSettings([]byte(`{"template":`+jsonString(ClassicTemplate)+`}`), home)
+	expect(t, old.Template == DefaultTemplate && old.LogTemplateSeen, "an untouched five-heading template moves to the list page")
+
+	custom := DecodeSettings([]byte(`{"template":"## Wins\n\n## Next"}`), home)
+	expect(t, custom.Template == "## Wins\n\n## Next" && custom.LogTemplateSeen, "a custom template is never touched")
+
+	chosen := DecodeSettings([]byte(`{"template":`+jsonString(ClassicTemplate)+`,"logTemplateSeen":true}`), home)
+	expect(t, chosen.Template == ClassicTemplate, "choosing the five headings again after the move sticks")
 }

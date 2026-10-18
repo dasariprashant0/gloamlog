@@ -16,7 +16,7 @@
 //
 // v0.3 fields (replace the v0.2 `sections` array):
 //
-//	Template            markdown pre-filled into a NEW day in the editor only (never written until the user edits)
+//	Template            markdown pre-filled into a NEW day in the editor only (never written until the user edits). New days are list pages ("## Log"); an untouched old default moves once (logTemplateSeen).
 //	CarryOverHeadings   headings whose lines are carried to the next day (matched by NormalizeHeading)
 //	MinWords            logged rule: words(body) >= MinWords (1...500, default 20); carried-over task lines do not count
 //
@@ -61,13 +61,15 @@ const (
 	// LegacySettingsKey is the UserDefaults key of the old settings blob ("unchanged on purpose: v0.2 settings are found and migrated").
 	LegacySettingsKey = "dailylog.settings.v2"
 
-	DefaultMinWords   = 20
-	MinWordsMin       = 1 // minWordsRange = 1...500
-	MinWordsMax       = 500
-	CatchUpWindowMin  = 7 // catchUpWindowRange = 7...365
-	CatchUpWindowMax  = 365
-	DefaultTemplate   = "## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next"
-	DefaultSourcesHdg = "What I did" // SourcesPrefs.defaultHeading: exists in the default template, so a click adds bullets there
+	DefaultMinWords  = 20
+	MinWordsMin      = 1 // minWordsRange = 1...500
+	MinWordsMax      = 500
+	CatchUpWindowMin = 7 // catchUpWindowRange = 7...365
+	CatchUpWindowMax = 365
+	// ClassicTemplate is the five-heading page every day used before the list page (still offered in Settings > Page).
+	ClassicTemplate   = "## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next"
+	DefaultTemplate   = "## " + LogHeading // new days are list pages
+	DefaultSourcesHdg = "What I did"       // SourcesPrefs.defaultHeading: exists in the default template, so a click adds bullets there
 )
 
 // SnoozeChoices are the snooze lengths (minutes) the UI offers; anything else normalizes to 15.
@@ -142,6 +144,7 @@ type Settings struct {
 	StorageFolder      string        `json:"storageFolder"`          // storageFolder: a path (Swift stored a file:// URL; both decode)
 	LaunchAtLogin      bool          `json:"launchAtLogin"`          // launchAtLogin (default true)
 	Template           string        `json:"template"`               // template: markdown pre-filled into a NEW day in the editor only
+	LogTemplateSeen    bool          `json:"logTemplateSeen"`        // the one-time move of an untouched ClassicTemplate to the list page has run
 	CarryOverHeadings  []string      `json:"carryOverHeadings"`      // carryOverHeadings (default "To do next", "Pending / blocked")
 	MinWords           int           `json:"minWords"`               // minWords: 1...500, default 20
 	Onboarded          bool          `json:"onboarded"`              // onboarded (default false)
@@ -167,6 +170,7 @@ func DefaultSettings(home string) Settings {
 		StorageFolder:      DefaultFolder(home),
 		LaunchAtLogin:      true,
 		Template:           DefaultTemplate,
+		LogTemplateSeen:    true,
 		CarryOverHeadings:  DefaultCarryOverHeadings(),
 		MinWords:           DefaultMinWords,
 		Appearance:         AppearanceSystem,
@@ -301,6 +305,7 @@ func (s *Settings) decodeOver(data []byte) error {
 		{"minWords", &s.MinWords}, {"onboarded", &s.Onboarded}, {"logStartDate", &s.LogStartDate}, {"appearance", &appearance},
 		{"weekStart", &s.WeekStart}, {"catchUpWindowDays", &s.CatchUpWindowDays}, {"closedAppReminders", &s.ClosedAppReminders},
 		{"showMenuBar", &s.ShowMenuBar}, {"template", &template},
+		{"logTemplateSeen", &s.LogTemplateSeen},
 	}
 	for _, st := range steps {
 		if err := o.field(st.key, st.dst); err != nil {
@@ -345,6 +350,16 @@ func (s *Settings) decodeOver(data []byte) error {
 		s.Template = *template
 	} else if t, ok := legacySectionsTemplate(o); ok {
 		s.Template = t
+	}
+	// An old settings file has no logTemplateSeen; decoding starts from DefaultSettings (true), so mark it unseen first.
+	if _, ok := o["logTemplateSeen"]; !ok {
+		s.LogTemplateSeen = false
+	}
+	if !s.LogTemplateSeen {
+		if s.Template == ClassicTemplate { // untouched: move it once; a custom template stays
+			s.Template = DefaultTemplate
+		}
+		s.LogTemplateSeen = true
 	}
 	return nil
 }

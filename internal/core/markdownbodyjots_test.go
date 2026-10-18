@@ -44,7 +44,7 @@ func TestJotsCountsSplitThePageAtTheJotsBlock(t *testing.T) {
 	}
 	expect(t, BodyCounts("```\n## Jots\n- a\n```", "Jots").JotCount == 0, "a heading inside a fence is no heading")
 	// a page without a Jots block counts exactly like CountWords
-	for _, b := range []string{DefaultTemplate, "## A\ntext here\n## Carried over from Mon\n- [ ] x\n- y", "![i](a.png) word", "```\ncode\n```", lorem(30, "w")} {
+	for _, b := range []string{ClassicTemplate, "## A\ntext here\n## Carried over from Mon\n- [ ] x\n- y", "![i](a.png) word", "```\ncode\n```", lorem(30, "w")} {
 		expect(t, BodyCounts(b, "Jots") == BodyCountsResult{Words: W(b)}, "%q", b)
 	}
 }
@@ -64,14 +64,14 @@ func TestIsJotsOnly(t *testing.T) {
 		"## Jots\n- a\n## Jots\n- b", "<!-- c -->\n## Jots\n- a", "## 📝 jots\n- a", "  \n## Jots\n- 14:32 a\n- 14:40 b\n"} {
 		expect(t, IsJotsOnly(b, "Jots"), "%q should be jots-only", b)
 	}
-	for _, b := range []string{"text\n## Jots\n- a", "## Jots\n- a\n## Other\nx", DefaultTemplate + "\n\n## Jots\n- a", "- a", "```\n## Jots\n```", "## Jotsy\n- a", "## What I did\n\n## Jots\n- a"} {
+	for _, b := range []string{"text\n## Jots\n- a", "## Jots\n- a\n## Other\nx", ClassicTemplate + "\n\n## Jots\n- a", "- a", "```\n## Jots\n```", "## Jotsy\n- a", "## What I did\n\n## Jots\n- a"} {
 		expect(t, !IsJotsOnly(b, "Jots"), "%q should not be jots-only", b)
 	}
 	expect(t, IsJotsOnly("## Notes\n- a", "Notes") && !IsJotsOnly("## Jots\n- a", "Notes"), "configured heading")
 }
 
 func TestStripUntouchedTemplate(t *testing.T) {
-	tpl := DefaultTemplate
+	tpl := ClassicTemplate
 	jots := "## Jots\n\n- 14:32 call Sam\n- 14:40 email Ana"
 	strip := func(md, template, heading string) string { return StripUntouchedTemplate(md, template, heading) }
 	expect(t, strip(tpl+"\n\n"+jots, tpl, "Jots") == jots, "template + jots round trip")

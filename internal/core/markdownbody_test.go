@@ -95,8 +95,8 @@ func TestHasContentAndStatusBoundaries(t *testing.T) {
 	doc := func(body string) DayDocument { return DayDocument{Day: "2026-10-05", Body: body} }
 	expect(t, doc(lorem(19, "w")).Status(20) == StatusPartial, "19 words is partial")
 	expect(t, doc(lorem(20, "w")).Status(20) == StatusLogged, "20 words is logged")
-	expect(t, doc(DefaultTemplate).Status(20) == StatusMissed, "template alone is no log")
-	expect(t, doc(DefaultTemplate+"\n\n"+lorem(3, "w")).Words() == 3, "template plus 3 words")
+	expect(t, doc(ClassicTemplate).Status(20) == StatusMissed, "template alone is no log")
+	expect(t, doc(ClassicTemplate+"\n\n"+lorem(3, "w")).Words() == 3, "template plus 3 words")
 	expect(t, doc("![](a.png)").Status(1) == StatusMissed, "an image is content but not words")
 	expect(t, DayDocument{Day: "2026-10-05", IsSkipped: true, SkipReason: "x"}.Status(1) == StatusSkipped, "skipped")
 	expect(t, doc(lorem(1, "w")).Status(0) == StatusLogged, "minWords below 1 behaves as 1")
@@ -141,7 +141,7 @@ func TestBodySections(t *testing.T) {
 	expect(t, e[2].Text == "## four spaces", "4 leading spaces is text, not a heading")
 	expect(t, e[3].Text == "####### x\nSetext\n======", "7 hashes and setext underlines are plain text")
 	expect(t, len(BodySections("")) == 0 && len(BodySections("\n\n")) == 0, "empty")
-	expect(t, equal(TemplateHeadings(DefaultTemplate), []string{"What I did", "Finished", "Started", "Pending / blocked", "To do next"}), "template headings")
+	expect(t, equal(TemplateHeadings(ClassicTemplate), []string{"What I did", "Finished", "Started", "Pending / blocked", "To do next"}), "template headings")
 	expect(t, equal(TemplateHeadings("## A\n### a\n# 🅰 A\n## B"), []string{"A", "B"}), "de-duplicated by normalised title")
 }
 
@@ -164,7 +164,7 @@ func TestTrimShiftPrunePartition(t *testing.T) {
 		}
 	}
 	expect(t, PruneEmptySections("## A\n\n## B\ntext\n\n## C\n- [ ]\n\n## D\n### E\n### F\nstuff") == "## B\ntext\n\n## D\n### F\nstuff", "prune")
-	expect(t, PruneEmptySections(DefaultTemplate) == "", "the template alone prunes to nothing")
+	expect(t, PruneEmptySections(ClassicTemplate) == "", "the template alone prunes to nothing")
 
 	body := "pre text\n## Finished\nA\n### Sub\nB\n## Misc\nC\n## finished\nD\n#### Deep\nE"
 	matched, other := PartitionBody(body, []string{"finished"}, SubheadingBoldLabel)
@@ -194,7 +194,7 @@ func TestCarriedOverTasksNeverCount(t *testing.T) {
 	expect(t, d.Status(20) == StatusMissed && d.Status(1) == StatusMissed, "a carried block alone is no log")
 
 	// real words anywhere count, whatever surrounds the block
-	onTemplate := InsertCarryOver(DefaultTemplate, "Carried over from Fri 2 Oct", []string{lorem(10, "t"), lorem(10, "u")})
+	onTemplate := InsertCarryOver(ClassicTemplate, "Carried over from Fri 2 Oct", []string{lorem(10, "t"), lorem(10, "u")})
 	for _, c := range []struct {
 		n    int
 		want DayStatus

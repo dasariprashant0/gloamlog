@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import {Button, Field, Setting} from '@personal/ui/react';
-import {Block, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, Panel, ResetBar, type PaneProps} from './shared';
+import {Block, CLASSIC_TEMPLATE, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, Panel, ResetBar, type PaneProps} from './shared';
 
 const WINDOWS = [7, 14, 30, 60, 90, 180, 365];
 const windowLabel = (d: number) => (d === 365 ? '1 year' : `${d} days`);
@@ -8,7 +8,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
 const PRESETS: {title: string; markdown: string; carry: string[]}[] = [
-    {title: 'Daily review', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY},
+    {title: 'Log list', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY},
+    {title: 'Daily review', markdown: CLASSIC_TEMPLATE, carry: DEFAULT_CARRY},
     {title: 'Standup', markdown: '## Yesterday\n\n## Today\n\n## Blockers', carry: ['Today', 'Blockers']},
     {title: 'Blank page', markdown: '', carry: DEFAULT_CARRY},
 ];

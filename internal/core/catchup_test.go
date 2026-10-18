@@ -304,7 +304,7 @@ func TestCatchUpEndToEndThroughRealFiles(t *testing.T) {
 	save(t, store, "2026-10-05", lorem(20, "w"))
 	_, ok := CatchUpNext(cur, list())
 	expect(t, len(list()) == 0 && !ok, "All caught up")
-	save(t, store, "2026-10-05", DefaultTemplate)
+	save(t, store, "2026-10-05", ClassicTemplate)
 	expect(t, equal(list(), []string{"2026-10-05"}), "an emptied day returns to the list")
 }
 

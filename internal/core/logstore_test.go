@@ -89,7 +89,7 @@ func TestFileStatesFollowTheWordsRuleAndListingsIgnoreForeignFiles(t *testing.T)
 	dir := store.Dir
 	save(t, store, "2026-10-05", lorem(25, "w"))
 	save(t, store, "2026-10-06", lorem(5, "w"))
-	save(t, store, "2026-10-07", DefaultTemplate)
+	save(t, store, "2026-10-07", ClassicTemplate)
 	must(t, store.Skip("2026-10-08", "x"))
 	expect(t, equal(val(store.ListDays()), []string{"2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05"}), "newest first")
 	expect(t, equal(val(store.FileStates(20)), states("2026-10-05", StatusLogged, "2026-10-06", StatusPartial, "2026-10-08", StatusSkipped)), "template-only page is omitted")
@@ -147,7 +147,7 @@ func TestStoreAgreesWithStreakHeatmapStatusPlanner(t *testing.T) {
 		save(t, store, d, "## What I did\n"+lorem(25, "w"))
 	}
 	must(t, store.Skip("2026-10-07", "x"))
-	save(t, store, "2026-10-12", DefaultTemplate+"\n\n"+lorem(5, "w"))
+	save(t, store, "2026-10-12", ClassicTemplate+"\n\n"+lorem(5, "w"))
 	now := mk(2026, 10, 12, 18, 0)
 	st := val(store.FileStates(20))
 	expect(t, st["2026-10-12"] == StatusPartial && st["2026-10-05"] == StatusLogged && st["2026-10-07"] == StatusSkipped, "states %v", st)
@@ -173,7 +173,7 @@ func TestStoreAgreesWithStreakHeatmapStatusPlanner(t *testing.T) {
 	fresh := PlannerState{Day: "2026-10-12"}
 	a, _ := ReminderDecide(now, ny, s, status("2026-10-12", st), fresh, true)
 	expect(t, a == ActionBringToFront(true), "a partial page still nags")
-	save(t, store, "2026-10-12", DefaultTemplate+"\n\n"+lorem(25, "w"))
+	save(t, store, "2026-10-12", ClassicTemplate+"\n\n"+lorem(25, "w"))
 	st2 := val(store.FileStates(20))
 	expect(t, status("2026-10-12", st2) == StatusLogged, "logged now")
 	a, _ = ReminderDecide(now, ny, s, status("2026-10-12", st2), fresh, true)

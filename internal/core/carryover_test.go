@@ -41,7 +41,7 @@ func TestCarryOverCardItemsApplyIdempotent(t *testing.T) {
 	loose := "- [x] Call Ana\n- [ ] Fix build\n  - [ ] Plan Q4\nlegal  review"
 	expect(t, ApplyCarryOver(*card, loose) == loose, "items already present (any marker, case, spacing) are not added again")
 	expect(t, ApplyCarryOver(*card, "Call Ana\nfoo") == "## Carried over from Fri 2 Oct\n\n- [ ] Fix build\n- [ ] Plan Q4\n- [ ] Legal review\n\nCall Ana\nfoo", "only the missing items")
-	withTemplate := ApplyCarryOver(*card, DefaultTemplate)
+	withTemplate := ApplyCarryOver(*card, ClassicTemplate)
 	expect(t, strings.HasPrefix(withTemplate, block+"\n\n## What I did") && strings.HasSuffix(withTemplate, "## To do next"), "on the template")
 	expect(t, HasContent(block) && W(block) == 0, "carried tasks are content but not words (was 8 before the carried-over exclusion)")
 }
@@ -105,7 +105,7 @@ func TestCarriedOverTasksNeverCountTheRealFlow(t *testing.T) {
 		total += len(strings.Fields(it))
 	}
 	expect(t, len(card.Items) == 2 && total == 20, "20 carried words, as many as minWords")
-	onTemplate := ApplyCarryOver(*card, DefaultTemplate)
+	onTemplate := ApplyCarryOver(*card, ClassicTemplate)
 	expect(t, W(onTemplate) == 0 && HasContent(onTemplate) && W(ApplyCarryOver(*card, "")) == 0, "no words")
 	save(t, store, day, onTemplate)
 	expect(t, load(day) != nil, "a page holding only carried tasks is kept, never treated as empty")
@@ -130,7 +130,7 @@ func TestCarriedOverTasksNeverCountTheRealFlow(t *testing.T) {
 		bl = append(bl, "- "+lorem(5, "b"+itoa(i)+"x"))
 	}
 	bullets := strings.Join(bl, "\n")
-	for _, body := range []string{free, bullets, "## What I did\n" + lorem(30, "w"), "intro words here\n\n" + DefaultTemplate} {
+	for _, body := range []string{free, bullets, "## What I did\n" + lorem(30, "w"), "intro words here\n\n" + ClassicTemplate} {
 		once := ApplyCarryOver(*card, body)
 		same := DayDocument{Day: day, Body: once}.Status(20) == DayDocument{Day: day, Body: body}.Status(20)
 		expect(t, once != body && W(once) == W(body) && same, "words unchanged by carrying: %d vs %d", W(body), W(once))
@@ -145,7 +145,7 @@ func TestCarryOverApplyIsIdempotentAndNeverChangesTheWordCount(t *testing.T) {
 		t.Fatal("expected a card")
 	}
 	expect(t, equal(card.Items, []string{"alpha beta", "gamma delta", "epsilon zeta"}), "items %v", card.Items)
-	for _, body := range []string{"", DefaultTemplate, lorem(25, "w"), "## What I did\n" + lorem(30, "w"), "x y z\n\n" + DefaultTemplate} {
+	for _, body := range []string{"", ClassicTemplate, lorem(25, "w"), "## What I did\n" + lorem(30, "w"), "x y z\n\n" + ClassicTemplate} {
 		once := ApplyCarryOver(*card, body)
 		expect(t, ApplyCarryOver(*card, once) == once && IsCarryApplied(*card, once) && !IsCarryApplied(*card, body), "idempotent")
 		expect(t, W(once) == W(body) && HasContent(once) && strings.HasPrefix(once, "## Carried over from Fri 2 Oct\n\n- [ ] alpha beta"), "word count and shape")

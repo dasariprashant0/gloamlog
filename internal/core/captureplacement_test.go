@@ -88,7 +88,7 @@ func TestCaptureApplyNoJotsBlockCreatesOneAtTheEnd(t *testing.T) {
 		{"", "## Jots\n\n- 14:32 call Sam", ""},
 		{"\n\n  \n", "## Jots\n\n- 14:32 call Sam", ""},
 		{"Some text here.\n\n", "Some text here.\n\n## Jots\n\n- 14:32 call Sam", ""},
-		{DefaultTemplate, DefaultTemplate + "\n\n## Jots\n\n- 14:32 call Sam", "a template page keeps its headings"},
+		{ClassicTemplate, ClassicTemplate + "\n\n## Jots\n\n- 14:32 call Sam", "a template page keeps its headings"},
 		{"## Jotsy\n\ntext", "## Jotsy\n\ntext\n\n## Jots\n\n- 14:32 call Sam", "a similar heading is not the Jots heading"},
 		{"```\n## Jots\n```", "```\n## Jots\n```\n\n## Jots\n\n- 14:32 call Sam", "a heading inside a code fence is not a heading"},
 		{"<!--\n## Jots\n-->\ntext", "<!--\n## Jots\n-->\ntext\n\n## Jots\n\n- 14:32 call Sam", "nor one inside a comment"},
@@ -154,7 +154,7 @@ func TestCaptureApplyBlockBoundariesCaseEmojiAndConfiguredHeading(t *testing.T) 
 }
 
 func TestCaptureContainsAfterApplyAndEditorRespellings(t *testing.T) {
-	bodies := []string{"", "text", "## Jots\n\n- 14:30 a", "## Jots\n\n- 14:30 a\n\n## Finished\n\nstuff", DefaultTemplate, "## Jots", "### Jots\n- a\n## N\nz", "## Jots\n\nremember"}
+	bodies := []string{"", "text", "## Jots\n\n- 14:30 a", "## Jots\n\n- 14:30 a\n\n## Finished\n\nstuff", ClassicTemplate, "## Jots", "### Jots\n- a\n## N\nz", "## Jots\n\nremember"}
 	for _, text := range []string{"call Sam", "# x", "- y", "a\nb", "1. n", "café \U0001F389"} {
 		for _, b := range bodies {
 			it := jotItem(text)
