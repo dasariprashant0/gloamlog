@@ -12,7 +12,7 @@
   "dependencies": {
     "@milkdown/crepe": "7.22.2",
     "@milkdown/kit": "7.22.2",
-    "@personal/ui": "file:../../../design-system",
+    "@personal/ui": "git+https://github.com/dasariprashant0/design-system.git#b96fc9123b349b78738b22e58cb601c3857bbded",
     "@wailsio/runtime": "3.0.0-beta.30",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
