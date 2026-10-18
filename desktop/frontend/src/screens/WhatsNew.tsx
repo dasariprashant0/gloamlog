@@ -25,7 +25,7 @@ export function WhatsNew({open, onClose, onSettings}: Props) {
             const heading = s.capture.jotsHeading || 'Jots';
             if (live) setJot(k ? `Jot a note from any app with ${hotKeyLabel(k)}. It lands under ${heading} on today's page.`
                 : `Jot a note from the menu bar. It lands under ${heading} on today's page.`);
-        }).catch(() => undefined);
+        }).catch(() => undefined); // keep the default shortcut text
         return () => { live = false; };
     }, [open]);
 
@@ -40,7 +40,7 @@ export function WhatsNew({open, onClose, onSettings}: Props) {
     ];
 
     // Remembering is best effort: if the file can't be written the sheet may show once more, which loses nothing.
-    const done = () => { Notes.MarkWhatsNewSeen().catch(() => undefined); onClose(); };
+    const done = () => { Notes.MarkWhatsNewSeen().catch(() => undefined); onClose(); }; // worst case it shows once more
 
     return (
         <Dialog open={open} onClose={done} title="What's new in 0.7" actions={<>

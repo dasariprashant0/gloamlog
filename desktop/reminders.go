@@ -715,7 +715,7 @@ func (w *wailsOS) Remove(id string) {
 		// Best effort: a request that is not there (already fired or never added) is the normal case, and a failed
 		// removal at worst leaves one banner that the next re-plan removes again.
 		_ = w.ns.RemovePendingNotification(id)
-		_ = w.ns.RemoveDeliveredNotification(id)
+		_ = w.ns.RemoveDeliveredNotification(id) // best effort, see above
 	}
 }
 

@@ -3,7 +3,7 @@
 // Try the update states in a browser with ?update=none|error|uptodate|available (default available) and
 // ?install=failed|fallback; ?folder=logs makes the folder step find existing logs.
 const later = <T,>(v: T, ms = 60) => new Promise<T>(r => setTimeout(() => r(v), ms));
-const query = (k: string, d: string) => { try { return new URLSearchParams(location.search).get(k) ?? d; } catch { return d; } };
+const query = (k: string, d: string) => { try { return new URLSearchParams(location.search).get(k) ?? d; } catch { return d; } }; // mock only
 
 let seen = false;
 let claudeState = query('claude', 'notConnected');

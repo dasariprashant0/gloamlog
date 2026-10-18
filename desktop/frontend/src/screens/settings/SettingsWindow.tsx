@@ -49,7 +49,7 @@ export function SettingsWindow() {
 
     useEffect(() => {
         reload().catch(e => setError(errText(e)));
-        const again = () => { reload().catch(() => undefined); };
+        const again = () => { reload().catch(() => undefined); }; // reload shows its own error banner
         window.addEventListener('focus', again);
         return () => window.removeEventListener('focus', again);
     }, [reload]);

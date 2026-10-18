@@ -26,7 +26,7 @@ export function Jot() {
     const refresh = useCallback(() => {
         setStamp(clock(new Date()));
         Notes.Settings().then(s => { if (!s.capture.timestamps) setStamp(''); }).catch(() => undefined);
-    }, []);
+    }, []); // keep showing the time stamp
 
     useEffect(() => {
         refresh();

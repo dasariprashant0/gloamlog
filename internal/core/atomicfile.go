@@ -69,7 +69,7 @@ func writeAndRename(data []byte, tmp, dest string) error {
 	}
 	// Lstat, not Stat: only a regular file's permissions are copied (a symlink at the target is simply replaced).
 	if fi, lerr := os.Lstat(dest); lerr == nil && fi.Mode().IsRegular() {
-		_ = os.Chmod(tmp, fi.Mode().Perm())
+		_ = os.Chmod(tmp, fi.Mode().Perm()) // best effort: the content is what must not be lost
 	}
 	return os.Rename(tmp, dest)
 }

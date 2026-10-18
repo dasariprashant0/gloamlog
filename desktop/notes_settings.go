@@ -147,6 +147,10 @@ func (n *Notes) ChangeFolder(path, mode string) (FolderResult, error) {
 	res := FolderResult{Conflicts: []string{}}
 	switch mode {
 	case "copy", "move":
+		// An old folder we can't list would "copy 0 logs" and then switch away from it: refuse instead, nothing changed.
+		if _, err := os.ReadDir(old); err != nil {
+			return FolderResult{}, errors.New("Couldn't read your current log folder, so nothing was changed: " + err.Error())
+		}
 		res = transfer(old, dir, mode == "move")
 	default:
 		res.Text = "Now saving to " + name + "."
@@ -165,7 +169,7 @@ func (n *Notes) ChangeFolder(path, mode string) (FolderResult, error) {
 }
 
 func dayFileNames(dir string) []string {
-	entries, _ := os.ReadDir(dir)
+	entries, _ := os.ReadDir(dir) // a count only; ChangeFolder checks the old folder is readable before copying
 	var out []string
 	for _, e := range entries {
 		if n := e.Name(); !e.IsDir() && strings.HasSuffix(n, ".md") && core.DayKeyIsWellFormed(strings.TrimSuffix(n, ".md")) {
@@ -226,7 +230,7 @@ func transferAssets(from, to string, move bool) (copied, failed int) {
 	if err != nil || !strings.HasPrefix(real, root+string(filepath.Separator)) {
 		return 0, 0
 	}
-	entries, _ := os.ReadDir(real)
+	entries, _ := os.ReadDir(real) // no readable assets folder: no images to bring along
 	for _, e := range entries {
 		n := e.Name()
 		ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(n), "."))
@@ -240,7 +244,7 @@ func transferAssets(from, to string, move bool) (copied, failed int) {
 		}
 		if _, err := os.Lstat(dst); err == nil { // names carry a content hash: the same name is the same picture
 			if move && sameBytes(src, dst) {
-				_ = os.Remove(src)
+				_ = os.Remove(src) // same picture already there; if the delete fails the original simply stays
 			}
 			continue
 		}
@@ -280,7 +284,7 @@ func copyNew(src, dst string, move bool) error {
 		return err
 	}
 	if move && sameBytes(src, dst) {
-		_ = os.Remove(src)
+		_ = os.Remove(src) // copy verified identical; if the delete fails the original simply stays
 	}
 	return nil
 }

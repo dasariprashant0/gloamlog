@@ -96,7 +96,7 @@ export function Onboarding({open, firstRun, onDone}: Props) {
     useEffect(() => {
         if (!open || !saved || !folder) return;
         let live = true;
-        Notes.OnboardingInfo(folder).then(i => { if (live) { setInfo(i); if (!i.found) setLogStart(''); } }).catch(() => undefined);
+        Notes.OnboardingInfo(folder).then(i => { if (live) { setInfo(i); if (!i.found) setLogStart(''); } }).catch(() => undefined); // no summary: the step still works
         return () => { live = false; };
     }, [open, saved, folder]);
 

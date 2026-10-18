@@ -90,7 +90,7 @@ func (j *CaptureJournal) writeLine(line []byte) error {
 	if fi, err := f.Stat(); err == nil {
 		sizeBefore = fi.Size()
 		if fi.Mode().Perm() != 0o600 {
-			_ = f.Chmod(0o600)
+			_ = f.Chmod(0o600) // best effort: tighten an old file's mode; the note still gets written
 		}
 		if sizeBefore > 0 { // a torn last line: start this record on a line of its own
 			var last [1]byte

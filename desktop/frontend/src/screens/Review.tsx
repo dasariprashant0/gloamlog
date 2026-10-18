@@ -27,7 +27,7 @@ function loadOptions(): {scale: Scale; options: Options} {
             scale: SCALES.some(([k]) => k === s.scale) ? s.scale : 'week',
             options: {includeSkipped: s.includeSkipped !== false, includeJots: s.includeJots === true, grouping: s.grouping === 'day' || s.grouping === 'section' ? s.grouping : null},
         };
-    } catch { return {scale: 'week', options: {includeSkipped: true, includeJots: false, grouping: null}}; }
+    } catch { return {scale: 'week', options: {includeSkipped: true, includeJots: false, grouping: null}}; } // storage off or damaged: defaults
 }
 function remember(scale: Scale, o: Options) {
     try { localStorage.setItem(STORE, JSON.stringify({scale, ...o})); } catch { /* storage can be off; the screen still works */ }
