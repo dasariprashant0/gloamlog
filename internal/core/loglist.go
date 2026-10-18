@@ -255,6 +255,7 @@ func (p LogPage) Markdown() string {
 
 // InsertTimed returns lines with l placed before the first line whose time is later than l's; untimed lines are passed
 // over, and an untimed l goes at the end. lines is not changed.
+// At the top, l takes the blank lines that were before the old first line (its own Blank is replaced).
 func InsertTimed(lines []LogLine, l LogLine) []LogLine {
 	out := append([]LogLine{}, lines...)
 	at := len(out)
@@ -267,10 +268,12 @@ func InsertTimed(lines []LogLine, l LogLine) []LogLine {
 		}
 	}
 	switch {
-	case len(out) == 0 && l.Blank == 0:
-		l.Blank = 1 // a blank line between the heading and the first line
+	case len(out) == 0:
+		if l.Blank == 0 {
+			l.Blank = 1 // a blank line between the heading and the first line
+		}
 	case at == 0:
-		l.Blank, out[0].Blank = out[0].Blank, 0
+		l.Blank, out[0].Blank = out[0].Blank, 0 // the new first line takes the blank lines after the heading
 	}
 	out = append(out, LogLine{})
 	copy(out[at+1:], out[at:])
