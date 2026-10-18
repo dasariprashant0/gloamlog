@@ -114,6 +114,11 @@ export class CarryCard {
     "sourceLabel": string;
     "items": string[];
 
+    /**
+     * list-page source only: Items[i] is Marks[i]; nil for a classic source
+     */
+    "marks": LogMark[];
+
     /** Creates a new CarryCard instance. */
     constructor($$source: Partial<CarryCard> = {}) {
         if (!("sourceDay" in $$source)) {
@@ -125,6 +130,9 @@ export class CarryCard {
         if (!("items" in $$source)) {
             this["items"] = [];
         }
+        if (!("marks" in $$source)) {
+            this["marks"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -134,9 +142,13 @@ export class CarryCard {
      */
     static createFrom($$source: any = {}): CarryCard {
         const $$createField2_0 = $$createType2;
+        const $$createField3_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
+        }
+        if ("marks" in $$parsedSource) {
+            $$parsedSource["marks"] = $$createField3_0($$parsedSource["marks"]);
         }
         return new CarryCard($$parsedSource as Partial<CarryCard>);
     }
@@ -308,6 +320,142 @@ export class HotKeySpec {
     static createFrom($$source: any = {}): HotKeySpec {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new HotKeySpec($$parsedSource as Partial<HotKeySpec>);
+    }
+}
+
+/**
+ * LogLine is one bullet of the Log section, or one Other block.
+ */
+export class LogLine {
+    /**
+     * "09:40" as written; "" for none
+     */
+    "time": string;
+
+    /**
+     * the rows joined by "\n", without bullet, task box, time or mark
+     */
+    "text": string;
+    "mark": LogMark;
+
+    /**
+     * written as a task line ("- [ ]" / "- [x]")
+     */
+    "task": boolean;
+
+    /**
+     * not a bullet: Text is the block as written
+     */
+    "other": boolean;
+
+    /**
+     * blank lines before it in the file
+     */
+    "blank": number;
+
+    /**
+     * the rows as read; "" for a new line. Used only while the fields still match it.
+     */
+    "raw": string;
+
+    /** Creates a new LogLine instance. */
+    constructor($$source: Partial<LogLine> = {}) {
+        if (!("time" in $$source)) {
+            this["time"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("mark" in $$source)) {
+            this["mark"] = LogMark.$zero;
+        }
+        if (!("task" in $$source)) {
+            this["task"] = false;
+        }
+        if (!("other" in $$source)) {
+            this["other"] = false;
+        }
+        if (!("blank" in $$source)) {
+            this["blank"] = 0;
+        }
+        if (!("raw" in $$source)) {
+            this["raw"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogLine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogLine {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LogLine($$parsedSource as Partial<LogLine>);
+    }
+}
+
+/**
+ * LogMark is what a line is: done (no mark), next or blocked.
+ */
+export enum LogMark {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    MarkDone = "",
+    MarkNext = "next",
+    MarkBlocked = "blocked",
+};
+
+/**
+ * LogPage is a list page split around its first Log section.
+ */
+export class LogPage {
+    /**
+     * the page up to and including the Log heading line
+     */
+    "before": string;
+    "lines": LogLine[];
+
+    /**
+     * blank lines after the last line (a trailing newline counts as one), before After
+     */
+    "trail": number;
+
+    /**
+     * the page from the heading that ends the section; "" when it runs to the end
+     */
+    "after": string;
+
+    /** Creates a new LogPage instance. */
+    constructor($$source: Partial<LogPage> = {}) {
+        if (!("before" in $$source)) {
+            this["before"] = "";
+        }
+        if (!("lines" in $$source)) {
+            this["lines"] = [];
+        }
+        if (!("trail" in $$source)) {
+            this["trail"] = 0;
+        }
+        if (!("after" in $$source)) {
+            this["after"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogPage instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogPage {
+        const $$createField1_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("lines" in $$parsedSource) {
+            $$parsedSource["lines"] = $$createField1_0($$parsedSource["lines"]);
+        }
+        return new LogPage($$parsedSource as Partial<LogPage>);
     }
 }
 
@@ -617,6 +765,11 @@ export class Settings {
     "template": string;
 
     /**
+     * the one-time move of an untouched ClassicTemplate to the list page has run
+     */
+    "logTemplateSeen": boolean;
+
+    /**
      * carryOverHeadings (default "To do next", "Pending / blocked")
      */
     "carryOverHeadings": string[];
@@ -695,6 +848,9 @@ export class Settings {
         if (!("template" in $$source)) {
             this["template"] = "";
         }
+        if (!("logTemplateSeen" in $$source)) {
+            this["logTemplateSeen"] = false;
+        }
         if (!("carryOverHeadings" in $$source)) {
             this["carryOverHeadings"] = [];
         }
@@ -730,22 +886,22 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField1_0 = $$createType3;
-        const $$createField7_0 = $$createType2;
-        const $$createField14_0 = $$createType5;
-        const $$createField16_0 = $$createType6;
+        const $$createField1_0 = $$createType6;
+        const $$createField8_0 = $$createType2;
+        const $$createField15_0 = $$createType8;
+        const $$createField17_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("weekdays" in $$parsedSource) {
             $$parsedSource["weekdays"] = $$createField1_0($$parsedSource["weekdays"]);
         }
         if ("carryOverHeadings" in $$parsedSource) {
-            $$parsedSource["carryOverHeadings"] = $$createField7_0($$parsedSource["carryOverHeadings"]);
+            $$parsedSource["carryOverHeadings"] = $$createField8_0($$parsedSource["carryOverHeadings"]);
         }
         if ("capture" in $$parsedSource) {
-            $$parsedSource["capture"] = $$createField14_0($$parsedSource["capture"]);
+            $$parsedSource["capture"] = $$createField15_0($$parsedSource["capture"]);
         }
         if ("sources" in $$parsedSource) {
-            $$parsedSource["sources"] = $$createField16_0($$parsedSource["sources"]);
+            $$parsedSource["sources"] = $$createField17_0($$parsedSource["sources"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }
@@ -894,7 +1050,7 @@ export class WeekDay {
      * Creates a new WeekDay instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekDay {
-        const $$createField2_0 = $$createType8;
+        const $$createField2_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("doc" in $$parsedSource) {
             $$parsedSource["doc"] = $$createField2_0($$parsedSource["doc"]);
@@ -958,7 +1114,7 @@ export class WeekSection {
      * Creates a new WeekSection instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekSection {
-        const $$createField2_0 = $$createType10;
+        const $$createField2_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
@@ -1014,8 +1170,8 @@ export class WeekSummary {
      * Creates a new WeekSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekSummary {
-        const $$createField2_0 = $$createType12;
-        const $$createField3_0 = $$createType14;
+        const $$createField2_0 = $$createType15;
+        const $$createField3_0 = $$createType17;
         const $$createField7_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("days" in $$parsedSource) {
@@ -1041,20 +1197,23 @@ export type WeekdaySet = number[];
 const $$createType0 = HotKeySpec.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = $Create.Array($Create.Any);
-var $$createType3 = (function $$initCreateType3(...args: any[]): any {
-    if ($$createType3 === $$initCreateType3) {
-        $$createType3 = $$createType4;
+const $$createType3 = $Create.Array($Create.Any);
+const $$createType4 = LogLine.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+var $$createType6 = (function $$initCreateType6(...args: any[]): any {
+    if ($$createType6 === $$initCreateType6) {
+        $$createType6 = $$createType7;
     }
-    return $$createType3(...args);
+    return $$createType6(...args);
 });
-const $$createType4 = $Create.Array($Create.Any);
-const $$createType5 = CapturePrefs.createFrom;
-const $$createType6 = SourcesPrefs.createFrom;
-const $$createType7 = DayDocument.createFrom;
-const $$createType8 = $Create.Nullable($$createType7);
-const $$createType9 = WeekItem.createFrom;
-const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = WeekDay.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = WeekSection.createFrom;
-const $$createType14 = $Create.Array($$createType13);
+const $$createType7 = $Create.Array($Create.Any);
+const $$createType8 = CapturePrefs.createFrom;
+const $$createType9 = SourcesPrefs.createFrom;
+const $$createType10 = DayDocument.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = WeekItem.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = WeekDay.createFrom;
+const $$createType15 = $Create.Array($$createType14);
+const $$createType16 = WeekSection.createFrom;
+const $$createType17 = $Create.Array($$createType16);

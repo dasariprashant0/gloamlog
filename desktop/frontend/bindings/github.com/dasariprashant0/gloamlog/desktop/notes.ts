@@ -220,6 +220,34 @@ export function JumpTo(input: string): $CancellablePromise<string> {
 }
 
 /**
+ * LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) at the end
+ * of the Log, skipping any whose text is already a line. Used while the list editor has the page open.
+ */
+export function LogAppendLines(page: core$0.LogPage, markdown: string): $CancellablePromise<$models.LogAppended> {
+    return $Call.ByID(3362223382, page, markdown).then(($result: any) => {
+        return $$createType16($result);
+    });
+}
+
+/**
+ * LogParse splits body for the list editor.
+ */
+export function LogParse(body: string): $CancellablePromise<$models.LogParsed> {
+    return $Call.ByID(2979987374, body).then(($result: any) => {
+        return $$createType17($result);
+    });
+}
+
+/**
+ * LogRender writes page out.
+ */
+export function LogRender(page: core$0.LogPage): $CancellablePromise<$models.LogRendered> {
+    return $Call.ByID(60515103, page).then(($result: any) => {
+        return $$createType18($result);
+    });
+}
+
+/**
  * MarkWhatsNewSeen remembers that the sheet was shown. Other keys in state.json stay.
  */
 export function MarkWhatsNewSeen(): $CancellablePromise<void> {
@@ -231,7 +259,7 @@ export function MarkWhatsNewSeen(): $CancellablePromise<void> {
  */
 export function Month(year: number, month: number): $CancellablePromise<core$0.MonthCell[][]> {
     return $Call.ByID(1347049071, year, month).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType21($result);
     });
 }
 
@@ -254,13 +282,13 @@ export function NotificationStatus(): $CancellablePromise<string> {
  */
 export function OnboardingInfo(folder: string): $CancellablePromise<$models.OnboardingInfo> {
     return $Call.ByID(116298394, folder).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType22($result);
     });
 }
 
 export function Open(day: string): $CancellablePromise<$models.Page> {
     return $Call.ByID(2356740839, day).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType23($result);
     });
 }
 
@@ -280,13 +308,13 @@ export function OpenReleasePage(url: string): $CancellablePromise<void> {
 
 export function Overview(): $CancellablePromise<$models.Overview> {
     return $Call.ByID(3639484436).then(($result: any) => {
-        return $$createType21($result);
+        return $$createType24($result);
     });
 }
 
 export function PlanFolderChange(path: string): $CancellablePromise<$models.FolderPlan> {
     return $Call.ByID(3440431704, path).then(($result: any) => {
-        return $$createType22($result);
+        return $$createType25($result);
     });
 }
 
@@ -316,7 +344,7 @@ export function ResolveConflict(name: string, choice: string): $CancellablePromi
 
 export function Restore(day: string, backup: core$0.BackupInfo): $CancellablePromise<core$0.DayDocument> {
     return $Call.ByID(323430763, day, backup).then(($result: any) => {
-        return $$createType23($result);
+        return $$createType26($result);
     });
 }
 
@@ -339,7 +367,7 @@ export function Reveal(paths: string[]): $CancellablePromise<void> {
  */
 export function Review(req: $models.ReviewRequest): $CancellablePromise<$models.ReviewData> {
     return $Call.ByID(2244216675, req).then(($result: any) => {
-        return $$createType24($result);
+        return $$createType27($result);
     });
 }
 
@@ -360,13 +388,13 @@ export function ReviewCopyText(text: string): $CancellablePromise<void> {
 
 export function ReviewExportInfo(req: $models.ReviewRequest): $CancellablePromise<$models.ReviewExportInfo> {
     return $Call.ByID(655962401, req).then(($result: any) => {
-        return $$createType25($result);
+        return $$createType28($result);
     });
 }
 
 export function ReviewText(req: $models.ReviewRequest, flavor: string): $CancellablePromise<$models.ReviewCopy> {
     return $Call.ByID(2363290852, req, flavor).then(($result: any) => {
-        return $$createType26($result);
+        return $$createType29($result);
     });
 }
 
@@ -375,7 +403,7 @@ export function ReviewText(req: $models.ReviewRequest, flavor: string): $Cancell
  */
 export function ReviewWrite(req: $models.ReviewRequest, kind: string, path: string): $CancellablePromise<$models.ReviewSaved> {
     return $Call.ByID(2309565206, req, kind, path).then(($result: any) => {
-        return $$createType27($result);
+        return $$createType30($result);
     });
 }
 
@@ -384,7 +412,7 @@ export function ReviewWrite(req: $models.ReviewRequest, kind: string, path: stri
  */
 export function Save(day: string, body: string): $CancellablePromise<core$0.SaveOutcome> {
     return $Call.ByID(3438292470, day, body).then(($result: any) => {
-        return $$createType28($result);
+        return $$createType31($result);
     });
 }
 
@@ -397,13 +425,13 @@ export function SaveImage(day: string, name: string, mime: string, dataBase64: s
 
 export function SaveSettings(s: core$0.Settings): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1865548995, s).then(($result: any) => {
-        return $$createType29($result);
+        return $$createType32($result);
     });
 }
 
 export function Search(query: string): $CancellablePromise<$models.Hit[]> {
     return $Call.ByID(2621087907, query).then(($result: any) => {
-        return $$createType31($result);
+        return $$createType34($result);
     });
 }
 
@@ -412,19 +440,19 @@ export function Search(query: string): $CancellablePromise<$models.Hit[]> {
  */
 export function SetLoginItem(on: boolean): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1272266701, on).then(($result: any) => {
-        return $$createType32($result);
+        return $$createType35($result);
     });
 }
 
 export function Settings(): $CancellablePromise<core$0.Settings> {
     return $Call.ByID(1674428486).then(($result: any) => {
-        return $$createType29($result);
+        return $$createType32($result);
     });
 }
 
 export function SettingsInfo(): $CancellablePromise<$models.SettingsInfo> {
     return $Call.ByID(1358861334).then(($result: any) => {
-        return $$createType32($result);
+        return $$createType35($result);
     });
 }
 
@@ -469,7 +497,7 @@ export function SnoozeReminder(): $CancellablePromise<$models.ReminderNoticeStat
  */
 export function SourceProjects(): $CancellablePromise<sources$0.SourceProject[]> {
     return $Call.ByID(1562696260).then(($result: any) => {
-        return $$createType34($result);
+        return $$createType37($result);
     });
 }
 
@@ -485,7 +513,7 @@ export function SuggestionLines(bullets: sources$0.SuggestedBullet[]): $Cancella
  */
 export function Suggestions(day: string, again: boolean): $CancellablePromise<$models.Suggestions> {
     return $Call.ByID(2074390080, day, again).then(($result: any) => {
-        return $$createType35($result);
+        return $$createType38($result);
     });
 }
 
@@ -495,7 +523,7 @@ export function Suggestions(day: string, again: boolean): $CancellablePromise<$m
  */
 export function SyncConflicts(): $CancellablePromise<$models.ConflictItem[]> {
     return $Call.ByID(716264447).then(($result: any) => {
-        return $$createType37($result);
+        return $$createType40($result);
     });
 }
 
@@ -504,7 +532,7 @@ export function SyncConflicts(): $CancellablePromise<$models.ConflictItem[]> {
  */
 export function SyncState(): $CancellablePromise<$models.SyncStatus> {
     return $Call.ByID(98923633).then(($result: any) => {
-        return $$createType38($result);
+        return $$createType41($result);
     });
 }
 
@@ -519,7 +547,7 @@ export function Unskip(days: string[]): $CancellablePromise<string[]> {
  */
 export function Week(day: string, shift: number, bySection: boolean): $CancellablePromise<$models.Week> {
     return $Call.ByID(490576683, day, shift, bySection).then(($result: any) => {
-        return $$createType39($result);
+        return $$createType42($result);
     });
 }
 
@@ -554,27 +582,30 @@ const $$createType12 = $Create.Array($$createType11);
 const $$createType13 = $Create.Array($$createType12);
 const $$createType14 = $models.InstallOutcome.createFrom;
 const $$createType15 = $models.JotResult.createFrom;
-const $$createType16 = core$0.MonthCell.createFrom;
-const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = $Create.Array($$createType17);
-const $$createType19 = $models.OnboardingInfo.createFrom;
-const $$createType20 = $models.Page.createFrom;
-const $$createType21 = $models.Overview.createFrom;
-const $$createType22 = $models.FolderPlan.createFrom;
-const $$createType23 = core$0.DayDocument.createFrom;
-const $$createType24 = $models.ReviewData.createFrom;
-const $$createType25 = $models.ReviewExportInfo.createFrom;
-const $$createType26 = $models.ReviewCopy.createFrom;
-const $$createType27 = $models.ReviewSaved.createFrom;
-const $$createType28 = core$0.SaveOutcome.createFrom;
-const $$createType29 = core$0.Settings.createFrom;
-const $$createType30 = $models.Hit.createFrom;
-const $$createType31 = $Create.Array($$createType30);
-const $$createType32 = $models.SettingsInfo.createFrom;
-const $$createType33 = sources$0.SourceProject.createFrom;
+const $$createType16 = $models.LogAppended.createFrom;
+const $$createType17 = $models.LogParsed.createFrom;
+const $$createType18 = $models.LogRendered.createFrom;
+const $$createType19 = core$0.MonthCell.createFrom;
+const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = $models.OnboardingInfo.createFrom;
+const $$createType23 = $models.Page.createFrom;
+const $$createType24 = $models.Overview.createFrom;
+const $$createType25 = $models.FolderPlan.createFrom;
+const $$createType26 = core$0.DayDocument.createFrom;
+const $$createType27 = $models.ReviewData.createFrom;
+const $$createType28 = $models.ReviewExportInfo.createFrom;
+const $$createType29 = $models.ReviewCopy.createFrom;
+const $$createType30 = $models.ReviewSaved.createFrom;
+const $$createType31 = core$0.SaveOutcome.createFrom;
+const $$createType32 = core$0.Settings.createFrom;
+const $$createType33 = $models.Hit.createFrom;
 const $$createType34 = $Create.Array($$createType33);
-const $$createType35 = $models.Suggestions.createFrom;
-const $$createType36 = $models.ConflictItem.createFrom;
+const $$createType35 = $models.SettingsInfo.createFrom;
+const $$createType36 = sources$0.SourceProject.createFrom;
 const $$createType37 = $Create.Array($$createType36);
-const $$createType38 = $models.SyncStatus.createFrom;
-const $$createType39 = $models.Week.createFrom;
+const $$createType38 = $models.Suggestions.createFrom;
+const $$createType39 = $models.ConflictItem.createFrom;
+const $$createType40 = $Create.Array($$createType39);
+const $$createType41 = $models.SyncStatus.createFrom;
+const $$createType42 = $models.Week.createFrom;

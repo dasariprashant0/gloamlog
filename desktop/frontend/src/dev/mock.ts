@@ -22,7 +22,7 @@ const settings: Settings = {
     reminderMinutes: 1015, weekdays: [2, 3, 4, 5, 6], mode: 'strict' as Settings['mode'], snoozeMinutes: 15,
     storageFolder: '/Users/someone/Gloamlog', launchAtLogin: true,
     template: '## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next',
-    carryOverHeadings: ['To do next', 'Pending / blocked'], minWords: 20, onboarded: true, appearance: 'system' as Settings['appearance'],
+    logTemplateSeen: true, carryOverHeadings: ['To do next', 'Pending / blocked'], minWords: 20, onboarded: true, appearance: 'system' as Settings['appearance'],
     catchUpWindowDays: 30, closedAppReminders: true, showMenuBar: true,
     capture: {hotKey: {keyCode: 38, carbonModifiers: 6144}, timestamps: true, todoShorthand: true, jotsHeading: 'Jots', jotsCountTowardLogged: false},
     sources: {claude: false, git: false, consented: false, allowed: [], allProjects: false, autoAdd: false, gitRoots: [], heading: 'What I did'},
@@ -118,7 +118,7 @@ export const Notes = {
                 const prev = days.get(d);
                 if (prev && !prev.skipped) {
                     const items = prev.body.split('\n## To do next\n')[1]?.split('\n').filter(l => l.startsWith('- ')).map(l => l.replace(/^- (\[ \] )?/, '')) ?? [];
-                    if (items.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}), items};
+                    if (items.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}), items, marks: []};
                     break;
                 }
             }

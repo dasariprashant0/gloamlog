@@ -576,6 +576,116 @@ export class JotResult {
 }
 
 /**
+ * LogAppended is the page after LogAppendLines: its lines, the page written out, and "appended", or "alreadyPresent" when
+ * every line was there already (the same words the Milkdown editor answers with).
+ */
+export class LogAppended {
+    "lines": core$0.LogLine[];
+    "rendered": LogRendered;
+    "result": string;
+
+    /** Creates a new LogAppended instance. */
+    constructor($$source: Partial<LogAppended> = {}) {
+        if (!("lines" in $$source)) {
+            this["lines"] = [];
+        }
+        if (!("rendered" in $$source)) {
+            this["rendered"] = (new LogRendered());
+        }
+        if (!("result" in $$source)) {
+            this["result"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogAppended instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogAppended {
+        const $$createField0_0 = $$createType8;
+        const $$createField1_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("lines" in $$parsedSource) {
+            $$parsedSource["lines"] = $$createField0_0($$parsedSource["lines"]);
+        }
+        if ("rendered" in $$parsedSource) {
+            $$parsedSource["rendered"] = $$createField1_0($$parsedSource["rendered"]);
+        }
+        return new LogAppended($$parsedSource as Partial<LogAppended>);
+    }
+}
+
+/**
+ * LogParsed is a body split around its Log section; OK is false for a classic page.
+ */
+export class LogParsed {
+    "page": core$0.LogPage;
+    "ok": boolean;
+
+    /** Creates a new LogParsed instance. */
+    constructor($$source: Partial<LogParsed> = {}) {
+        if (!("page" in $$source)) {
+            this["page"] = (new core$0.LogPage());
+        }
+        if (!("ok" in $$source)) {
+            this["ok"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogParsed instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogParsed {
+        const $$createField0_0 = $$createType10;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("page" in $$parsedSource) {
+            $$parsedSource["page"] = $$createField0_0($$parsedSource["page"]);
+        }
+        return new LogParsed($$parsedSource as Partial<LogParsed>);
+    }
+}
+
+/**
+ * LogRendered is a list page written out: the markdown to save, its words (what "logged" counts), and each line's text as
+ * HTML for display (escaped; images through /dlasset/, like the review).
+ */
+export class LogRendered {
+    "markdown": string;
+    "words": number;
+    "html": string[];
+
+    /** Creates a new LogRendered instance. */
+    constructor($$source: Partial<LogRendered> = {}) {
+        if (!("markdown" in $$source)) {
+            this["markdown"] = "";
+        }
+        if (!("words" in $$source)) {
+            this["words"] = 0;
+        }
+        if (!("html" in $$source)) {
+            this["html"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogRendered instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogRendered {
+        const $$createField2_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("html" in $$parsedSource) {
+            $$parsedSource["html"] = $$createField2_0($$parsedSource["html"]);
+        }
+        return new LogRendered($$parsedSource as Partial<LogRendered>);
+    }
+}
+
+/**
  * OnboardingInfo is what the folder step needs to know.
  */
 export class OnboardingInfo {
@@ -613,7 +723,7 @@ export class OnboardingInfo {
      * Creates a new OnboardingInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): OnboardingInfo {
-        const $$createField2_0 = $$createType8;
+        const $$createField2_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("found" in $$parsedSource) {
             $$parsedSource["found"] = $$createField2_0($$parsedSource["found"]);
@@ -687,9 +797,9 @@ export class Overview {
      */
     static createFrom($$source: any = {}): Overview {
         const $$createField2_0 = $$createType6;
-        const $$createField3_0 = $$createType9;
+        const $$createField3_0 = $$createType13;
         const $$createField4_0 = $$createType6;
-        const $$createField8_0 = $$createType10;
+        const $$createField8_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("catchUp" in $$parsedSource) {
             $$parsedSource["catchUp"] = $$createField2_0($$parsedSource["catchUp"]);
@@ -775,7 +885,7 @@ export class Page {
      * Creates a new Page instance from a string or object.
      */
     static createFrom($$source: any = {}): Page {
-        const $$createField9_0 = $$createType12;
+        const $$createField9_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("carry" in $$parsedSource) {
             $$parsedSource["carry"] = $$createField9_0($$parsedSource["carry"]);
@@ -999,13 +1109,13 @@ export class ReviewData {
      * Creates a new ReviewData instance from a string or object.
      */
     static createFrom($$source: any = {}): ReviewData {
-        const $$createField0_0 = $$createType13;
-        const $$createField5_0 = $$createType14;
+        const $$createField0_0 = $$createType17;
+        const $$createField5_0 = $$createType18;
         const $$createField15_0 = $$createType6;
-        const $$createField16_0 = $$createType16;
-        const $$createField17_0 = $$createType18;
-        const $$createField18_0 = $$createType20;
-        const $$createField19_0 = $$createType22;
+        const $$createField16_0 = $$createType20;
+        const $$createField17_0 = $$createType22;
+        const $$createField18_0 = $$createType24;
+        const $$createField19_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("period" in $$parsedSource) {
             $$parsedSource["period"] = $$createField0_0($$parsedSource["period"]);
@@ -1161,7 +1271,7 @@ export class ReviewGroupView {
      * Creates a new ReviewGroupView instance from a string or object.
      */
     static createFrom($$source: any = {}): ReviewGroupView {
-        const $$createField2_0 = $$createType24;
+        const $$createField2_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
@@ -1265,7 +1375,7 @@ export class ReviewMonthView {
      * Creates a new ReviewMonthView instance from a string or object.
      */
     static createFrom($$source: any = {}): ReviewMonthView {
-        const $$createField3_0 = $$createType14;
+        const $$createField3_0 = $$createType18;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("counts" in $$parsedSource) {
             $$parsedSource["counts"] = $$createField3_0($$parsedSource["counts"]);
@@ -1520,7 +1630,7 @@ export class Suggestions {
      * Creates a new Suggestions instance from a string or object.
      */
     static createFrom($$source: any = {}): Suggestions {
-        const $$createField3_0 = $$createType25;
+        const $$createField3_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("result" in $$parsedSource) {
             $$parsedSource["result"] = $$createField3_0($$parsedSource["result"]);
@@ -1643,7 +1753,7 @@ export class UpdateResult {
      * Creates a new UpdateResult instance from a string or object.
      */
     static createFrom($$source: any = {}): UpdateResult {
-        const $$createField2_0 = $$createType26;
+        const $$createField2_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("release" in $$parsedSource) {
             $$parsedSource["release"] = $$createField2_0($$parsedSource["release"]);
@@ -1672,7 +1782,7 @@ export class Week {
      * Creates a new Week instance from a string or object.
      */
     static createFrom($$source: any = {}): Week {
-        const $$createField0_0 = $$createType27;
+        const $$createField0_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
             $$parsedSource["summary"] = $$createField0_0($$parsedSource["summary"]);
@@ -1689,24 +1799,28 @@ const $$createType3 = $Create.Nullable($$createType2);
 const $$createType4 = core$0.MarkedLine.createFrom;
 const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = $Create.Array($Create.Any);
-const $$createType7 = FoundLogs.createFrom;
-const $$createType8 = $Create.Nullable($$createType7);
-const $$createType9 = core$0.StreakResult.createFrom;
-const $$createType10 = core$0.FolderSummary.createFrom;
-const $$createType11 = core$0.CarryCard.createFrom;
+const $$createType7 = core$0.LogLine.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = LogRendered.createFrom;
+const $$createType10 = core$0.LogPage.createFrom;
+const $$createType11 = FoundLogs.createFrom;
 const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = core$0.ReviewPeriod.createFrom;
-const $$createType14 = core$0.ReviewCounts.createFrom;
-const $$createType15 = ReviewTile.createFrom;
-const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = ReviewDayView.createFrom;
-const $$createType18 = $Create.Array($$createType17);
-const $$createType19 = ReviewGroupView.createFrom;
+const $$createType13 = core$0.StreakResult.createFrom;
+const $$createType14 = core$0.FolderSummary.createFrom;
+const $$createType15 = core$0.CarryCard.createFrom;
+const $$createType16 = $Create.Nullable($$createType15);
+const $$createType17 = core$0.ReviewPeriod.createFrom;
+const $$createType18 = core$0.ReviewCounts.createFrom;
+const $$createType19 = ReviewTile.createFrom;
 const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = ReviewMonthView.createFrom;
+const $$createType21 = ReviewDayView.createFrom;
 const $$createType22 = $Create.Array($$createType21);
-const $$createType23 = ReviewItemView.createFrom;
+const $$createType23 = ReviewGroupView.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = sources$0.ScanResult.createFrom;
-const $$createType26 = core$0.ReleaseInfo.createFrom;
-const $$createType27 = core$0.WeekSummary.createFrom;
+const $$createType25 = ReviewMonthView.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = ReviewItemView.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = sources$0.ScanResult.createFrom;
+const $$createType30 = core$0.ReleaseInfo.createFrom;
+const $$createType31 = core$0.WeekSummary.createFrom;

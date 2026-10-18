@@ -184,8 +184,15 @@ func (n *Notes) reviewBuild(req ReviewRequest) (reviewBuilt, error) {
 		opts.Grouping = core.WeekBySection
 	}
 	b.sum = core.BuildReview(p, b.docs, states, n.settings, opts, b.cal, b.now)
+	images := n.assetImages()
+	b.html = func(md string) string { return core.MDBody(md, images) }
+	return b, nil
+}
+
+// assetImages links an image path on a page to /dlasset/ (the app's asset route) when the file is there. Caller holds n.mu.
+func (n *Notes) assetImages() core.MDImages {
 	assets := n.store.Assets()
-	images := func(path string) (string, bool) {
+	return func(path string) (string, bool) {
 		if assets.Resolve(path) == "" {
 			return "", false
 		}
@@ -195,8 +202,6 @@ func (n *Notes) reviewBuild(req ReviewRequest) (reviewBuilt, error) {
 		}
 		return "/dlasset/" + strings.Join(parts, "/"), true
 	}
-	b.html = func(md string) string { return core.MDBody(md, images) }
-	return b, nil
 }
 
 // Review builds the review the screen asked for.
