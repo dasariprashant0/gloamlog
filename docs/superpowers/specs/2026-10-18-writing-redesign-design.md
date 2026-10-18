@@ -1,6 +1,6 @@
 # Writing redesign: one log list, in time order
 
-Status: design approved in chat 2026-10-18, waiting for review of this document. Builds on the Go + Wails port
+Status: approved 2026-10-18. Piece 1 (core rules) built; pieces 2-4 next. Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
@@ -55,8 +55,9 @@ their own memory, and tomorrow's to-do; wants Claude's notes and commits to land
 - **Content outside `## Log`** (added by hand in the full editor) is kept untouched and shown below the list.
 - **New days** use the template `## Log` (the default `Settings.Template` changes). Settings > Page can still set the
   heading template; such days are classic pages.
-- **Logged** keeps its rule: words ≥ `MinWords` (default 20). Times, marks and the commit hash are not words.
-  Auto-added lines count, as Claude's `log_work` notes already do.
+- **Logged** keeps its rule: words ≥ `MinWords` (default 20). Times and marks are not words (a commit's hash counts
+  as one). On a list page every Log line counts, whatever "count jots toward logged" says: the person's lines and
+  delivered notes look the same there.
 
 ## 2. The page
 
@@ -131,10 +132,13 @@ strip. Classic pages keep today's layout and editor.
   | Pending / blocked | Blocked |
   | anything else | its own group, after the three (as now) |
 
-  "Group by day", copy, PDF and export are unchanged.
+  These groups apply when the template is a list template; with a classic template the review is unchanged (the
+  Swift differential test checks it). "Open at the end" comes from the last list page's marks. "Group by day", copy,
+  PDF and export are unchanged.
 - **Carry-over** on list pages follows the marks (section 2); on classic pages it keeps `CarryOverHeadings`.
-- **Jot** (⌃⌥J) and **`log_work`**: on a list page the line goes into `## Log` at its time, through the existing
-  journal-first `DayWriter`. On a classic page they keep going under `JotsHeading`.
+- **Jot** (⌃⌥J) and **`log_work`**: on a list page the line goes at the end of `## Log`, through the existing
+  journal-first `DayWriter` (notes arrive within seconds; only commits use time order). The suggestions strip, while
+  it exists, adds to Log on a list page too. On a classic page they keep going under `JotsHeading`.
 - **Commits:** for today only, commits from the projects ticked in Settings > Sources are added as lines at their
   commit time, through `DayWriter`, skipped when their short hash is already on the page. Checked when the page
   opens and every 5 minutes while the app runs (the sources cache already limits the cost). A past day has an "Add
