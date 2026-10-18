@@ -1,6 +1,12 @@
 /* Gloamlog screens. Shared pieces come from @personal/ui; this file holds
    only Gloamlog's own layouts, from tokens only (DESIGN.md §11). */
 
+/* The main and Settings windows hide their title bar (MacTitleBarHiddenInset, InvisibleTitleBarHeight 44 in main.go),
+   so their top 44px belong to the window buttons and dragging: content starts below them. One number, matching main.go. */
+:root { --titlebar: 44px; }
+.side { padding-top: var(--titlebar); }
+.settings-head { padding: var(--titlebar) var(--s5) 0; }
+
 /* The jot panel: one field, no chrome. */
 .jot-body { background: var(--background); }
 .jot { display: grid; gap: var(--s3); padding: var(--s4); height: 100vh; grid-template-rows: auto 1fr auto; }

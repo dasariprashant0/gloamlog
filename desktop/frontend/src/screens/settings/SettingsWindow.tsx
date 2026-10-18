@@ -91,7 +91,7 @@ export function SettingsWindow() {
     const props = s && info ? {s, set, info, overview, reload: () => { reload().catch(() => undefined); }} : null; // reload shows its own error banner
     return (
         <div style={{display: 'flex', flexDirection: 'column', height: '100vh'}}>
-            <header style={{padding: 'var(--s3) var(--s5) 0'}}>
+            <header className="settings-head">
                 <Tabs items={PANES} current={pane} onChange={go}/>
             </header>
             <main className="main" style={{flex: 1, minHeight: 0, padding: 'var(--s5) var(--s5) var(--s8)'}}>
