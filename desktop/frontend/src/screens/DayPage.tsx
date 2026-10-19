@@ -266,7 +266,8 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
 
     async function editWholePage() {
         if (!logRef.current) return;
-        const md = await logRef.current.markdown();
+        const md = await logRef.current.markdown().catch(e => { onToast(`Couldn't open the whole page: ${String(e?.message ?? e)}`); return null; });
+        if (md === null) return; // the list stays as it is
         editor.setMarkdown(md, {cursor: 'start'});
         if (md === baseline.current) { // untouched: Milkdown's version of it is not an edit (as on 'ready')
             const shown = editor.getMarkdown();
@@ -278,7 +279,8 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     }
 
     async function backToList() {
-        const parsed = await Notes.LogParse(editor.getMarkdown());
+        const parsed = await Notes.LogParse(editor.getMarkdown()).catch(e => { onToast(`Couldn't go back to the list: ${String(e?.message ?? e)}`); return null; });
+        if (!parsed) return; // the full editor stays, with its text
         if (!parsed.ok) return onToast('This page has no Log heading now, so it stays in the full editor.');
         setListPage(parsed.page);
         setPageKey(k => k + 1);
