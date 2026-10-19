@@ -79,6 +79,7 @@ type DayWriter struct {
 	journal *CaptureJournal
 	pages   EditorLookup
 	prefs   func() CapturePrefs
+	lists   func() ListsPrefs // nil: everything goes to Work (SetLists)
 	clock   func() time.Time
 	cal     func() Calendar
 
@@ -121,8 +122,17 @@ func (w *DayWriter) Capture(text, source string) (CaptureReceipt, bool) {
 	return w.CaptureAt(text, source, w.clock())
 }
 
-// CaptureAt is Capture dated with at: the note's day and time stamp come from at, not from the clock.
+// CaptureAt is Capture dated with at: the note's day and time stamp come from at, not from the clock. It goes to the list for
+// notes without a folder (ListsPrefs.Jots).
 func (w *DayWriter) CaptureAt(text, source string, at time.Time) (CaptureReceipt, bool) {
+	return w.captureIn(text, source, "", at)
+}
+
+// captureIn is CaptureAt for a note routed to list; "" means the list for notes without a folder.
+func (w *DayWriter) captureIn(text, source, list string, at time.Time) (CaptureReceipt, bool) {
+	if list == "" {
+		list = w.listsPrefs().Jots
+	}
 	p := w.prefs()
 	norm, todo, ok := normaliseCapture(text, p.TodoShorthand)
 	if !ok {
@@ -130,7 +140,7 @@ func (w *DayWriter) CaptureAt(text, source string, at time.Time) (CaptureReceipt
 	}
 	loc := w.cal().location()
 	local := at.In(loc)
-	item := CaptureItem{ID: newUUID(), Ts: at, Day: DayKeyString(at, loc), Text: norm, Todo: todo, Source: source}
+	item := CaptureItem{ID: newUUID(), Ts: at, Day: DayKeyString(at, loc), Text: norm, Todo: todo, Source: source, List: list}
 	if p.Timestamps && !todo {
 		item.Stamp = fmt.Sprintf("%02d:%02d", local.Hour(), local.Minute())
 	}
@@ -166,7 +176,11 @@ func (w *DayWriter) DrainInbox(dir string, mode InboxTimeMode) int {
 			}
 			continue
 		}
-		w.CaptureAt(e.Text, "claude", e.CaptureTime(w.clock(), mode))
+		list := "" // no folder: the list for notes without one
+		if e.Cwd != "" {
+			list = w.listsPrefs().ListFor(e.Cwd)
+		}
+		w.captureIn(e.Text, "claude", list, e.CaptureTime(w.clock(), mode))
 		if err := os.Remove(e.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			w.mu.Lock()
 			if w.undeletable == nil {
@@ -219,7 +233,7 @@ func (w *DayWriter) AcknowledgeSaved(day, body string) {
 	if len(mine) == 0 {
 		return
 	}
-	keys := JotKeys(body, JotsHeadingFor(body, w.prefs().JotsHeading))
+	keys := jotKeysOf(body, w.prefs().JotsHeading)
 	for _, it := range mine {
 		if w.holds(it, keys) {
 			w.ack(it)
@@ -440,7 +454,7 @@ func (w *DayWriter) completed(item CaptureItem, page PageHandle, r JotAppendResu
 	reroute := false
 	switch r.Kind {
 	case JotAppended:
-		if k, ok := LastJotKey(r.NormalizedMarkdown, JotsHeadingFor(r.NormalizedMarkdown, w.prefs().JotsHeading)); ok { // the note is the last item of that section
+		if k, ok := LastJotKey(r.NormalizedMarkdown, JotsHeadingIn(r.NormalizedMarkdown, w.prefs().JotsHeading, item.List)); ok { // the note is the last item of its section
 			w.editorKeys[item.ID] = k
 		}
 		w.sent[item.ID] = sentNote{page: page, at: w.clock(), confirmed: true} // the editor's autosave writes it; AcknowledgeSaved acks it
@@ -475,8 +489,36 @@ func (w *DayWriter) fileHolds(item CaptureItem) bool {
 	if err != nil || doc == nil || doc.IsSkipped {
 		return false
 	}
-	return w.holds(item, JotKeys(doc.Body, JotsHeadingFor(doc.Body, w.prefs().JotsHeading)))
+	return w.holds(item, jotKeysOf(doc.Body, w.prefs().JotsHeading))
 }
+
+// jotKeysOf are the jot keys of a page: every list of a list page (a note may sit in either), else the Jots heading's.
+func jotKeysOf(body, configured string) map[string]bool {
+	p, ok := ParseLog(body)
+	if !ok {
+		return JotKeys(body, JotsHeadingFor(body, configured))
+	}
+	keys := map[string]bool{}
+	for _, s := range p.Sections {
+		if !s.Virtual {
+			for k := range JotKeys(body, s.Name) {
+				keys[k] = true
+			}
+		}
+	}
+	return keys
+}
+
+// listsPrefs are the routing settings; Work for everything until the app sets them.
+func (w *DayWriter) listsPrefs() ListsPrefs {
+	if w.lists == nil {
+		return ListsPrefs{Jots: ListWork}
+	}
+	return w.lists()
+}
+
+// SetLists gives the writer the Work / Personal routing (read on every note, so a settings change applies at once).
+func (w *DayWriter) SetLists(lists func() ListsPrefs) { w.lists = lists }
 
 // deliverToFile is the file path: nobody has this day open. Load once, add every pending note that is not in the page yet, save
 // once, acknowledge. Any failure (folder missing or read-only, unreadable page, failed write) leaves every note pending.
@@ -489,16 +531,16 @@ func (w *DayWriter) deliverToFile(day string, items []CaptureItem) {
 	if doc != nil {
 		body = doc.Body // a skip marker has an empty body: it is written over
 	}
-	heading := JotsHeadingFor(body, w.prefs().JotsHeading) // Log on a list page, or on a new day when new days are list pages
 	changed := false
 	for _, it := range items {
 		if !w.isPending(it.ID) {
 			continue
 		}
-		if w.holds(it, JotKeys(body, heading)) {
+		if w.holds(it, jotKeysOf(body, w.prefs().JotsHeading)) {
 			continue
 		}
-		body = ApplyJot(it, body, heading)
+		// its list on a list page (or on a new day when new days are list pages), else the Jots heading
+		body = ApplyJot(it, body, JotsHeadingIn(body, w.prefs().JotsHeading, it.List))
 		changed = true
 	}
 	if changed {

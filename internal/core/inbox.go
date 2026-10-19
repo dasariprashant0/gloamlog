@@ -46,6 +46,7 @@ type InboxEntry struct {
 	Path string    // the file; DayWriter.DrainInbox deletes it after the note is journaled
 	Text string    // trimmed
 	Ts   time.Time // the file's "ts"; zero when missing or unparseable
+	Cwd  string    // the folder the note was written in (the log_work helper's "cwd"); "" when missing
 }
 
 // DefaultInboxDir is <home>/Library/Application Support/Gloamlog/inbox.
@@ -120,7 +121,8 @@ func InboxPending(dir string) []InboxEntry {
 				ts = t
 			}
 		}
-		out = append(out, InboxEntry{Path: path, Text: text, Ts: ts})
+		cwd, _ := o["cwd"].(string)
+		out = append(out, InboxEntry{Path: path, Text: text, Ts: ts, Cwd: trimmed(cwd)})
 	}
 	return out
 }

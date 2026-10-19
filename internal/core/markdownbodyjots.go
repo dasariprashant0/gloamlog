@@ -37,6 +37,7 @@ type JotsRules struct {
 	Heading           string
 	CountTowardLogged bool
 	NewDaysLog        bool // the template is a list page: a note to a day without writing starts "## Log" (the app sets it)
+	NewDaysSplit      bool // the template has Work and Personal: that note starts its own list instead (the app sets it)
 }
 
 var (
@@ -69,10 +70,20 @@ func JotsRulesFor(body string) JotsRules {
 	return r
 }
 
-// JotsHeadingFor is the section a note to this page goes under: Log on a list page, and on a day with no writing yet when new
-// days are list pages; else the configured Jots heading.
-func JotsHeadingFor(body, configured string) string {
-	if IsLogPage(body) || (trimmed(body) == "" && CurrentJotsRules().NewDaysLog) {
+// JotsHeadingFor is JotsHeadingIn for a note routed to Work: Log or Work on a list page, else the configured Jots heading.
+func JotsHeadingFor(body, configured string) string { return JotsHeadingIn(body, configured, ListWork) }
+
+// JotsHeadingIn is the section a note routed to list (ListWork / ListPersonal) goes under. On a list page: that list (the missing
+// partner of a split page too), or Log on a one-list page. On a day with no writing yet when new days are list pages: the list
+// on a split template, else Log. Anything else: the configured Jots heading.
+func JotsHeadingIn(body, configured, list string) string {
+	if p, ok := ParseLog(body); ok {
+		return p.Sections[p.Target(list)].Name
+	}
+	if r := CurrentJotsRules(); trimmed(body) == "" && r.NewDaysLog {
+		if r.NewDaysSplit && (list == ListWork || list == ListPersonal) {
+			return list
+		}
 		return LogHeading
 	}
 	return configured

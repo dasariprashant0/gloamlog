@@ -711,3 +711,38 @@ func TestNotesGoUnderLogOnListPages(t *testing.T) {
 	save(t, c.store, "2026-10-13", "## What I did\n\nwords")
 	expect(t, JotsHeadingFor(load(t, c.store, "2026-10-13").Body, "Jots") == "Jots", "a classic page keeps the Jots heading")
 }
+
+func TestNotesGoToTheirList(t *testing.T) {
+	defer SetJotsRules(JotsRules{Heading: "Jots"})
+	SetJotsRules(JotsRules{Heading: "Jots", NewDaysLog: true, NewDaysSplit: true})
+	c := newCapCore(t)
+	w := c.writer(newCapLookup(), func() time.Time { return mk(2026, 10, 14, 14, 32) })
+	w.SetLists(func() ListsPrefs {
+		return ListsPrefs{Work: []string{"/p/zuddl"}, Personal: []string{"/p/personal"}, Jots: ListWork}
+	})
+	day := "2026-10-14"
+	save(t, c.store, day, "## Work\n\n- 09:00 standup\n\n## Personal\n\n- 08:00 run")
+
+	w.Capture("hotkey note", "hotkey")
+	got := c.body(day)
+	expect(t, strings.Index(got, " hotkey note") > 0 && strings.Index(got, " hotkey note") < strings.Index(got, "## Personal"),
+		"a note without a folder goes to the jots list (Work): %q", got)
+
+	inbox := t.TempDir()
+	if err := os.WriteFile(filepath.Join(inbox, "1-a.json"), []byte(`{"text":"gloamlog standup view","cwd":"/p/personal/daily-log"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w.DrainInbox(inbox, InboxUseFileTime)
+	got = c.body(day)
+	expect(t, strings.Index(got, " gloamlog standup view") > strings.Index(got, "## Personal"), "a note from a personal folder goes to Personal: %q", got)
+
+	other := "2026-10-15"
+	w2 := c.writer(newCapLookup(), func() time.Time { return mk(2026, 10, 15, 9, 0) })
+	w2.SetLists(func() ListsPrefs { return ListsPrefs{Jots: ListPersonal} })
+	w2.Capture("first of the day", "hotkey")
+	expect(t, strings.HasPrefix(c.body(other), "## Personal\n\n- "), "a new split day starts with the note's list: %q", c.body(other))
+
+	expect(t, JotsHeadingIn("## Log\n- a", "Jots", ListPersonal) == LogHeading, "a one-list page takes everything")
+	expect(t, JotsHeadingIn("## Work\n- a", "Jots", ListPersonal) == ListPersonal, "the missing partner")
+	expect(t, JotsHeadingIn("", "Jots", ListPersonal) == ListPersonal, "a new split day")
+}

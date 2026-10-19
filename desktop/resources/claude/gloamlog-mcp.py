@@ -27,7 +27,8 @@ def write_entry(text):
     name = "%d-%s.json" % (int(time.time() * 1000), uuid.uuid4().hex[:8])
     fd, tmp = tempfile.mkstemp(prefix=".", suffix=".tmp", dir=INBOX)          # hidden until complete, then renamed
     with os.fdopen(fd, "w") as f:
-        json.dump({"text": text, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f)
+        json.dump({"text": text, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                   "cwd": os.getcwd()}, f)                                    # the folder Claude ran in: Work or Personal
     os.replace(tmp, os.path.join(INBOX, name))
     return True
 

@@ -9,13 +9,14 @@ import "time"
 
 // CaptureItem is one captured note. It is written to the CaptureJournal before anything else happens, so it can never be lost.
 type CaptureItem struct {
-	ID     string    `json:"id"`     // UUID string
-	Ts     time.Time `json:"ts"`     // when the note was captured (whole milliseconds survive the journal)
-	Day    string    `json:"day"`    // the effective "today" when captured, yyyy-MM-dd; never changes
-	Text   string    `json:"text"`   // trimmed, control characters removed (newlines kept), at most 4,000 characters
-	Stamp  string    `json:"stamp"`  // "14:32"; "" when timestamps are off or the note is a to-do (Swift: String?)
-	Todo   bool      `json:"todo"`   // the text began with "[]" and todoShorthand is on; the "[]" is already removed from Text
-	Source string    `json:"source"` // "hotkey", "menubar", "menu", "claude"
+	ID     string    `json:"id"`             // UUID string
+	Ts     time.Time `json:"ts"`             // when the note was captured (whole milliseconds survive the journal)
+	Day    string    `json:"day"`            // the effective "today" when captured, yyyy-MM-dd; never changes
+	Text   string    `json:"text"`           // trimmed, control characters removed (newlines kept), at most 4,000 characters
+	Stamp  string    `json:"stamp"`          // "14:32"; "" when timestamps are off or the note is a to-do (Swift: String?)
+	Todo   bool      `json:"todo"`           // the text began with "[]" and todoShorthand is on; the "[]" is already removed from Text
+	Source string    `json:"source"`         // "hotkey", "menubar", "menu", "claude"
+	List   string    `json:"list,omitempty"` // ListWork or ListPersonal: the list it goes to on a split page ("" from an older journal: Work)
 }
 
 // JotAppendKind is what the live editor did with an append request.
