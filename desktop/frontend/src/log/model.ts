@@ -4,8 +4,11 @@
 // so typing or deleting the word works as well as ⌘1-3.
 
 export type Mark = '' | 'next' | 'blocked';
-/** One line, as Go's core.LogLine sends it. */
-export type Line = {time: string; text: string; mark: Mark; task: boolean; other: boolean; blank: number; raw: string};
+/** One line, as Go's core.LogLine sends it. section: which list of the page (an index into LogPage.sections; 0 if absent). */
+export type Line = {time: string; text: string; mark: Mark; task: boolean; other: boolean; blank: number; raw: string; section?: number};
+
+/** The list a line is in. */
+export const sec = (l: Line) => l.section ?? 0;
 
 export type State = {
     lines: Line[];
@@ -19,8 +22,19 @@ const HISTORY = 200;
 
 export const fresh = (lines: Line[]): State => ({lines, edit: -1, draft: '', past: [], future: []});
 
-export const newLine = (time: string, text = '', mark: Mark = ''): Line =>
-    ({time, text, mark, task: false, other: false, blank: 0, raw: ''});
+export const newLine = (time: string, text = '', mark: Mark = '', section = 0): Line =>
+    ({time, text, mark, task: false, other: false, blank: 0, raw: '', section});
+
+// Where a new last line of list `section` goes in the flat array: after its last line, else before the first later list.
+function endOf(lines: Line[], section: number): number {
+    let at = -1;
+    lines.forEach((l, i) => { if (sec(l) === section) at = i + 1; });
+    if (at >= 0) return at;
+    const later = lines.findIndex(l => sec(l) > section);
+    return later < 0 ? lines.length : later;
+}
+
+const hasList = (lines: Line[], section: number) => lines.some(l => sec(l) === section);
 
 /** "09:40": the time a new line gets. */
 export function clock(d: Date): string {
@@ -52,10 +66,6 @@ function record(s: State, lines: Line[]): State {
     return {...s, lines, past: [...s.past, s.lines.filter(l => !isEmptyNew(l))].slice(-HISTORY), future: []};
 }
 
-// The first line keeps the blank lines after the heading.
-function withHeadGap(lines: Line[], gap: number): Line[] {
-    return lines.map((l, i) => (i === 0 && l.blank !== gap ? {...l, blank: gap} : l));
-}
 
 /** Write the draft back into its line. A new line left empty goes away. */
 export function commit(s: State): State {
@@ -110,7 +120,8 @@ export function newLineAfter(s: State, i: number, now: string): State {
     const [c, j] = afterCommit(s, i);
     const lines = c.lines.slice();
     const at = Math.min(j + 1, lines.length);
-    lines.splice(at, 0, {...newLine(now), blank: lines.length === 0 ? 1 : 0});
+    const section = lines[j] ? sec(lines[j]) : 0;
+    lines.splice(at, 0, {...newLine(now, '', '', section), blank: hasList(lines, section) ? 0 : 1});
     return {...record(c, lines), edit: at, draft: ''};
 }
 
@@ -127,7 +138,11 @@ export function setMark(s: State, i: number, mark: Mark): State {
 /** Backspace on an empty line: it goes, and the line above is edited. */
 export function removeLine(s: State, i: number): State {
     if (i < 0 || i >= s.lines.length) return s;
-    const lines = withHeadGap(s.lines.filter((_, k) => k !== i), s.lines[0].blank);
+    const gone = s.lines[i];
+    const wasFirst = s.lines.findIndex(l => sec(l) === sec(gone)) === i;
+    const lines = s.lines.filter((_, k) => k !== i);
+    const next = lines.findIndex(l => sec(l) === sec(gone));
+    if (wasFirst && next >= 0) lines[next] = {...lines[next], blank: gone.blank}; // the list's new first line keeps the gap after its heading
     const out: State = {...record(s, lines), edit: -1, draft: ''};
     const prev = i - 1;
     return prev >= 0 && !lines[prev].other ? {...out, edit: prev, draft: draftOf(lines[prev])} : out;
@@ -146,11 +161,13 @@ export function redo(s: State): State {
 }
 
 /** The add field, or From yesterday: a new line at the end at time now. A trailing #next / #blocked in text marks it. */
-export function append(s: State, text: string, now: string, mark: Mark = ''): State {
+export function append(s: State, text: string, now: string, mark: Mark = '', section = 0): State {
     const c = commit(s);
     const [t, m] = cutMark(text.trim());
     if (!t) return c;
-    return record(c, [...c.lines, {...newLine(now, t, m ?? mark), blank: c.lines.length === 0 ? 1 : 0}]);
+    const lines = c.lines.slice();
+    lines.splice(endOf(lines, section), 0, {...newLine(now, t, m ?? mark, section), blank: hasList(lines, section) ? 0 : 1});
+    return record(c, lines);
 }
 
 /** A new time for line i: the line moves before the first line with a later time; untimed lines are passed over. */
@@ -159,13 +176,17 @@ export function setTime(s: State, i: number, time: string): State {
     const [c, j] = afterCommit(s, i);
     const l = c.lines[j];
     if (!l || l.other || k === null || l.time === time) return c;
-    const gap = c.lines[0].blank;
-    const oldFirst = c.lines[0];
+    const list = sec(l);
+    const firstAt = c.lines.findIndex(x => sec(x) === list);
+    const gap = c.lines[firstAt].blank;
+    const oldFirst = c.lines[firstAt];
     const rest = c.lines.filter((_, x) => x !== j);
-    const later = rest.findIndex(x => { const xk = minutes(x.time); return xk !== null && xk > k; });
-    rest.splice(later < 0 ? rest.length : later, 0, {...l, time, blank: 0});
-    // Only the first line carries the blank lines after the heading.
-    return record(c, rest.map((x, idx) => (idx === 0 ? {...x, blank: gap} : x === oldFirst ? {...x, blank: 0} : x)));
+    // Within its own list: before the first later time, else at the end of the list.
+    const later = rest.findIndex(x => { const xk = minutes(x.time); return sec(x) === list && xk !== null && xk > k; });
+    rest.splice(later < 0 ? endOf(rest, list) : later, 0, {...l, time, blank: 0});
+    // Only a list's first line carries the blank lines after its heading.
+    const first = rest.findIndex(x => sec(x) === list);
+    return record(c, rest.map((x, idx) => (idx === first ? {...x, blank: gap} : x === oldFirst ? {...x, blank: 0} : x)));
 }
 
 /** Lines Go wrote (an appended jot or suggestion): one undoable step; editing ends. */
@@ -190,10 +211,19 @@ export type Group = 'done' | 'next' | 'blocked';
 export const GROUPS: [Group, string][] = [['done', 'Done'], ['next', 'Next'], ['blocked', 'Blocked']];
 
 /** The standup view: indexes into lines by group, in file order. Other blocks and empty lines are left out. */
-export function standup(lines: Line[]): Record<Group, number[]> {
+// A line of the Personal list (names: the page's list names by section; none = a one-list page).
+const isPersonal = (l: Line, names?: string[]) => names?.[sec(l)] === 'Personal';
+const shows = (l: Line) => !l.other && !!l.text.trim();
+
+export function standup(lines: Line[], names?: string[]): Record<Group, number[]> {
     const g: Record<Group, number[]> = {done: [], next: [], blocked: []};
-    lines.forEach((l, i) => { if (!l.other && l.text.trim()) g[l.mark || 'done'].push(i); });
+    lines.forEach((l, i) => { if (shows(l) && !isPersonal(l, names)) g[l.mark || 'done'].push(i); });
     return g;
+}
+
+/** The Personal list's lines for the standup view (shown apart, never copied). */
+export function personal(lines: Line[], names?: string[]): number[] {
+    return lines.flatMap((l, i) => (shows(l) && isPersonal(l, names) ? [i] : []));
 }
 
 // A line as standup text: images dropped (they mean nothing pasted into a chat), continuation rows indented under it.
@@ -201,8 +231,8 @@ const plain = (text: string) =>
     text.replace(/!\[[^\]]*\]\([^)]*\)/g, '').split('\n').map(r => r.trim()).filter(Boolean).join('\n  ');
 
 /** What Copy standup copies: each group that has lines, as its title and bullets; no times. */
-export function standupText(lines: Line[]): string {
-    const g = standup(lines);
+export function standupText(lines: Line[], names?: string[]): string {
+    const g = standup(lines, names);
     const out: string[] = [];
     for (const [key, title] of GROUPS) {
         const rows = g[key].map(i => plain(lines[i].text)).filter(Boolean);

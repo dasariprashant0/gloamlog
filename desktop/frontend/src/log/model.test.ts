@@ -137,3 +137,36 @@ test('standupText leaves out empty groups and images, keeps markdown, and indent
     assert.equal(M.standupText(lines), 'Done\n- Shipped **CSV export** `1a2b3c4`\n  Needs a note');
     assert.equal(M.standupText([]), '');
 });
+
+const W = (text: string, more: Partial<M.Line> = {}) => L(text, {section: 0, ...more});
+const P = (text: string, more: Partial<M.Line> = {}) => L(text, {section: 1, ...more});
+const NAMES = ['Work', 'Personal'];
+
+test('append goes to the end of its list; the first line of a list gets the gap after its heading', () => {
+    let s = M.fresh([W('a', {blank: 1}), P('b', {blank: 1})]);
+    s = M.append(s, 'work two', '10:00', '', 0);
+    assert.deepEqual(texts(s), ['a', 'work two', 'b']);
+    assert.deepEqual([s.lines[1].section, s.lines[1].blank], [0, 0]);
+    s = M.append(M.fresh([W('a', {blank: 1})]), 'home', '21:00', '', 1);
+    assert.deepEqual([texts(s), s.lines[1].section, s.lines[1].blank], [['a', 'home'], 1, 1]);
+    s = M.append(M.fresh([P('b', {blank: 1})]), 'first work', '09:00', 'next', 0);
+    assert.deepEqual([texts(s), s.lines[0].section, s.lines[0].blank, s.lines[0].mark], [['first work', 'b'], 0, 1, 'next']);
+});
+
+test('Enter keeps the list; Backspace on a list\'s first line hands its gap on; setTime stays in its list', () => {
+    let s = M.newLineAfter(M.focus(M.fresh([W('a', {blank: 1}), P('b', {blank: 1}), P('c')]), 1), 1, '22:00');
+    assert.equal(s.lines[2].section, 1);
+    const r = M.removeLine(M.fresh([W('a', {blank: 1}), P('b', {blank: 1}), P('c')]), 1);
+    assert.deepEqual([texts(r), r.lines[1].blank], [['a', 'c'], 1]);
+    const t = M.setTime(M.fresh([W('a', {time: '09:00', blank: 1}), W('z', {time: '23:00'}), P('b', {time: '08:00', blank: 1})]), 1, '07:00');
+    assert.deepEqual([texts(t), t.lines[0].blank, t.lines[1].blank, t.lines[2].section], [['z', 'a', 'b'], 1, 0, 1]);
+});
+
+test('standup and its copy are Work; Personal is listed apart', () => {
+    const lines = [W('fixed it'), W('keys', {mark: 'blocked'}), P('ran 5k'), P('call mum', {mark: 'next'}), P('', {})];
+    assert.deepEqual(M.standup(lines, NAMES), {done: [0], next: [], blocked: [1]});
+    assert.deepEqual(M.personal(lines, NAMES), [2, 3]);
+    assert.equal(M.standupText(lines, NAMES), 'Done\n- fixed it\nBlocked\n- keys');
+    assert.deepEqual(M.personal(lines, ['Log']), [], 'a one-list page has no Personal');
+    assert.equal(M.summary(lines), '4 lines, 1 next, 1 blocked', 'the title counts both lists');
+});
