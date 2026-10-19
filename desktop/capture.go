@@ -57,6 +57,7 @@ type captureState struct {
 	handles map[string]*pageHandle // day -> its open page (nil entry = none)
 	counts  map[string]int
 	replies map[string]func(core.JotAppendResult)
+	commits map[string]bool // "day|sha" of the commits handed to the writer this session (notes_commits.go)
 }
 
 var captures sync.Map // *Notes -> *captureState
@@ -78,6 +79,7 @@ func captureFor(n *Notes) *captureState {
 		handles:       map[string]*pageHandle{},
 		counts:        map[string]int{},
 		replies:       map[string]func(core.JotAppendResult){},
+		commits:       map[string]bool{},
 	}
 	c.writer = core.NewDayWriter(c.store, c.journal, c,
 		func() core.CapturePrefs { n.mu.Lock(); defer n.mu.Unlock(); return n.settings.Capture },
@@ -167,7 +169,7 @@ func (p *pageHandle) AppendJot(item core.CaptureItem, done func(core.JotAppendRe
 			cb(core.JotAppendResult{Kind: core.JotStale})
 		}
 	})
-	c.emit("jot-into-page", map[string]any{"id": item.ID, "day": item.Day, "heading": heading, "list": list, "markdown": core.RenderJot(item)})
+	c.emit("jot-into-page", map[string]any{"id": item.ID, "day": item.Day, "heading": heading, "list": list, "markdown": core.RenderJot(item), "timed": item.Timed})
 }
 
 // Page implements core.EditorLookup: a true nil interface when the day has no open page.
@@ -193,6 +195,9 @@ func (n *Notes) EditorOpened(day string) {
 	}
 	c.mu.Unlock()
 	go c.replay()
+	if day == core.DayKeyString(n.now(), time.Local) {
+		go n.autoAddCommits() // today's commits, while "Add commits for me" is on (notes_commits.go)
+	}
 }
 
 // EditorClosed: the page for `day` is gone and everything it held is saved (call it after the last write).
@@ -350,4 +355,5 @@ func handleURL(n *Notes, url string) {
 	scans.key = "" // the next Suggestions call looks again
 	scans.mu.Unlock()
 	c.emit("refresh-sources", nil)
+	go n.autoAddCommits() // a Claude Code session just ended: its commits too
 }

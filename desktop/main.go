@@ -147,6 +147,8 @@ func main() {
 
 	// Quick capture: journal replay, the Claude inbox (every 15 s) and notes typed into the open page (capture.go).
 	startCapture(app, notes)
+	// Today's commits on its list page every 5 minutes, while "Add commits for me" is on (notes_commits.go).
+	startCommits(notes)
 	// gloamlog://refresh (the optional Claude Code Stop hook): drain the inbox and look at today's work again.
 	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(e *application.ApplicationEvent) {
 		handleURL(notes, e.Context().URL())

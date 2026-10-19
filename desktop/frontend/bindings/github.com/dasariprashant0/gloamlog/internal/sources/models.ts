@@ -246,6 +246,16 @@ export class SuggestedBullet {
      */
     "root": string;
 
+    /**
+     * a commit: its subject, redacted and cut like Text; "" for other kinds
+     */
+    "subject": string;
+
+    /**
+     * a commit: its short hash; "" when unknown
+     */
+    "sha": string;
+
     /** Creates a new SuggestedBullet instance. */
     constructor($$source: Partial<SuggestedBullet> = {}) {
         if (!("id" in $$source)) {
@@ -271,6 +281,12 @@ export class SuggestedBullet {
         }
         if (!("root" in $$source)) {
             this["root"] = "";
+        }
+        if (!("subject" in $$source)) {
+            this["subject"] = "";
+        }
+        if (!("sha" in $$source)) {
+            this["sha"] = "";
         }
 
         Object.assign(this, $$source);

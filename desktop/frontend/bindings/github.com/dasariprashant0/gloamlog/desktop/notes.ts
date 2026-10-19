@@ -17,6 +17,14 @@ import * as sources$0 from "../internal/sources/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AddCommits puts day's commits on day's list page at their commit times, each in its folder's list, and returns how many it
+ * added. A classic page gets none. The past-day button calls it; today's commits come by themselves (autoAddCommits).
+ */
+export function AddCommits(day: string): $CancellablePromise<number> {
+    return $Call.ByID(979259896, day);
+}
+
+/**
  * AlreadyAdded lists the bullets whose evidence is already in the page, so the strip never offers them twice.
  */
 export function AlreadyAdded(bullets: sources$0.SuggestedBullet[], pageMarkdown: string): $CancellablePromise<string[]> {
@@ -227,12 +235,13 @@ export function JumpTo(input: string): $CancellablePromise<string> {
 }
 
 /**
- * LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) at the end
- * of list (core.ListWork / core.ListPersonal; a one-list page takes them in its list), skipping any whose text is already a
- * line in any list. Used while the list editor has the page open.
+ * LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) to list
+ * (core.ListWork / core.ListPersonal; a one-list page takes them in its list): at its end, or each by its time when timed (a
+ * commit: core.InsertTimed). A line whose text is already a line in any list is skipped. Used while the list editor has the
+ * page open. The lines come back list by list, in page order.
  */
-export function LogAppendLines(page: core$0.LogPage, markdown: string, list: string): $CancellablePromise<$models.LogAppended> {
-    return $Call.ByID(3362223382, page, markdown, list).then(($result: any) => {
+export function LogAppendLines(page: core$0.LogPage, markdown: string, list: string, timed: boolean): $CancellablePromise<$models.LogAppended> {
+    return $Call.ByID(3362223382, page, markdown, list, timed).then(($result: any) => {
         return $$createType16($result);
     });
 }
