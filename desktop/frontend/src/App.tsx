@@ -39,6 +39,11 @@ export function App() {
     const [conflictsOpen, setConflictsOpen] = useState(false);
     const [syncKey, setSyncKey] = useState(0);
     const sync = useSyncState(syncKey);
+    // Sync copies to review: a row of the day page's status line (a banner on the other views). Dismissed until they change.
+    const [syncDismissed, setSyncDismissed] = useState('');
+    const conflictKey = `${sync?.conflicts ?? 0}:${sync?.conflictDays?.join(',') ?? ''}`;
+    const conflict = sync && (sync.conflicts ?? 0) > 0 && syncDismissed !== conflictKey
+        ? {count: sync.conflicts, onReview: () => setConflictsOpen(true), onDismiss: () => setSyncDismissed(conflictKey)} : null;
     const searchRef = useRef<HTMLInputElement>(null);
     const before = useRef<Route | null>(null);
 
@@ -138,13 +143,13 @@ export function App() {
         <Shell side={side}>
             {error && <Banner tone="danger"><strong>Gloamlog can't read your log folder.</strong> {error}</Banner>}
             {overview?.settingsNote && <Banner tone="warning"><strong>Settings reset.</strong> {overview.settingsNote}</Banner>}
-            {sync && <ConflictBanner state={sync} folder={overview?.folder ?? ''} onReview={() => setConflictsOpen(true)}/>}
+            {sync && r.kind !== 'day' && <ConflictBanner state={sync} folder={overview?.folder ?? ''} onReview={() => setConflictsOpen(true)}/>}
             {session && day && r.kind === 'day' && (
                 <SessionBar days={session} current={day} onGo={d => go({kind: 'day', day: d})} onEnd={() => go({kind: 'catchup'})}
                             onSkip={d => setSkipDays([d])} onFinish={finishSession}/>
             )}
             {day && overview && (
-                <DayPage day={day} today={today} minWords={minWords} active={r.kind === 'day'} folderError={overview.folderError}
+                <DayPage day={day} today={today} minWords={minWords} active={r.kind === 'day'} folderError={overview.folderError} conflict={conflict}
                          reloadKey={pageKey} onDay={d => go({kind: 'day', day: d})} onSaved={reload}
                          onSkip={setSkipDays} onRestore={setRestoreDay} onToast={notify}/>
             )}

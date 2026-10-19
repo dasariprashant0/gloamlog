@@ -8,7 +8,7 @@ import {Notes, Windows, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
 import {SuggestionsStrip, type InsertPart} from './SuggestionsStrip';
 import {DownloadingPage} from './SyncChip';
-import {ReminderNotice} from './ReminderNotice';
+import {StatusLine, conflictItem, reminderItem, type ConflictNote, type StatusItem} from './StatusLine';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 import {on} from '../events';
 import {LogEditor, type LogEditorHandle, type View} from '../log/LogEditor';
@@ -19,8 +19,9 @@ import type {LogPage} from '../../bindings/github.com/dasariprashant0/gloamlog/i
 const SAVE_DELAY = 600;
 const VIEWS: [View, string][] = [['list', 'List'], ['standup', 'Standup']];
 
-export function DayPage({day, today, minWords, active, folderError, reloadKey, onDay, onSaved, onSkip, onRestore, onToast}: {
+export function DayPage({day, today, minWords, active, folderError, conflict, reloadKey, onDay, onSaved, onSkip, onRestore, onToast}: {
     day: string; today: string; minWords: number; active: boolean; folderError: string; reloadKey: number; // bump to re-read the day from disk
+    conflict: ConflictNote | null; // sync copies to review: a row of the status line
     onDay: (day: string) => void; onSaved: () => void; onSkip: (days: string[]) => void; onRestore: (day: string) => void;
     onToast: (message: string, undo?: () => void) => void;
 }) {
@@ -324,11 +325,14 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             {loadError && <Banner tone="danger" action={<Button variant="line" size="sm" onClick={() => onDay(day)}>Try again</Button>}><strong>This page couldn't be opened for editing.</strong> {loadError}</Banner>}
             {raw && <Banner tone="warning"><strong>This page can't be edited safely.</strong> Its text is shown as it is in the file, which is untouched.</Banner>}
 
-            {notice?.visible && !noticeGone && day === today && !skipped && (
-                <ReminderNotice notice={notice} onDismiss={() => setNoticeGone(true)}
-                                onSnooze={() => Notes.SnoozeReminder().then(setNotice, e => onToast(String(e?.message ?? e)))}
-                                onSkipDay={() => onSkip([day])}/>
-            )}
+            <StatusLine items={[
+                conflict && conflictItem(conflict),
+                notice?.visible && !noticeGone && day === today && !skipped && reminderItem(notice, {
+                    snooze: () => Notes.SnoozeReminder().then(setNotice, e => onToast(String(e?.message ?? e))),
+                    skipDay: () => onSkip([day]),
+                    dismiss: () => setNoticeGone(true),
+                }),
+            ].filter((x): x is StatusItem => !!x)}/>
 
             {listPage && !full ? (
                 <header className="page-head page-head-list">
