@@ -1,6 +1,6 @@
 # Writing redesign: one log list, in time order
 
-Status: approved 2026-10-18. Pieces 1 and 2 built; 3 (standup) and 4 (commits) next. Builds on the Go + Wails port
+Status: approved 2026-10-18. Pieces 1, 2 and 3 built; 4 (commits) next. Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
@@ -155,11 +155,13 @@ strip. Classic pages keep today's layout and editor.
   Mark, Raw}`; serialize (untouched lines byte for byte); `InsertTimed`; `OpenLines`. Golden tests.
 - `internal/core` changes: `DefaultTemplate`; carry-over picks marks on list pages; review groups map classic
   headings; capture placement targets `## Log` when the page has it; word count drops times, marks and the hash.
-- `desktop/notes_*.go`: `Standup(day)`, `CarryOffer(day)` / `CarryDismiss(day, key)`, `AddCommits(day)`; the commit
+- `desktop/notes_*.go`: `CarryOffer(day)` / `CarryDismiss(day, key)`, `AddCommits(day)`; the commit
   timer next to the reminder loop.
 - `desktop/frontend/src/screens/LogPage.tsx` (new) with `LogLine.tsx`, `CarryBox.tsx`, `StatusLine.tsx`; `DayPage`
   picks `LogPage` or the classic editor by page kind. App-only styles in `app.css` (DESIGN.md §11); move a piece to
   `@personal/ui` only when a second app needs it.
+- The standup's grouping and copy text are `standup` / `standupText` in `desktop/frontend/src/log/model.ts`: they group
+  the lines the list editor holds, so an edit not yet saved is in the standup too.
 - Docs: update UX_SPEC.md (day page), EDITOR_CONTRACT.md (which editor runs when), PARITY.md / STATUS.md.
 
 ## 6. Tests
