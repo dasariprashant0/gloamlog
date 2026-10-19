@@ -2,7 +2,7 @@
 // Saving rules (Swift DayEditor): only real edits are written, 600 ms after the last change and at once on day switch, on
 // leaving the page and on window blur; saves run one at a time; opening a page never writes it.
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {Banner, Button, Display} from '@personal/ui/react';
+import {Banner, Button, Display, Segmented} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes, Windows, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
@@ -11,12 +11,13 @@ import {DownloadingPage} from './SyncChip';
 import {ReminderNotice} from './ReminderNotice';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 import {on} from '../events';
-import {LogEditor, type LogEditorHandle} from '../log/LogEditor';
+import {LogEditor, type LogEditorHandle, type View} from '../log/LogEditor';
 import * as LogModel from '../log/model';
 import {CarryBox} from '../log/CarryBox';
 import type {LogPage} from '../../bindings/github.com/dasariprashant0/gloamlog/internal/core';
 
 const SAVE_DELAY = 600;
+const VIEWS: [View, string][] = [['list', 'List'], ['standup', 'Standup']];
 
 export function DayPage({day, today, minWords, active, folderError, reloadKey, onDay, onSaved, onSkip, onRestore, onToast}: {
     day: string; today: string; minWords: number; active: boolean; folderError: string; reloadKey: number; // bump to re-read the day from disk
@@ -34,6 +35,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     const [full, setFull] = useState(false);                        // "Edit whole page" on a list page
     const [pageKey, setPageKey] = useState(0);                      // remounts the list editor with a new page
     const [summary, setSummary] = useState('');
+    const [view, setView] = useState<View>('list');                // List | Standup; kept across days (⌘[ for yesterday's standup)
     const logRef = useRef<LogEditorHandle>(null);
     const listMode = useRef(false);                                 // listPage && !full, for the callbacks
 
@@ -320,14 +322,20 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 {page && (listPage && !full
                     ? <Display key={day} lines={[summary || 'Nothing yet']}/>
                     : <Display key={day} lines={[weekday, rest.join(' ')]}/>)}
+                {page && listPage && !full && !skipped && (
+                    <div role="group" aria-label="View"><Segmented options={VIEWS} value={view} onChange={setView}/></div>
+                )}
                 {page && !skipped && <p className="small muted page-progress" aria-live="polite">
                     {words >= Math.max(1, minWords) ? `Logged, ${plural(words, 'word')}` : `${plural(words, 'word')}. Counts as logged at ${minWords}.`}
                     {recentlySaved && <span className="page-saved"> · Saved</span>}
                 </p>}
             </header>
 
+            {/* Hidden, not unmounted, in Standup: lines already kept or dropped must not be offered again on the way back. */}
             {listPage && !full && page?.carry && !skipped && (
-                <CarryBox key={day} day={day} card={page.carry} onAdd={(t, m) => logRef.current?.addLine(t, m)} onToast={onToast}/>
+                <div hidden={view !== 'list'}>
+                    <CarryBox key={day} day={day} card={page.carry} onAdd={(t, m) => logRef.current?.addLine(t, m)} onToast={onToast}/>
+                </div>
             )}
 
             {page?.carry && !page.carryApplied && !skipped && !listPage && (
@@ -354,7 +362,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             )}
             {page?.notLocal && <DownloadingPage day={day} title={page.title} source={''} onOpenStorage={() => void Windows.ShowSettings()}/>}
             {listPage && !full && !skipped && (
-                <LogEditor key={pageKey} ref={logRef} day={day} page={listPage} readOnly={!!page?.notLocal} autoFocus={day === today}
+                <LogEditor key={pageKey} ref={logRef} day={day} page={listPage} readOnly={!!page?.notLocal} autoFocus={day === today} view={view}
                            onChange={onLogChange} onSummary={setSummary} onToast={onToast}/>
             )}
             <div hidden={skipped || !!page?.notLocal || (!!listPage && !full)}><Editor onMessage={onMessage} label={`Page for ${page?.title ?? day}`}/></div>

@@ -2,8 +2,8 @@
 // out by Go (Notes.LogRender), which also gives each line's HTML. DayPage owns saving: it hears the markdown through onChange
 // and asks for the latest with markdown() before it flushes.
 import {forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState} from 'react';
-import type {ClipboardEvent, KeyboardEvent} from 'react';
-import {Kbd} from '@personal/ui/react';
+import type {ClipboardEvent, KeyboardEvent, MouseEvent} from 'react';
+import {Button, Kbd} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes} from '../api';
 import type {LogPage} from '../../bindings/github.com/dasariprashant0/gloamlog/internal/core';
@@ -18,8 +18,11 @@ export type LogEditorHandle = {
     addLine(text: string, mark: M.Mark): void;
 };
 
+/** What the list page shows: the rows to edit, or the same lines as a standup. */
+export type View = 'list' | 'standup';
+
 type Props = {
-    day: string; page: LogPage; readOnly: boolean; autoFocus: boolean;
+    day: string; page: LogPage; readOnly: boolean; autoFocus: boolean; view: View;
     onChange: (markdown: string, words: number) => void;
     onSummary: (summary: string) => void;
     onToast: (message: string) => void;
@@ -35,7 +38,7 @@ const nextMark = (m: M.Mark): M.Mark => MARKS[(MARKS.indexOf(m) + 1) % MARKS.len
 const markKey = (e: KeyboardEvent): M.Mark | null =>
     (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && ['1', '2', '3'].includes(e.key) ? MARKS[Number(e.key) - 1] : null;
 
-export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({day, page, readOnly, autoFocus, onChange, onSummary, onToast}, ref) {
+export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({day, page, readOnly, autoFocus, view, onChange, onSummary, onToast}, ref) {
     const [state, setState] = useState(() => M.fresh(page.lines as unknown as M.Line[]));
     const [html, setHtml] = useState<string[]>([]);
     const stateRef = useRef(state);
@@ -110,6 +113,9 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
         else if (e.key === 'ArrowDown' && !ta.value.slice(ta.selectionEnd).includes('\n')) { e.preventDefault(); act(s => M.move(s, 1)); }
         else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); act(M.commit); }
     }
+
+    // The same state in both views: the draft, undo and the From yesterday picks survive a switch. html is per withDraft line.
+    if (view === 'standup') return <StandupView lines={M.withDraft(state)} html={html} onToast={onToast}/>;
 
     return (
         <div className="log">
@@ -186,6 +192,43 @@ function AddField({autoFocus, onAdd}: {autoFocus: boolean; onAdd: (text: string,
                        else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(''); }
                    }}/>
             <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>
+        </div>
+    );
+}
+
+function StandupView({lines, html, onToast}: {lines: M.Line[]; html: string[]; onToast: (message: string) => void}) {
+    const [copied, setCopied] = useState(false);
+    const groups = M.standup(lines);
+    const text = M.standupText(lines);
+    if (M.GROUPS.every(([g]) => !groups[g].length)) return <p className="muted">Nothing on this day yet.</p>;
+
+    async function copy() {
+        try {
+            await Notes.ReviewCopyText(text); // Go writes the clipboard: WebKit's async clipboard fails outside a click
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (e) {
+            onToast(`Couldn't copy the standup: ${String((e as Error)?.message ?? e)}`);
+        }
+    }
+    // A link in a line opens in the browser, never inside the app's window.
+    const openLink = (e: MouseEvent) => {
+        const a = (e.target as HTMLElement).closest('a');
+        if (!a) return;
+        e.preventDefault();
+        if (/^(https?:|mailto:)/i.test(a.href)) Browser.OpenURL(a.href).catch(() => window.open(a.href, '_blank'));
+    };
+    return (
+        <div className="standup" onClick={openLink}>
+            {M.GROUPS.filter(([g]) => groups[g].length).map(([g, title]) => (
+                <section key={g} aria-label={title}>
+                    <h2 className="label">{title}</h2>
+                    <ul className="standup-list">
+                        {groups[g].map(i => <li key={i} dangerouslySetInnerHTML={{__html: html[i] || `<p>${esc(lines[i].text)}</p>`}}/>)}
+                    </ul>
+                </section>
+            ))}
+            <div><Button variant="line" size="sm" disabled={!text} onClick={() => void copy()}>{copied ? 'Copied ✓' : 'Copy standup'}</Button></div>
         </div>
     );
 }

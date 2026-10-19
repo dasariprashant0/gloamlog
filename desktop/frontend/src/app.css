@@ -82,3 +82,9 @@ button.cal-day:hover { background: var(--wash-2); }
 .carry-box { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border: 1px dashed var(--rule); }
 .carry-head, .carry-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
 .carry-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+
+/* The standup view of a list page. */
+.standup { display: grid; gap: var(--s4); justify-items: start; }
+.standup-list { margin: var(--s2) 0 0; padding-left: var(--s4); display: grid; gap: var(--s1); }
+.standup-list p { margin: 0; }
+.standup-list img { display: block; max-height: var(--s9); margin-top: var(--s1); }
