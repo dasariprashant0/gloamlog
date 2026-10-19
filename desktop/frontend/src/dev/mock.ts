@@ -201,4 +201,5 @@ export const Windows = {
     ShowJot: () => later(undefined),
     HideJot: () => later(undefined),
     ShowSettings: () => { window.open('/settings.html', '_blank'); return later(undefined); },
+    CheckForUpdates: () => later(undefined),
 };

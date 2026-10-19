@@ -35,6 +35,12 @@ func (*Windows) ShowJot()      { showJot() }
 func (*Windows) HideJot()      { hideJot() }
 func (*Windows) ShowSettings() { showSettings() }
 
+// CheckForUpdates shows the main window and opens its update dialog (Settings > About; the menu bar item does the same).
+func (*Windows) CheckForUpdates() {
+	showMain()
+	application.Get().Event.Emit("check-updates")
+}
+
 func main() {
 	notes, err := NewNotes()
 	if err != nil {

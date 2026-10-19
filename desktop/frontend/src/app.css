@@ -8,7 +8,7 @@
    edge when a column hits its end. */
 html, body { overscroll-behavior: none; }
 .side { padding-top: var(--titlebar); }
-.settings-head { padding: var(--titlebar) var(--s5) 0; }
+.settings-head { padding-top: var(--titlebar); }
 
 /* The jot panel: one field, no chrome. */
 .jot-body { background: var(--background); }

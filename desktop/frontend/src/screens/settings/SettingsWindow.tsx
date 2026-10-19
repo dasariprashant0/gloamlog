@@ -90,11 +90,11 @@ export function SettingsWindow() {
 
     const props = s && info ? {s, set, info, overview, reload: () => { reload().catch(() => undefined); }} : null; // reload shows its own error banner
     return (
-        <div style={{display: 'flex', flexDirection: 'column', height: '100vh'}}>
-            <header className="settings-head">
+        <div className="window">
+            <header className="window-head settings-head">
                 <Tabs items={PANES} current={pane} onChange={go}/>
             </header>
-            <main className="main" style={{flex: 1, minHeight: 0, padding: 'var(--s5) var(--s5) var(--s8)'}}>
+            <main className="window-body">
                 {error && (
                     <div style={{marginBottom: 'var(--s5)'}}>
                         <Banner tone="danger" action={<Button size="sm" variant="line" onClick={() => { setError(''); reload().catch(() => undefined); }}/* reload shows its own error banner */>Show saved settings</Button>}>

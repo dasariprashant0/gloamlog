@@ -10,6 +10,13 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
+/**
+ * CheckForUpdates shows the main window and opens its update dialog (Settings > About; the menu bar item does the same).
+ */
+export function CheckForUpdates(): $CancellablePromise<void> {
+    return $Call.ByID(2163614494);
+}
+
 export function HideJot(): $CancellablePromise<void> {
     return $Call.ByID(4127958848);
 }
