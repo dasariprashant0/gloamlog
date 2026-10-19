@@ -3,7 +3,7 @@
 Single source of truth shared by the web-editor bundle (`editor-web/`), the Swift core (`app/Core/`) and the Swift UI (`app/UI/`). Change it here first.
 
 ## Which editor runs
-A list page (one with a `## Log` heading) opens in the list editor (`desktop/frontend/src/log`): a row per line, and Go writes the file through `Notes.LogRender`. A classic page, and **Edit whole page** on a list page, use Milkdown under this contract.
+A list page (one with a `## Log`, `## Work` or `## Personal` heading) opens in the list editor (`desktop/frontend/src/log`): a row per line, a list per heading (Work, then Personal, one under the other), and Go writes the file through `Notes.LogRender`. A classic page, and **Edit whole page** on a list page, use Milkdown under this contract.
 
 ## Why
 v0.2's five fixed boxes felt cluttered and could not hold headings, sizes, lists or images. v0.3 replaces them with one free-form, Notion-style page per day. The five prompts become an optional, editable **template** of headings.

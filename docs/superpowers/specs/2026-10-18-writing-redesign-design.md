@@ -1,6 +1,6 @@
 # Writing redesign: one log list, in time order
 
-Status: approved 2026-10-18. Pieces 1, 2 and 3 built; 4 (commits) next. Builds on the Go + Wails port
+Status: approved 2026-10-18. Pieces 1, 2 and 3 built, then the Work / Personal split (2026-10-19, its own spec); 4 (commits) next. Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
@@ -185,5 +185,6 @@ Each piece is tested and committed on its own.
 
 ## Not doing
 
-Drag to reorder, more marks than two, nested bullets beyond continuation rows, several log sections per day, a
-source tag per line, adding Claude Code prompts, converting old pages.
+Drag to reorder, more marks than two, nested bullets beyond continuation rows, a source tag per line, adding Claude
+Code prompts, converting old pages. (Several lists per day was on this list until 2026-10-19: Work and Personal are now
+two lists, see [2026-10-19-work-personal-split-design.md](2026-10-19-work-personal-split-design.md).)
