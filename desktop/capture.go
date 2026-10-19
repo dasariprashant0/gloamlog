@@ -83,6 +83,7 @@ func captureFor(n *Notes) *captureState {
 		func() core.CapturePrefs { n.mu.Lock(); defer n.mu.Unlock(); return n.settings.Capture },
 		n.now,
 		func() core.Calendar { n.mu.Lock(); defer n.mu.Unlock(); return n.cal() })
+	c.writer.SetLists(func() core.ListsPrefs { n.mu.Lock(); defer n.mu.Unlock(); return n.settings.Lists })
 	v, _ := captures.LoadOrStore(n, c)
 	return v.(*captureState)
 }
@@ -100,15 +101,20 @@ func (c *captureState) syncFolder() bool {
 	return true
 }
 
-// headingFor is the heading a note goes under on `day`: Log on a list page (or a new day that starts as one), else the configured one.
-// It reads the day's file through the writer's own store, outside n.mu, like the other store reads here.
-func (c *captureState) headingFor(day, configured string) string {
-	return pageHeading(c.store, day, configured)
+// headingFor is the heading a note routed to list goes under on `day`: its list on a list page (or a new day that starts as one),
+// else the configured one. It reads the day's file through the writer's own store, outside n.mu, like the other store reads here.
+func (c *captureState) headingFor(day, configured, list string) string {
+	return pageHeadingIn(c.store, day, configured, list)
 }
 
-// pageHeading is the section new lines go under on day's page: Log on a list page (or a new day that starts as one), else
-// configured. An unreadable file falls back to configured. Used by capture and by the suggestions strip.
+// pageHeading is pageHeadingIn for Work: the section suggestions go under on a classic page is the configured heading.
 func pageHeading(store *core.LogStore, day, configured string) string {
+	return pageHeadingIn(store, day, configured, core.ListWork)
+}
+
+// pageHeadingIn is the section new lines routed to list go under on day's page (core.JotsHeadingIn). An unreadable file falls
+// back to configured. Used by capture and by the suggestions strip.
+func pageHeadingIn(store *core.LogStore, day, configured, list string) string {
 	doc, err := store.Load(day)
 	if err != nil {
 		return configured
@@ -117,7 +123,7 @@ func pageHeading(store *core.LogStore, day, configured string) string {
 	if doc != nil {
 		body = doc.Body
 	}
-	return core.JotsHeadingFor(body, configured)
+	return core.JotsHeadingIn(body, configured, list)
 }
 
 // ---- the open pages (core.EditorLookup / core.PageHandle) ----
@@ -143,7 +149,11 @@ func (p *pageHandle) AppendJot(item core.CaptureItem, done func(core.JotAppendRe
 	c.n.mu.Lock()
 	heading := c.n.settings.Capture.JotsHeading
 	c.n.mu.Unlock()
-	heading = c.headingFor(p.day, heading)
+	list := item.List
+	if list == "" {
+		list = core.ListWork // a note from an older journal
+	}
+	heading = c.headingFor(p.day, heading, list)
 	time.AfterFunc(c.answerTimeout, func() {
 		c.mu.Lock()
 		cb := c.replies[item.ID]
@@ -157,7 +167,7 @@ func (p *pageHandle) AppendJot(item core.CaptureItem, done func(core.JotAppendRe
 			cb(core.JotAppendResult{Kind: core.JotStale})
 		}
 	})
-	c.emit("jot-into-page", map[string]any{"id": item.ID, "day": item.Day, "heading": heading, "markdown": core.RenderJot(item)})
+	c.emit("jot-into-page", map[string]any{"id": item.ID, "day": item.Day, "heading": heading, "list": list, "markdown": core.RenderJot(item)})
 }
 
 // Page implements core.EditorLookup: a true nil interface when the day has no open page.
@@ -249,10 +259,10 @@ func (n *Notes) RetryJots() int {
 func (c *captureState) jot(text, source string) JotResult {
 	c.syncFolder()
 	c.n.mu.Lock()
-	heading := c.n.settings.Capture.JotsHeading
+	heading, list := c.n.settings.Capture.JotsHeading, c.n.settings.Lists.Jots
 	c.n.mu.Unlock()
 	day := core.DayKeyString(c.n.now(), time.Local)
-	heading = c.headingFor(day, heading)
+	heading = c.headingFor(day, heading, list)
 	res := JotResult{Outcome: "empty", Day: day, Heading: heading}
 	rec, ok := c.writer.Capture(text, source)
 	if !ok {

@@ -72,7 +72,13 @@ func (n *Notes) apply(s core.Settings) {
 	n.store = core.NewLogStore(s.StorageFolder, n.backupDir, 10*time.Minute, n.now)
 	// the process-wide jot rules, as the Swift app set them on every settings change (it was never set in the port)
 	core.SetJotsRules(core.JotsRules{Heading: s.Capture.JotsHeading, CountTowardLogged: s.Capture.JotsCountTowardLogged,
-		NewDaysLog: core.IsLogPage(s.Template)})
+		NewDaysLog: core.IsLogPage(s.Template), NewDaysSplit: isSplitTemplate(s.Template)})
+}
+
+// isSplitTemplate is true when new days start with Work and Personal lists (a note to such a day starts its own list).
+func isSplitTemplate(t string) bool {
+	p, ok := core.ParseLog(t)
+	return ok && len(p.Sections) > 1
 }
 
 func (n *Notes) cal() core.Calendar { return core.NewCalendar(time.Local, n.settings.WeekStart) }

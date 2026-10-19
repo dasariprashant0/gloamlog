@@ -21,6 +21,16 @@ type Suggestions struct {
 	NoneOn  bool               `json:"noneOn"` // sources are on but no project is ticked, so nothing was read
 	Heading string             `json:"heading"`
 	Result  sources.ScanResult `json:"result"`
+	Lists   map[string]string  `json:"lists"` // bullet id -> core.ListWork / core.ListPersonal, from its project root
+}
+
+// withLists names each bullet's list (a split page puts it in that list; other pages ignore it).
+func (s Suggestions) withLists(prefs core.ListsPrefs) Suggestions {
+	s.Lists = map[string]string{}
+	for _, b := range s.Result.Bullets {
+		s.Lists[b.ID] = prefs.ListFor(b.Root)
+	}
+	return s
 }
 
 type scanCache struct {
@@ -63,7 +73,7 @@ func (n *Notes) Suggestions(day string, again bool) (Suggestions, error) {
 	if !again && scans.key == key && now.Sub(scans.at) < 300*time.Second {
 		out.Result = scans.result
 		scans.mu.Unlock()
-		return out, nil
+		return out.withLists(s.Lists), nil
 	}
 	if scans.cancel != nil {
 		scans.cancel() // the newer scan wins
@@ -81,7 +91,7 @@ func (n *Notes) Suggestions(day string, again bool) (Suggestions, error) {
 	scans.key, scans.at, scans.result = key, now, result
 	scans.mu.Unlock()
 	out.Result = result
-	return out, nil
+	return out.withLists(s.Lists), nil
 }
 
 // SourceProjects lists Claude Code's projects and the repositories under the added Git folders, for Settings > Sources.

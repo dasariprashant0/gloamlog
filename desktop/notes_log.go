@@ -48,12 +48,18 @@ type LogAppended struct {
 }
 
 // LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) at the end
-// of the Log, skipping any whose text is already a line. Used while the list editor has the page open.
-func (n *Notes) LogAppendLines(page core.LogPage, markdown string) LogAppended {
+// of list (core.ListWork / core.ListPersonal; a one-list page takes them in its list), skipping any whose text is already a
+// line in any list. Used while the list editor has the page open.
+func (n *Notes) LogAppendLines(page core.LogPage, markdown, list string) LogAppended {
 	add, _ := core.ParseLog("## " + core.LogHeading + "\n" + markdown)
+	section := page.Target(list)
 	have := map[string]bool{}
+	empty := true // the target list has no line yet
 	for _, l := range page.Lines {
 		have[core.ItemKey(l.Text)] = true
+		if l.Section == section {
+			empty = false
+		}
 	}
 	lines, added := append([]core.LogLine{}, page.Lines...), 0
 	for _, l := range add.Lines {
@@ -61,9 +67,9 @@ func (n *Notes) LogAppendLines(page core.LogPage, markdown string) LogAppended {
 		if l.Other || key == "" || have[key] {
 			continue
 		}
-		l.Blank = 0
-		if len(lines) == 0 {
-			l.Blank = 1 // a blank line between the heading and the first line
+		l.Blank, l.Section = 0, section
+		if empty {
+			l.Blank, empty = 1, false // a blank line between the heading and the first line
 		}
 		lines = append(lines, l)
 		have[key] = true

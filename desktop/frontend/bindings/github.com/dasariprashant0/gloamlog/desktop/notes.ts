@@ -228,10 +228,11 @@ export function JumpTo(input: string): $CancellablePromise<string> {
 
 /**
  * LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) at the end
- * of the Log, skipping any whose text is already a line. Used while the list editor has the page open.
+ * of list (core.ListWork / core.ListPersonal; a one-list page takes them in its list), skipping any whose text is already a
+ * line in any list. Used while the list editor has the page open.
  */
-export function LogAppendLines(page: core$0.LogPage, markdown: string): $CancellablePromise<$models.LogAppended> {
-    return $Call.ByID(3362223382, page, markdown).then(($result: any) => {
+export function LogAppendLines(page: core$0.LogPage, markdown: string, list: string): $CancellablePromise<$models.LogAppended> {
+    return $Call.ByID(3362223382, page, markdown, list).then(($result: any) => {
         return $$createType16($result);
     });
 }

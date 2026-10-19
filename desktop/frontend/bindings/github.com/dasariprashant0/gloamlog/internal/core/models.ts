@@ -119,6 +119,12 @@ export class CarryCard {
      */
     "marks": LogMark[];
 
+    /**
+     * Lists is each item's list on a list-page source (ListWork for a one-list page's line, "" for an item under a carry-over
+     * heading); nil for a classic source.
+     */
+    "lists": string[];
+
     /** Creates a new CarryCard instance. */
     constructor($$source: Partial<CarryCard> = {}) {
         if (!("sourceDay" in $$source)) {
@@ -133,6 +139,9 @@ export class CarryCard {
         if (!("marks" in $$source)) {
             this["marks"] = [];
         }
+        if (!("lists" in $$source)) {
+            this["lists"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -143,12 +152,16 @@ export class CarryCard {
     static createFrom($$source: any = {}): CarryCard {
         const $$createField2_0 = $$createType2;
         const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
         }
         if ("marks" in $$parsedSource) {
             $$parsedSource["marks"] = $$createField3_0($$parsedSource["marks"]);
+        }
+        if ("lists" in $$parsedSource) {
+            $$parsedSource["lists"] = $$createField4_0($$parsedSource["lists"]);
         }
         return new CarryCard($$parsedSource as Partial<CarryCard>);
     }
@@ -324,6 +337,58 @@ export class HotKeySpec {
 }
 
 /**
+ * ListsPrefs route work to the Work or Personal list of a split page by the folder it came from (spec:
+ * docs/superpowers/specs/2026-10-19-work-personal-split-design.md, section 2). This Mac only.
+ */
+export class ListsPrefs {
+    /**
+     * folders whose work goes to Work
+     */
+    "work": string[];
+
+    /**
+     * folders whose work goes to Personal
+     */
+    "personal": string[];
+
+    /**
+     * where a note without a folder goes: ListWork or ListPersonal
+     */
+    "jots": string;
+
+    /** Creates a new ListsPrefs instance. */
+    constructor($$source: Partial<ListsPrefs> = {}) {
+        if (!("work" in $$source)) {
+            this["work"] = [];
+        }
+        if (!("personal" in $$source)) {
+            this["personal"] = [];
+        }
+        if (!("jots" in $$source)) {
+            this["jots"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ListsPrefs instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ListsPrefs {
+        const $$createField0_0 = $$createType2;
+        const $$createField1_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("work" in $$parsedSource) {
+            $$parsedSource["work"] = $$createField0_0($$parsedSource["work"]);
+        }
+        if ("personal" in $$parsedSource) {
+            $$parsedSource["personal"] = $$createField1_0($$parsedSource["personal"]);
+        }
+        return new ListsPrefs($$parsedSource as Partial<ListsPrefs>);
+    }
+}
+
+/**
  * LogLine is one bullet of the Log section, or one Other block.
  */
 export class LogLine {
@@ -358,6 +423,11 @@ export class LogLine {
      */
     "raw": string;
 
+    /**
+     * Section is the index into LogPage.Sections of the list it belongs to (0 on a one-list page).
+     */
+    "section": number;
+
     /** Creates a new LogLine instance. */
     constructor($$source: Partial<LogLine> = {}) {
         if (!("time" in $$source)) {
@@ -380,6 +450,9 @@ export class LogLine {
         }
         if (!("raw" in $$source)) {
             this["raw"] = "";
+        }
+        if (!("section" in $$source)) {
+            this["section"] = 0;
         }
 
         Object.assign(this, $$source);
@@ -409,22 +482,27 @@ export enum LogMark {
 };
 
 /**
- * LogPage is a list page split around its first Log section.
+ * LogPage is a list page split around its lists.
  */
 export class LogPage {
     /**
-     * the page up to and including the Log heading line
+     * the page up to and including the first list heading line
      */
     "before": string;
-    "lines": LogLine[];
 
     /**
-     * blank lines after the last line (a trailing newline counts as one), before After
+     * every list's lines; LogLine.Section says which
+     */
+    "lines": LogLine[];
+    "sections": LogSection[];
+
+    /**
+     * the last list's trailing blank lines; only read when Sections is empty (one list)
      */
     "trail": number;
 
     /**
-     * the page from the heading that ends the section; "" when it runs to the end
+     * the page from the heading that ends the last list; "" when it runs to the end
      */
     "after": string;
 
@@ -435,6 +513,9 @@ export class LogPage {
         }
         if (!("lines" in $$source)) {
             this["lines"] = [];
+        }
+        if (!("sections" in $$source)) {
+            this["sections"] = [];
         }
         if (!("trail" in $$source)) {
             this["trail"] = 0;
@@ -451,11 +532,67 @@ export class LogPage {
      */
     static createFrom($$source: any = {}): LogPage {
         const $$createField1_0 = $$createType5;
+        const $$createField2_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("lines" in $$parsedSource) {
             $$parsedSource["lines"] = $$createField1_0($$parsedSource["lines"]);
         }
+        if ("sections" in $$parsedSource) {
+            $$parsedSource["sections"] = $$createField2_0($$parsedSource["sections"]);
+        }
         return new LogPage($$parsedSource as Partial<LogPage>);
+    }
+}
+
+/**
+ * LogSection is one list of a page, in file order.
+ */
+export class LogSection {
+    /**
+     * LogHeading, ListWork or ListPersonal, whatever case the heading is written in
+     */
+    "name": string;
+
+    /**
+     * after the first section: the page from the end of the previous list up to and including this heading line
+     */
+    "join": string;
+
+    /**
+     * blank lines after its last line (a trailing newline counts as one)
+     */
+    "trail": number;
+
+    /**
+     * Virtual is the missing partner of a split page (Work without Personal, or the reverse): it writes its heading line (Join),
+     * after the last list, only once it has lines.
+     */
+    "virtual": boolean;
+
+    /** Creates a new LogSection instance. */
+    constructor($$source: Partial<LogSection> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("join" in $$source)) {
+            this["join"] = "";
+        }
+        if (!("trail" in $$source)) {
+            this["trail"] = 0;
+        }
+        if (!("virtual" in $$source)) {
+            this["virtual"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogSection instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogSection {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LogSection($$parsedSource as Partial<LogSection>);
     }
 }
 
@@ -644,6 +781,11 @@ export enum ReviewGroupKind {
     GroupJots = "jots",
     GroupOther = "other",
     GroupSkipped = "skipped",
+
+    /**
+     * GroupPersonal is the Personal list of split pages: shown in the review, left out of a copy (WithoutPersonal).
+     */
+    GroupPersonal = "personal",
 };
 
 /**
@@ -820,6 +962,11 @@ export class Settings {
     "sources": SourcesPrefs;
 
     /**
+     * lists: which folders are Work and which Personal (not in Swift)
+     */
+    "lists": ListsPrefs;
+
+    /**
      * ShowMenuBar is NOT part of the Swift Settings struct: it was its own UserDefaults key, "showMenuBar" (default true). It lives
      * here so that one file holds every preference and ImportLegacyDefaults can carry it over.
      */
@@ -875,6 +1022,9 @@ export class Settings {
         if (!("sources" in $$source)) {
             this["sources"] = (new SourcesPrefs());
         }
+        if (!("lists" in $$source)) {
+            this["lists"] = (new ListsPrefs());
+        }
         if (!("showMenuBar" in $$source)) {
             this["showMenuBar"] = false;
         }
@@ -886,10 +1036,11 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField1_0 = $$createType6;
+        const $$createField1_0 = $$createType8;
         const $$createField8_0 = $$createType2;
-        const $$createField15_0 = $$createType8;
-        const $$createField17_0 = $$createType9;
+        const $$createField15_0 = $$createType10;
+        const $$createField17_0 = $$createType11;
+        const $$createField18_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("weekdays" in $$parsedSource) {
             $$parsedSource["weekdays"] = $$createField1_0($$parsedSource["weekdays"]);
@@ -902,6 +1053,9 @@ export class Settings {
         }
         if ("sources" in $$parsedSource) {
             $$parsedSource["sources"] = $$createField17_0($$parsedSource["sources"]);
+        }
+        if ("lists" in $$parsedSource) {
+            $$parsedSource["lists"] = $$createField18_0($$parsedSource["lists"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }
@@ -1050,7 +1204,7 @@ export class WeekDay {
      * Creates a new WeekDay instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekDay {
-        const $$createField2_0 = $$createType11;
+        const $$createField2_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("doc" in $$parsedSource) {
             $$parsedSource["doc"] = $$createField2_0($$parsedSource["doc"]);
@@ -1114,7 +1268,7 @@ export class WeekSection {
      * Creates a new WeekSection instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekSection {
-        const $$createField2_0 = $$createType13;
+        const $$createField2_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
@@ -1170,8 +1324,8 @@ export class WeekSummary {
      * Creates a new WeekSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): WeekSummary {
-        const $$createField2_0 = $$createType15;
-        const $$createField3_0 = $$createType17;
+        const $$createField2_0 = $$createType18;
+        const $$createField3_0 = $$createType20;
         const $$createField7_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("days" in $$parsedSource) {
@@ -1200,20 +1354,23 @@ const $$createType2 = $Create.Array($Create.Any);
 const $$createType3 = $Create.Array($Create.Any);
 const $$createType4 = LogLine.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-var $$createType6 = (function $$initCreateType6(...args: any[]): any {
-    if ($$createType6 === $$initCreateType6) {
-        $$createType6 = $$createType7;
+const $$createType6 = LogSection.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+var $$createType8 = (function $$initCreateType8(...args: any[]): any {
+    if ($$createType8 === $$initCreateType8) {
+        $$createType8 = $$createType9;
     }
-    return $$createType6(...args);
+    return $$createType8(...args);
 });
-const $$createType7 = $Create.Array($Create.Any);
-const $$createType8 = CapturePrefs.createFrom;
-const $$createType9 = SourcesPrefs.createFrom;
-const $$createType10 = DayDocument.createFrom;
-const $$createType11 = $Create.Nullable($$createType10);
-const $$createType12 = WeekItem.createFrom;
-const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = WeekDay.createFrom;
-const $$createType15 = $Create.Array($$createType14);
-const $$createType16 = WeekSection.createFrom;
-const $$createType17 = $Create.Array($$createType16);
+const $$createType9 = $Create.Array($Create.Any);
+const $$createType10 = CapturePrefs.createFrom;
+const $$createType11 = SourcesPrefs.createFrom;
+const $$createType12 = ListsPrefs.createFrom;
+const $$createType13 = DayDocument.createFrom;
+const $$createType14 = $Create.Nullable($$createType13);
+const $$createType15 = WeekItem.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = WeekDay.createFrom;
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = WeekSection.createFrom;
+const $$createType20 = $Create.Array($$createType19);

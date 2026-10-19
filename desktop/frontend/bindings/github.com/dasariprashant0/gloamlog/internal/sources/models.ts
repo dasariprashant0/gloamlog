@@ -241,6 +241,11 @@ export class SuggestedBullet {
      */
     "time": string;
 
+    /**
+     * the project root it came from: Work or Personal is decided from it (core.ListsPrefs)
+     */
+    "root": string;
+
     /** Creates a new SuggestedBullet instance. */
     constructor($$source: Partial<SuggestedBullet> = {}) {
         if (!("id" in $$source)) {
@@ -263,6 +268,9 @@ export class SuggestedBullet {
         }
         if (!("time" in $$source)) {
             this["time"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("root" in $$source)) {
+            this["root"] = "";
         }
 
         Object.assign(this, $$source);

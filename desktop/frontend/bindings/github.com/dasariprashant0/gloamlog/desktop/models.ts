@@ -1608,6 +1608,11 @@ export class Suggestions {
     "heading": string;
     "result": sources$0.ScanResult;
 
+    /**
+     * bullet id -> core.ListWork / core.ListPersonal, from its project root
+     */
+    "lists": { [_ in string]?: string };
+
     /** Creates a new Suggestions instance. */
     constructor($$source: Partial<Suggestions> = {}) {
         if (!("off" in $$source)) {
@@ -1622,6 +1627,9 @@ export class Suggestions {
         if (!("result" in $$source)) {
             this["result"] = (new sources$0.ScanResult());
         }
+        if (!("lists" in $$source)) {
+            this["lists"] = {};
+        }
 
         Object.assign(this, $$source);
     }
@@ -1631,9 +1639,13 @@ export class Suggestions {
      */
     static createFrom($$source: any = {}): Suggestions {
         const $$createField3_0 = $$createType29;
+        const $$createField4_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("result" in $$parsedSource) {
             $$parsedSource["result"] = $$createField3_0($$parsedSource["result"]);
+        }
+        if ("lists" in $$parsedSource) {
+            $$parsedSource["lists"] = $$createField4_0($$parsedSource["lists"]);
         }
         return new Suggestions($$parsedSource as Partial<Suggestions>);
     }
@@ -1753,7 +1765,7 @@ export class UpdateResult {
      * Creates a new UpdateResult instance from a string or object.
      */
     static createFrom($$source: any = {}): UpdateResult {
-        const $$createField2_0 = $$createType30;
+        const $$createField2_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("release" in $$parsedSource) {
             $$parsedSource["release"] = $$createField2_0($$parsedSource["release"]);
@@ -1782,7 +1794,7 @@ export class Week {
      * Creates a new Week instance from a string or object.
      */
     static createFrom($$source: any = {}): Week {
-        const $$createField0_0 = $$createType31;
+        const $$createField0_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
             $$parsedSource["summary"] = $$createField0_0($$parsedSource["summary"]);
@@ -1822,5 +1834,6 @@ const $$createType26 = $Create.Array($$createType25);
 const $$createType27 = ReviewItemView.createFrom;
 const $$createType28 = $Create.Array($$createType27);
 const $$createType29 = sources$0.ScanResult.createFrom;
-const $$createType30 = core$0.ReleaseInfo.createFrom;
-const $$createType31 = core$0.WeekSummary.createFrom;
+const $$createType30 = $Create.Map($Create.Any, $Create.Any);
+const $$createType31 = core$0.ReleaseInfo.createFrom;
+const $$createType32 = core$0.WeekSummary.createFrom;

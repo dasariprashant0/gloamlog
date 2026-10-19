@@ -19,6 +19,7 @@ type SuggestedBullet struct {
 	Detail   string       `json:"detail"`   // a second line for the strip only (the files touched)
 	Evidence string       `json:"evidence"` // the part of Text that shows the bullet is already on the page
 	Time     time.Time    `json:"time"`     // zero = unknown
+	Root     string       `json:"root"`     // the project root it came from: Work or Personal is decided from it (core.ListsPrefs)
 }
 
 // DigestResult is the bullets and what the redactor hid, for "4 values hidden (2 emails, 2 tokens)".
@@ -156,7 +157,7 @@ func Bullets(raw []ActivityItem, red Redactor) DigestResult {
 			if len(files) > 3 {
 				detail += fmt.Sprintf(", +%d more", len(files)-3)
 			}
-			out = append(out, SuggestedBullet{ID: "session|" + first.Root, Kind: KindSession, Project: name,
+			out = append(out, SuggestedBullet{ID: "session|" + first.Root, Kind: KindSession, Project: name, Root: first.Root,
 				Text: lead + span + " (" + strings.Join(parts, ", ") + ")", Detail: detail, Evidence: lead, Time: s.Time})
 		}
 		for _, p := range g {
@@ -167,7 +168,7 @@ func Bullets(raw []ActivityItem, red Redactor) DigestResult {
 			if runeLen(trim(strings.ReplaceAll(line, "[redacted]", ""))) < 8 {
 				continue
 			}
-			out = append(out, SuggestedBullet{ID: "prompt|" + first.Root + "|" + line, Kind: KindPrompt, Project: name,
+			out = append(out, SuggestedBullet{ID: "prompt|" + first.Root + "|" + line, Kind: KindPrompt, Project: name, Root: first.Root,
 				Text: "Worked on " + name + ": " + line, Evidence: line, Time: p.Time})
 		}
 		var commits []ActivityItem
@@ -193,7 +194,7 @@ func Bullets(raw []ActivityItem, red Redactor) DigestResult {
 				text += " " + sha
 				ev = name + " " + sha
 			}
-			out = append(out, SuggestedBullet{ID: "commit|" + first.Root + "|" + id, Kind: KindCommit, Project: name,
+			out = append(out, SuggestedBullet{ID: "commit|" + first.Root + "|" + id, Kind: KindCommit, Project: name, Root: first.Root,
 				Text: text + ")", Evidence: ev, Time: c.Time})
 		}
 		for _, p := range g {
@@ -201,7 +202,7 @@ func Bullets(raw []ActivityItem, red Redactor) DigestResult {
 				continue
 			}
 			url := clean(p.Title, 200)
-			out = append(out, SuggestedBullet{ID: "pr|" + first.Root + "|" + url, Kind: KindPullRequest, Project: name,
+			out = append(out, SuggestedBullet{ID: "pr|" + first.Root + "|" + url, Kind: KindPullRequest, Project: name, Root: first.Root,
 				Text: "Pull request: " + url + " (" + name + ")", Evidence: url, Time: p.Time})
 		}
 	}

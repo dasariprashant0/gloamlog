@@ -383,15 +383,16 @@ func (n *Notes) ReviewText(req ReviewRequest, flavor string) (ReviewCopy, error)
 	if err != nil {
 		return ReviewCopy{}, err
 	}
-	md := core.ReviewMarkdown(b.sum, b.cal)
-	out := ReviewCopy{Title: core.ReviewTitle(b.sum.Period, b.cal, false), Text: md}
+	sum := core.WithoutPersonal(b.sum) // a copy is the work review; the screen and the export keep Personal
+	md := core.ReviewMarkdown(sum, b.cal)
+	out := ReviewCopy{Title: core.ReviewTitle(sum.Period, b.cal, false), Text: md}
 	switch flavor {
 	case "plain":
 		out.Text = core.MDPlain(md)
 	case "rich":
-		out.HTML = core.ReviewRichHTML(b.sum, b.cal)
-	case "print":
-		out.HTML = b.html(md)
+		out.HTML = core.ReviewRichHTML(sum, b.cal)
+	case "print": // the PDF is an export: Personal stays in
+		out.HTML = b.html(core.ReviewMarkdown(b.sum, b.cal))
 	case "markdown":
 	default:
 		return ReviewCopy{}, errors.New("unknown copy flavor: " + flavor)

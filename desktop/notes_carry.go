@@ -79,10 +79,13 @@ func (n *Notes) offerFor(day, body string, c *core.CarryCard) *core.CarryCard {
 		}
 	}
 	out := *c
-	out.Items, out.Marks = nil, nil
+	out.Items, out.Marks, out.Lists = nil, nil, nil
 	for i, it := range c.Items {
 		if !gone[core.ItemKey(it)] {
 			out.Items, out.Marks = append(out.Items, it), append(out.Marks, c.Marks[i])
+			if i < len(c.Lists) {
+				out.Lists = append(out.Lists, c.Lists[i])
+			}
 		}
 	}
 	if len(out.Items) == 0 {
