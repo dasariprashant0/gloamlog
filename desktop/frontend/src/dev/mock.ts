@@ -184,7 +184,11 @@ export const Notes = {
     SuggestionLines: (bullets: {text: string}[]) => later(bullets.map(b => '- ' + b.text).join('\n')),
     AlreadyAdded: (bullets: {id: string; evidence: string}[], page: string) => later(bullets.filter(b => b.evidence && page.includes(b.evidence)).map(b => b.id)),
     AddCommits: (_day: string) => later(0),
-    SourceProjects: () => later([]),
+    SourceProjects: () => later([
+        {root: '/Users/someone/Projects/gloamlog', name: 'gloamlog', sources: ['claude', 'git'], lastActive: new Date().toISOString()},
+        {root: '/Users/someone/Projects/design-system', name: 'design-system', sources: ['claude'], lastActive: new Date(Date.now() - 3 * 86_400_000).toISOString()},
+        {root: '/Users/someone/Work/zuddl-website', name: 'zuddl-website', sources: ['git'], lastActive: '0001-01-01T00:00:00Z'},
+    ]),
     HotKeyStatus: () => later(''),
     ...settingsMock,
     ...catchupMock,

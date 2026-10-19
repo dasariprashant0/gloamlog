@@ -1,9 +1,11 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Banner, Button, Dialog, Row, Setting, Switch} from '@personal/ui/react';
 import {Notes} from '../../api';
+import type {SourceProject} from '../../../bindings/github.com/dasariprashant0/gloamlog/internal/sources';
 import {Block, errText, HeadingInput, Panel, Soon, tilde, type PaneProps} from './shared';
 
 type Kind = 'claude' | 'git';
+const SOURCE_NAMES: Record<string, string> = {claude: 'Claude Code', git: 'Git'};
 
 // Run on this Mac by the Claude Code Stop hook, only while Gloamlog is open.
 const HOOK = '"hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "pgrep -x Gloamlog >/dev/null && open -g gloamlog://refresh || true" } ] } ] }';
@@ -15,6 +17,24 @@ export function SourcesPane({s, set, info}: PaneProps) {
     const anyOn = p.claude || p.git;
     const on = (v: boolean) => <span className="muted small">{v ? 'On' : 'Off'}</span>;
     const patch = (x: Partial<typeof p>) => set(cur => ({sources: {...cur.sources, ...x}}));
+
+    // The project list: Claude Code's projects and the repositories under the Git folders. Looked up again when those change.
+    const [projects, setProjects] = useState<SourceProject[] | 'loading' | null>(null);
+    const rootsKey = p.gitRoots.join('\n');
+    useEffect(() => {
+        if (!anyOn) return;
+        let live = true;
+        setProjects('loading');
+        Notes.SourceProjects().then(list => { if (live) setProjects(list ?? []); }).catch(e => { if (live) { setProjects(null); setNote(`Couldn't list the projects: ${errText(e)}`); } });
+        return () => { live = false; };
+    }, [anyOn, p.claude, p.git, rootsKey]);
+    // allowed holds the ticked roots, or with "Every session and tab" the skipped ones. Roots compare without case, like the readers.
+    const listed = (root: string) => p.allowed.some(a => a.toLowerCase() === root.toLowerCase());
+    const isOn = (root: string) => listed(root) !== p.allProjects;
+    const setProject = (root: string, v: boolean) => set(cur => {
+        const rest = cur.sources.allowed.filter(a => a.toLowerCase() !== root.toLowerCase());
+        return {sources: {...cur.sources, allowed: v !== cur.sources.allProjects ? [...rest, root] : rest}};
+    });
 
     // Nothing is switched on before the consent sheet is accepted.
     const setSource = (kind: Kind, v: boolean) => (v && !p.consented ? setConsentFor(kind) : patch({[kind]: v}));
@@ -74,7 +94,25 @@ export function SourcesPane({s, set, info}: PaneProps) {
             <Block title="Projects">
                 {!anyOn
                     ? <p className="small muted">Turn on Claude Code or Git to choose projects.</p>
-                    : <p className="small muted">The project list needs the work readers. <Soon/></p>}
+                    : projects === 'loading' ? <p className="small muted" role="status">Looking for projects…</p>
+                    : projects === null ? <p className="small muted">{note}</p>
+                    : projects.length === 0 ? <p className="small muted">No projects found yet. Claude Code's appear after its first session{p.git ? '; add a Git folder above for repositories' : ''}.</p>
+                    : (
+                        <ul className="list">
+                            {projects.map(pr => {
+                                const when = new Date(pr.lastActive);
+                                const meta = [tilde(pr.root, info), pr.sources.map(x => SOURCE_NAMES[x] ?? x).join(', '),
+                                    when.getFullYear() > 1 ? `active ${when.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}` : ''].filter(Boolean).join(' · ');
+                                const v = isOn(pr.root);
+                                return (
+                                    <li key={pr.root}>
+                                        <Row title={pr.name} meta={meta} end={<Switch checked={v} onChange={x => setProject(pr.root, x)}
+                                            label={<><span className="sr-only">{pr.name}: </span><span className="muted small">{v ? 'On' : 'Off'}</span></>}/>}/>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 <p className="small muted" style={{marginTop: 'var(--s3)'}}>{p.allProjects
                     ? 'Every project is read except the ones you switch off here.'
                     : 'Hidden projects are skipped before any text is read. Nothing is included until you tick it.'} Gloamlog stores nothing from what it reads: it looks again when you open a day.</p>
