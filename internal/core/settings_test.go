@@ -17,7 +17,7 @@ const home = "/Users/test"
 func TestSettingsDefaultsRoundTripTolerantDecodeNormalize(t *testing.T) {
 	d := DefaultSettings(home)
 	expect(t, d.Mode == ModeStrict && d.MinWords == 20 && equal(d.CarryOverHeadings, []string{"To do next", "Pending / blocked"}) && d.ReminderMinutes == 16*60+55, "defaults")
-	expect(t, d.Template == "## Log", "default template")
+	expect(t, d.Template == "## Work\n\n## Personal", "default template")
 	expect(t, d.SnoozeMinutes == 15 && equal(d.Weekdays, workdays) && d.LaunchAtLogin && !d.Onboarded && d.ClosedAppReminders && d.ShowMenuBar, "more defaults")
 	path := filepath.Join(t.TempDir(), "sub", "settings.json")
 	expect(t, equal(LoadSettings(path, home), DefaultSettings(home)), "defaults when the file is missing")
@@ -170,7 +170,7 @@ func TestDamagedSourcesNeverCostTheOtherSettings(t *testing.T) {
 
 func TestNewDaysAreListPagesAndOldDefaultsMoveOnce(t *testing.T) {
 	home := "/Users/someone"
-	expect(t, DefaultTemplate == "## Log" && DefaultSettings(home).LogTemplateSeen, "fresh installs start on the list page")
+	expect(t, DefaultTemplate == SplitTemplate && DefaultSettings(home).LogTemplateSeen, "fresh installs start on the split list page")
 
 	old := DecodeSettings([]byte(`{"template":`+jsonString(ClassicTemplate)+`}`), home)
 	expect(t, old.Template == DefaultTemplate && old.LogTemplateSeen, "an untouched five-heading template moves to the list page")
@@ -180,4 +180,26 @@ func TestNewDaysAreListPagesAndOldDefaultsMoveOnce(t *testing.T) {
 
 	chosen := DecodeSettings([]byte(`{"template":`+jsonString(ClassicTemplate)+`,"logTemplateSeen":true}`), home)
 	expect(t, chosen.Template == ClassicTemplate, "choosing the five headings again after the move sticks")
+}
+
+func TestListsDefaultsRoutingAndTheSplitTemplateMove(t *testing.T) {
+	home := "/Users/someone"
+	d := DefaultSettings(home).Lists
+	expect(t, len(d.Work) == 1 && d.Work[0] == "/Users/someone/Projects/zuddl" && len(d.Personal) == 1 &&
+		d.Personal[0] == "/Users/someone/Projects/personal" && d.Jots == ListWork, "defaults: %+v", d)
+
+	l := ListsPrefs{Work: []string{"/p/zuddl", "/p"}, Personal: []string{"/p/personal", "/p/zuddl/me"}, Jots: ListWork}
+	for root, want := range map[string]string{
+		"/p/personal/gloamlog": ListPersonal, "/p/zuddl/site": ListWork, "/p/zuddl/me/notes": ListPersonal,
+		"/P/Personal/x": ListPersonal, "/p/personalish": ListWork, "/elsewhere": ListWork, "": ListWork, "/p/zuddl": ListWork,
+	} {
+		expect(t, l.ListFor(root) == want, "%q -> %s, want %s", root, l.ListFor(root), want)
+	}
+
+	moved := DecodeSettings([]byte(`{"template":"## Log"}`), home)
+	expect(t, moved.Template == SplitTemplate, "an untouched one-list template moves to the split page once: %q", moved.Template)
+	kept := DecodeSettings([]byte(`{"template":"## Log","lists":{"jots":"Personal"}}`), home)
+	expect(t, kept.Template == "## Log" && kept.Lists.Jots == ListPersonal && len(kept.Lists.Work) == 1, "after the move, ## Log is a choice: %+v", kept)
+	damaged := DecodeSettings([]byte(`{"minWords":30,"lists":{"work":7,"jots":"Elsewhere"}}`), home)
+	expect(t, damaged.MinWords == 30 && damaged.Lists.Jots == ListWork && len(damaged.Lists.Work) == 1, "a damaged lists value costs nothing: %+v", damaged.Lists)
 }

@@ -68,8 +68,9 @@ const (
 	CatchUpWindowMax = 365
 	// ClassicTemplate is the five-heading page every day used before the list page (still offered in Settings > Page).
 	ClassicTemplate   = "## What I did\n\n## Finished\n\n## Started\n\n## Pending / blocked\n\n## To do next"
-	DefaultTemplate   = "## " + LogHeading // new days are list pages
-	DefaultSourcesHdg = "What I did"       // SourcesPrefs.defaultHeading on classic pages; a list page takes suggestions under Log
+	SplitTemplate     = "## " + ListWork + "\n\n## " + ListPersonal // a list page with Work and Personal apart
+	DefaultTemplate   = SplitTemplate                               // new days are split list pages
+	DefaultSourcesHdg = "What I did"                                // SourcesPrefs.defaultHeading on classic pages; a list page takes suggestions under Log
 )
 
 // SnoozeChoices are the snooze lengths (minutes) the UI offers; anything else normalizes to 15.
@@ -135,6 +136,63 @@ func (p SourcesPrefs) HeadingText() string {
 	return DefaultSourcesHdg
 }
 
+// ListsPrefs route work to the Work or Personal list of a split page by the folder it came from (spec:
+// docs/superpowers/specs/2026-10-19-work-personal-split-design.md, section 2). This Mac only.
+type ListsPrefs struct {
+	Work     []string `json:"work"`     // folders whose work goes to Work
+	Personal []string `json:"personal"` // folders whose work goes to Personal
+	Jots     string   `json:"jots"`     // where a note without a folder goes: ListWork or ListPersonal
+}
+
+// DefaultListsPrefs: ~/Projects/zuddl is Work, ~/Projects/personal is Personal, quick notes go to Work.
+func DefaultListsPrefs(home string) ListsPrefs {
+	return ListsPrefs{Work: []string{filepath.Join(home, "Projects", "zuddl")},
+		Personal: []string{filepath.Join(home, "Projects", "personal")}, Jots: ListWork}
+}
+
+func (p ListsPrefs) normalized() ListsPrefs {
+	clean := func(in []string) []string {
+		out := []string{}
+		for _, f := range in {
+			if f = trimmed(f); f != "" {
+				out = append(out, filepath.Clean(f))
+			}
+		}
+		return out
+	}
+	n := ListsPrefs{Work: clean(p.Work), Personal: clean(p.Personal), Jots: ListWork}
+	if p.Jots == ListPersonal {
+		n.Jots = ListPersonal
+	}
+	return n
+}
+
+// ListFor is the list for work from folder root: the deepest configured folder that contains it (whole path components, any
+// case) decides; none: Work.
+func (p ListsPrefs) ListFor(root string) string {
+	best, list := -1, ListWork
+	for _, c := range []struct {
+		folders []string
+		list    string
+	}{{p.Work, ListWork}, {p.Personal, ListPersonal}} {
+		for _, f := range c.folders {
+			if f = filepath.Clean(f); len(f) > best && pathUnder(f, root) {
+				best, list = len(f), c.list
+			}
+		}
+	}
+	return list
+}
+
+// pathUnder is true when path is folder or inside it, compared case-insensitively (the Mac's file system).
+func pathUnder(folder, path string) bool {
+	if path == "" {
+		return false
+	}
+	f, p := strings.ToLower(filepath.Clean(folder)), strings.ToLower(filepath.Clean(path))
+	return p == f || strings.HasPrefix(p, strings.TrimSuffix(f, string(filepath.Separator))+string(filepath.Separator))
+}
+
 // Settings is everything the user can set. Each field notes its Swift property name (the JSON key is the same).
 type Settings struct {
 	ReminderMinutes    int           `json:"reminderMinutes"`        // reminderMinutes: minutes after midnight, local time (default 16:55)
@@ -155,6 +213,7 @@ type Settings struct {
 	Capture            CapturePrefs  `json:"capture"`                // capture: quick capture (shortcut, timestamps, Jots heading)
 	ClosedAppReminders bool          `json:"closedAppReminders"`     // closedAppReminders: macOS delivers the reminder while Gloamlog is quit
 	Sources            SourcesPrefs  `json:"sources"`                // sources: "Suggested from your work"
+	Lists              ListsPrefs    `json:"lists"`                  // lists: which folders are Work and which Personal (not in Swift)
 	// ShowMenuBar is NOT part of the Swift Settings struct: it was its own UserDefaults key, "showMenuBar" (default true). It lives
 	// here so that one file holds every preference and ImportLegacyDefaults can carry it over.
 	ShowMenuBar bool `json:"showMenuBar"`
@@ -178,6 +237,7 @@ func DefaultSettings(home string) Settings {
 		Capture:            DefaultCapturePrefs(),
 		ClosedAppReminders: true,
 		Sources:            DefaultSourcesPrefs(),
+		Lists:              DefaultListsPrefs(home),
 		ShowMenuBar:        true,
 	}
 }
@@ -222,6 +282,7 @@ func (s Settings) Normalized() Settings {
 	if s.WeekStart < 1 || s.WeekStart > 7 {
 		n.WeekStart = 0
 	}
+	n.Lists = s.Lists.normalized()
 	return n
 }
 
@@ -360,6 +421,18 @@ func (s *Settings) decodeOver(data []byte) error {
 			s.Template = DefaultTemplate
 		}
 		s.LogTemplateSeen = true
+	}
+	// A damaged lists value keeps the defaults. A file from before the split has no lists: an untouched one-list template
+	// moves to the split page once (lists is written on the next save, so "## Log" chosen again later stays).
+	raw, hasLists := o["lists"]
+	if hasLists && !isNull(raw) {
+		l := s.Lists
+		if json.Unmarshal(raw, &l) == nil {
+			s.Lists = l
+		}
+	}
+	if !hasLists && s.Template == "## "+LogHeading {
+		s.Template = SplitTemplate
 	}
 	return nil
 }
