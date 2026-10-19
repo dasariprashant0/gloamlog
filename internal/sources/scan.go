@@ -52,7 +52,7 @@ func (s *Scanner) Scan(ctx context.Context, day, today string, cal core.Calendar
 		notices = append(notices, r.Notices...)
 	}
 	if prefs.Git && !cancelled(ctx) {
-		g := NewGitSource(prefs.GitRoots, s.GitPath, s.Home, s.GitRun)
+		g := NewGitSource(s.gitRoots(ctx, prefs), s.GitPath, s.Home, s.GitRun)
 		absorb(g.Activity(ctx, day, cal, policy, progress))
 	}
 	if prefs.Claude && !cancelled(ctx) {
@@ -81,6 +81,19 @@ func (s *Scanner) Scan(ctx context.Context, day, today string, cal core.Calendar
 		LastScanLine: fmt.Sprintf("Last look: %s, %s read, %s skipped.", core.DayKeyFormat(day, "EEE d MMM", loc),
 			pluralWord(stats.Files, "file"), pluralWord(stats.Skipped, "record")),
 	}
+}
+
+// gitRoots are where Git looks for repositories: the added folders, the ticked projects, and (while Claude Code is read) the
+// folders Claude Code worked in. A repository Claude worked in has its commits read by Git, with their exact hash and time,
+// even when its folder was never added: Claude's own record of a commit often has no hash (`git commit -q` prints nothing).
+func (s *Scanner) gitRoots(ctx context.Context, prefs core.SourcesPrefs) []string {
+	roots := append(append([]string(nil), prefs.GitRoots...), prefs.Allowed...)
+	if prefs.Claude && s.Claude != nil {
+		for _, p := range s.Claude.Projects(ctx, nil) {
+			roots = append(roots, p.Root)
+		}
+	}
+	return roots
 }
 
 // Projects is the project list for Settings > Sources: Claude Code's projects and the repositories under the added folders.

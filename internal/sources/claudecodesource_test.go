@@ -451,3 +451,15 @@ func TestCwdIn(t *testing.T) {
 		}
 	}
 }
+
+func TestGitRootsIncludeClaudeProjects(t *testing.T) {
+	src, _ := claudeFixture(t)
+	s := &Scanner{Claude: src}
+	got := s.gitRoots(context.Background(), core.SourcesPrefs{Claude: true, Git: true, GitRoots: []string{"/added"}, Allowed: []string{"/ticked"}})
+	if !reflect.DeepEqual(got, []string{"/added", "/ticked", "/work/acme", "/work/secret"}) {
+		t.Fatalf("roots: %v", got)
+	}
+	if got := s.gitRoots(context.Background(), core.SourcesPrefs{Git: true, GitRoots: []string{"/added"}}); !reflect.DeepEqual(got, []string{"/added"}) {
+		t.Fatalf("Claude Code off: %v", got)
+	}
+}
