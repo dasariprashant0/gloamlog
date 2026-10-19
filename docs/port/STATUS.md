@@ -38,6 +38,7 @@ Found in the line-by-line review; each has a test.
 - Quit with edits that couldn't be saved is held (⌘Q, the Dock, the menu bar's Quit): the page asks Try again / Copy my text / Quit anyway (`desktop/quit.go`). Not yet tried in the real app.
 - Day page: sync copies and the reminder are one status line (writing redesign spec 2.1); folder problems keep the full banner; other views keep the sync banner.
 - Menu bar: the streak and this week's days under today's state.
+- Claude integration: `log_work` notes carry the folder Claude names (they went to Work when the helper, started before an update, sent none), and the helper reloads itself after an app update. Commits: Git also reads the repositories Claude Code worked in (0 → 89 commits found on 19 Oct), and a day's commits in one project are one line that keeps its count.
 
 ## Cutover (when the checks above pass)
 1. ~~`scripts/release.sh`: build with `desktop/build.sh`~~ done 2026-10-19; `VERSION` in `desktop/build.sh` is 0.7.0. The script releases on the owner's run only.

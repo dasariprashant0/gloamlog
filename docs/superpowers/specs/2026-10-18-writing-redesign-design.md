@@ -148,6 +148,10 @@ strip. Classic pages keep today's layout and editor.
   opens and every 5 minutes while the app runs (the sources cache already limits the cost). A past day has an "Add
   this day's commits" button instead; history is never rewritten by itself. Claude Code prompts and edited-file
   lists are not added.
+  - Revised 2026-10-19 (owner): a day's commits in one project are one line, "48 commits in daily-log · latest: Add
+    CSV export `1a2b3c4`", timed at the latest commit; a newer count replaces it. One line per commit flooded a busy
+    day (89 on 19 Oct). Git also reads the repositories Claude Code worked in, not only added folders: Claude's own
+    record of a commit often has no hash.
 - **Search** is unchanged; marks are searchable text.
 
 ## 5. Where the code goes

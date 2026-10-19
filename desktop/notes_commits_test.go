@@ -27,7 +27,8 @@ func commitNotes(t *testing.T, bullets ...sources.SuggestedBullet) (*Notes, *rec
 }
 
 func commitAt(h, m int, subject, sha string) sources.SuggestedBullet {
-	return sources.SuggestedBullet{Kind: sources.KindCommit, Subject: subject, Sha: sha, Time: time.Date(2026, 10, 14, h, m, 0, 0, time.Local)}
+	return sources.SuggestedBullet{Kind: sources.KindCommit, Subject: subject, Sha: sha, Time: time.Date(2026, 10, 14, h, m, 0, 0, time.Local),
+		Root: "/p/acme", Project: "acme"}
 }
 
 func dayBody(t *testing.T, n *Notes, day string) string {
@@ -49,38 +50,53 @@ func savePage(t *testing.T, n *Notes, day, body string) {
 	}
 }
 
-func TestAddCommitsPutsEachAtItsTimeOnce(t *testing.T) {
-	n, _ := commitNotes(t,
+func TestAddCommitsPutsOneLinePerProjectAtItsLatestCommit(t *testing.T) {
+	bullets := []sources.SuggestedBullet{
 		commitAt(9, 15, "Add CSV export", "1a2b3c4"),
 		commitAt(11, 0, "Fix *the* build", "5d6e7f8"),
 		commitAt(9, 30, "a commit without a hash", ""),
-		sources.SuggestedBullet{Kind: sources.KindPrompt, Text: "Worked on acme: a prompt", Time: time.Date(2026, 10, 14, 9, 40, 0, 0, time.Local)})
+		{Kind: sources.KindPrompt, Text: "Worked on acme: a prompt", Time: time.Date(2026, 10, 14, 9, 40, 0, 0, time.Local)},
+	}
+	n, _ := commitNotes(t, bullets...)
 	savePage(t, n, commitDay, "## Log\n\n- 09:00 started\n- 10:00 standup")
 	added, err := n.AddCommits(commitDay)
-	want := "## Log\n\n- 09:00 started\n- 09:15 Add CSV export `1a2b3c4`\n- 10:00 standup\n- 11:00 Fix \\*the\\* build `5d6e7f8`"
-	if body := dayBody(t, n, commitDay); err != nil || added != 2 || body != want {
+	want := "## Log\n\n- 09:00 started\n- 10:00 standup\n- 11:00 2 commits in acme · latest: Fix \\*the\\* build `5d6e7f8`"
+	if body := dayBody(t, n, commitDay); err != nil || added != 1 || body != want {
 		t.Fatalf("added %d, err %v, page:\n%s", added, err, body)
 	}
 	if again, _ := n.AddCommits(commitDay); again != 0 {
-		t.Fatalf("a hash already on the page is not added again (%d)", again)
+		t.Fatalf("the same count is not written again (%d)", again)
 	}
-	savePage(t, n, commitDay, "## Log\n\n- 09:00 started") // the person deleted both lines
+	// A third commit: the project's line is replaced by the new count, at the new latest time.
+	old := scanCommits
+	scanCommits = func(_, day, _ string, _ core.Calendar, _ core.SourcesPrefs) sources.ScanResult {
+		return sources.ScanResult{Day: day, Bullets: append(bullets, commitAt(12, 5, "Ship it", "9a9a9a9"))}
+	}
+	t.Cleanup(func() { scanCommits = old })
+	if again, _ := n.AddCommits(commitDay); again != 1 {
+		t.Fatalf("a new commit updates the line (%d)", again)
+	}
+	want = "## Log\n\n- 09:00 started\n- 10:00 standup\n- 12:05 3 commits in acme · latest: Ship it `9a9a9a9`"
+	if body := dayBody(t, n, commitDay); body != want {
+		t.Fatalf("replaced line:\n%s", body)
+	}
+	savePage(t, n, commitDay, "## Log\n\n- 09:00 started") // the person deleted the line
 	if again, _ := n.AddCommits(commitDay); again != 0 || dayBody(t, n, commitDay) != "## Log\n\n- 09:00 started" {
-		t.Fatalf("a commit line deleted this session stays deleted: %d, %q", again, dayBody(t, n, commitDay))
+		t.Fatalf("a line deleted this session stays deleted until the count changes: %d, %q", again, dayBody(t, n, commitDay))
 	}
 }
 
 func TestAddCommitsRoutesEachToItsFoldersList(t *testing.T) {
 	work := commitAt(9, 15, "Fix the demo form", "1a2b3c4")
-	work.Root = "/w/site"
+	work.Root, work.Project = "/w/site", "site"
 	home := commitAt(21, 5, "Standup view", "5d6e7f8")
-	home.Root = "/p/gloamlog"
+	home.Root, home.Project = "/p/gloamlog", "gloamlog"
 	n, _ := commitNotes(t, work, home)
 	savePage(t, n, commitDay, "## Work\n\n- 10:00 review\n\n## Personal\n\n- 20:00 run")
 	if added, err := n.AddCommits(commitDay); err != nil || added != 2 {
 		t.Fatalf("added %d, err %v", added, err)
 	}
-	want := "## Work\n\n- 09:15 Fix the demo form `1a2b3c4`\n- 10:00 review\n\n## Personal\n\n- 20:00 run\n- 21:05 Standup view `5d6e7f8`"
+	want := "## Work\n\n- 09:15 1 commit in site · latest: Fix the demo form `1a2b3c4`\n- 10:00 review\n\n## Personal\n\n- 20:00 run\n- 21:05 1 commit in gloamlog · latest: Standup view `5d6e7f8`"
 	if body := dayBody(t, n, commitDay); body != want {
 		t.Fatalf("each in its list at its time:\n%s", body)
 	}
@@ -106,7 +122,7 @@ func TestAddCommitsGoThroughAnOpenPageAsTimedJots(t *testing.T) {
 		t.Fatalf("jot-into-page events = %v", got)
 	}
 	ev := got[0].(map[string]any)
-	if ev["day"] != commitDay || ev["heading"] != core.LogHeading || ev["markdown"] != "- 09:15 Add CSV export `1a2b3c4`" || ev["timed"] != true {
+	if ev["day"] != commitDay || ev["heading"] != core.LogHeading || ev["markdown"] != "- 09:15 1 commit in acme · latest: Add CSV export `1a2b3c4`" || ev["timed"] != true {
 		t.Errorf("event = %v", ev)
 	}
 	if body := dayBody(t, n, commitDay); body != "## Log\n\n- 09:00 started" {

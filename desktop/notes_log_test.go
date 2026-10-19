@@ -104,3 +104,13 @@ func TestLogEditorEdgeCases(t *testing.T) {
 		t.Fatalf("only bullets are added: %+v", a.Lines)
 	}
 }
+
+func TestLogAppendLinesReplacesAProjectsCommitsLine(t *testing.T) {
+	n, _, _, _ := captureNotes(t, true)
+	p, _ := core.ParseLog("## Work\n\n- 09:00 review\n\n## Personal\n\n- 10:00 2 commits in acme · latest: A `1111111`\n- 11:00 run")
+	a := n.LogAppendLines(p, "- 12:00 3 commits in acme · latest: C `3333333`", core.ListPersonal, true)
+	want := "## Work\n\n- 09:00 review\n\n## Personal\n\n- 11:00 run\n- 12:00 3 commits in acme · latest: C `3333333`"
+	if a.Result != "appended" || a.Rendered.Markdown != want {
+		t.Fatalf("%s:\n%s", a.Result, a.Rendered.Markdown)
+	}
+}

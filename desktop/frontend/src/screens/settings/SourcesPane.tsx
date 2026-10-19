@@ -102,7 +102,7 @@ export function SourcesPane({s, set, info, reload}: PaneProps) {
                             ? <div className="row-gap"><span className="muted small">Connected</span><Button variant="line" size="sm" onClick={() => void claudeDo(false)}>Disconnect</Button></div>
                             : <Button variant="line" size="sm" onClick={() => setConfirmClaude(true)}>{claudeState === 'moved' ? 'Reconnect Claude Code' : 'Connect Claude Code'}</Button>}
                 </Setting>
-                <Setting title="Add commits for me" hint="Writes today's commits into a list page by themselves, at their commit time, in the Work or Personal list their folder belongs to: when the page opens, about every 5 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line. A past day has an Add this day's commits button.">
+                <Setting title="Add commits for me" hint="Writes today's commits into a list page by themselves, one line per project (“12 commits in daily-log · latest: …”) that keeps its count up to date, in the Work or Personal list the project's folder belongs to: when the page opens, about every 5 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line. A past day has an Add this day's commits button.">
                     <Switch checked={p.autoAdd} onChange={v => patch({autoAdd: v})} label={on(p.autoAdd)}/>
                 </Setting>
                 <Setting title="Instant update" hint={note || 'Optional. Add this hook to ~/.claude/settings.json so Gloamlog updates the moment a Claude Code session ends, instead of waiting up to 5 minutes.'}>

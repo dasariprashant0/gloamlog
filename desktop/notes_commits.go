@@ -1,10 +1,11 @@
 package main
 
-// Commits on a list page (writing redesign spec, section 4): the day's commits from the ticked projects become lines at their
-// commit time, "- 13:02 Add CSV export `1a2b3c4`", through the capture writer as timed notes (journal first; an open page takes
-// them in its editor; core.InsertTimed puts them in time order) in the list their repository's folder belongs to (Work or
-// Personal, Settings > Page). The short hash is the de-duplication key: a commit whose hash is in the page, waits in the journal,
-// or was added this session is not added again.
+// Commits on a list page (writing redesign spec, section 4, revised 2026-10-19): a day's commits in one project are one line,
+// "- 21:30 48 commits in daily-log · latest: Add CSV export `1a2b3c4`", timed at the latest commit, through the capture writer
+// as a timed note (journal first; an open page takes it in its editor) in the list the project's folder belongs to (Work or
+// Personal, Settings > Page). A newer count replaces the project's line (core.WithoutCommitsLines). A commit whose hash is on
+// the page outside a commits line (the suggestions strip put it there) is not counted; a line the person deleted is not put
+// back this session until the count changes.
 //
 // Today's commits arrive by themselves while "Add commits for me" (sources.autoAdd) is on: when today's page opens, every
 // commitTick, and on gloamlog://refresh. A past day has a button (AddCommits); history is never rewritten by itself. Classic
@@ -13,6 +14,9 @@ package main
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,8 +42,8 @@ func isListHeading(h string) bool {
 	return h == core.LogHeading || h == core.ListWork || h == core.ListPersonal
 }
 
-// AddCommits puts day's commits on day's list page at their commit times, each in its folder's list, and returns how many it
-// added. A classic page gets none. The past-day button calls it; today's commits come by themselves (autoAddCommits).
+// AddCommits puts day's commits on day's list page, one line per project at its latest commit, each in its folder's list, and
+// returns how many lines it wrote. A classic page gets none. The past-day button calls it; today's commits come by themselves (autoAddCommits).
 func (n *Notes) AddCommits(day string) (int, error) {
 	n.mu.Lock()
 	s, cal, home, now := n.settings, n.cal(), n.home, n.now()
@@ -59,34 +63,75 @@ func (n *Notes) AddCommits(day string) (int, error) {
 	}
 	result := scanCommits(home, day, today, cal, prefs)
 
-	have := "" // the page and the notes waiting for it: where a commit already written shows its hash
+	// The page and the notes waiting for it: all, to see a commits line already up to date; and without the commits lines,
+	// to see commits the strip wrote one by one (their hashes).
+	all, others := "", ""
 	doc, err := c.store.Load(day)
 	if err != nil {
 		return 0, err // an unreadable page: its hashes can't be checked, so nothing is added (the next look tries again)
 	}
+	texts := []string{}
 	if doc != nil {
-		have = doc.Body
+		texts = strings.Split(doc.Body, "\n")
 	}
 	for _, it := range c.journal.Pending() {
 		if it.Day == day {
-			have += "\n" + it.Text
+			texts = append(texts, it.Text)
 		}
 	}
-	added := 0
+	for _, t := range texts {
+		all += t + "\n"
+		if !isCommitsText(t) {
+			others += t + "\n"
+		}
+	}
+	type project struct {
+		root, name   string
+		count        int
+		latest       time.Time
+		latestLine   string // the newest commit as it reads: its subject and hash
+		latestCommit string
+	}
+	byRoot := map[string]*project{}
+	var order []string
 	for _, b := range result.Bullets {
 		line, ok := sources.CommitLine(b)
-		if !ok || b.Time.IsZero() || strings.Contains(have, b.Sha) {
+		if !ok || b.Time.IsZero() || strings.Contains(others, b.Sha) {
 			continue
 		}
-		key := day + "|" + b.Sha
+		k := strings.ToLower(b.Root)
+		p := byRoot[k]
+		if p == nil {
+			name := b.Project
+			if name == "" {
+				name = filepath.Base(b.Root)
+			}
+			p = &project{root: b.Root, name: name}
+			byRoot[k] = p
+			order = append(order, k)
+		}
+		p.count++
+		if b.Time.After(p.latest) {
+			p.latest, p.latestLine, p.latestCommit = b.Time, line, b.Sha
+		}
+	}
+	sort.Strings(order)
+	added := 0
+	for _, k := range order {
+		p := byRoot[k]
+		line := core.CommitsLine(p.count, p.name, p.latestLine)
+		if strings.Contains(all, line) {
+			continue // this count is on the page (or on its way) already
+		}
+		key := day + "|" + k + "|" + strconv.Itoa(p.count) + "|" + p.latestCommit
 		c.mu.Lock()
 		seen := c.commits[key]
 		c.commits[key] = true
 		c.mu.Unlock()
 		if seen {
-			continue // added this session: a line the person deleted stays deleted
+			continue // written this session: a line the person deleted stays deleted until the count changes
 		}
-		if _, ok := c.writer.CaptureTimed(line, "git", s.Lists.ListFor(b.Root), b.Time); ok {
+		if _, ok := c.writer.CaptureTimed(line, "git", s.Lists.ListFor(p.root), p.latest); ok {
 			added++
 		}
 	}
@@ -94,6 +139,15 @@ func (n *Notes) AddCommits(day string) (int, error) {
 		c.notify()
 	}
 	return added, nil
+}
+
+// isCommitsText is true for a commits line as a page holds it ("- 21:30 48 commits in …") or as a waiting note ("48 commits in …").
+func isCommitsText(t string) bool {
+	t = strings.TrimPrefix(strings.TrimSpace(t), "- ")
+	if len(t) > 6 && t[2] == ':' && t[5] == ' ' {
+		t = t[6:]
+	}
+	return core.CommitsLineProject(t) != ""
 }
 
 // autoAddCommits adds today's commits while "Add commits for me" is on. Off, or nothing new: it tries again next time.

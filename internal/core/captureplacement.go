@@ -159,6 +159,9 @@ func applyTimed(item CaptureItem, body string) (string, bool) {
 	if list == "" {
 		list = ListWork
 	}
+	if project := CommitsLineProject(l.Text); project != "" {
+		p.Lines = WithoutCommitsLines(p.Lines, project) // a project's newer commit count replaces its line (commitsline.go)
+	}
 	target := p.Target(list)
 	l.Section = target
 	var mine, rest []LogLine

@@ -53,6 +53,13 @@ type LogAppended struct {
 // page open. The lines come back list by list, in page order.
 func (n *Notes) LogAppendLines(page core.LogPage, markdown, list string, timed bool) LogAppended {
 	add, _ := core.ParseLog("## " + core.LogHeading + "\n" + markdown)
+	if timed {
+		for _, l := range add.Lines {
+			if project := core.CommitsLineProject(l.Text); project != "" {
+				page.Lines = core.WithoutCommitsLines(page.Lines, project) // a newer commit count replaces the line (core/commitsline.go)
+			}
+		}
+	}
 	section := page.Target(list)
 	have := map[string]bool{}
 	var mine []core.LogLine // the target list's lines
