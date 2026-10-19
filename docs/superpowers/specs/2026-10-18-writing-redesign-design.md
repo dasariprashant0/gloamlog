@@ -1,6 +1,7 @@
 # Writing redesign: one log list, in time order
 
-Status: approved 2026-10-18. Pieces 1-4 built, with the Work / Personal split (2026-10-19, its own spec) between 3 and 4. Builds on the Go + Wails port
+Status: approved 2026-10-18. Pieces 1-4 built, with the Work / Personal split (2026-10-19, its own spec) between 3 and 4. The list page was made quieter on 2026-10-19
+([2026-10-19-quiet-day-page-design.md](2026-10-19-quiet-day-page-design.md)). Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
