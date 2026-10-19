@@ -297,6 +297,14 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
 
     // What "Copy my text" copies: the editor that is showing.
     const pageText = async () => listMode.current && logRef.current ? logRef.current.markdown() : editor.getMarkdown();
+    // "Copy my text" is the way out when saving fails: if copying fails too, say so instead of failing silently.
+    const copyText = async (text: () => Promise<string>) => {
+        try {
+            await navigator.clipboard.writeText(await text());
+        } catch (e) {
+            onToast(`Couldn't copy the text: ${String((e as Error)?.message ?? e)}`);
+        }
+    };
 
     const skipped = !!page?.isSkipped && !writeAnyway;
     const [weekday, ...rest] = (page?.title ?? '').split(' ');
@@ -308,10 +316,10 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             <PageNav day={day} today={today} onDay={onDay}/>
             {folderError && <Banner tone="danger"><strong>Gloamlog can't save to your log folder.</strong> {folderError}</Banner>}
             {saveError && <Banner tone="danger" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
-                <Button variant="line" size="sm" onClick={async () => navigator.clipboard.writeText(`# ${day}\n\n${await pageText()}`)}>Copy my text</Button></div>}>
+                <Button variant="line" size="sm" onClick={() => void copyText(async () => `# ${day}\n\n${await pageText()}`)}>Copy my text</Button></div>}>
                 <strong>Couldn't save this page.</strong> {saveError}</Banner>}
             {orphanCount > 0 && <Banner tone="warning" action={<div className="row-gap"><Button variant="line" size="sm" onClick={() => void flush()}>Try again</Button>
-                <Button variant="line" size="sm" onClick={() => navigator.clipboard.writeText([...orphans.current].map(([d, md]) => `# ${d}\n\n${md}`).join('\n\n'))}>Copy my text</Button></div>}>
+                <Button variant="line" size="sm" onClick={() => void copyText(async () => [...orphans.current].map(([d, md]) => `# ${d}\n\n${md}`).join('\n\n'))}>Copy my text</Button></div>}>
                 <strong>{orphanCount === 1 ? "A page you left couldn't be saved yet." : `${orphanCount} pages you left couldn't be saved yet.`}</strong> Its text is kept here and saved as soon as it can be.</Banner>}
             {loadError && <Banner tone="danger" action={<Button variant="line" size="sm" onClick={() => onDay(day)}>Try again</Button>}><strong>This page couldn't be opened for editing.</strong> {loadError}</Banner>}
             {raw && <Banner tone="warning"><strong>This page can't be edited safely.</strong> Its text is shown as it is in the file, which is untouched.</Banner>}
