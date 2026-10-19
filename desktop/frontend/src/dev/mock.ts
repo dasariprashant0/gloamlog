@@ -206,5 +206,6 @@ export const Windows = {
     HideJot: () => later(undefined),
     ShowSettings: () => { window.open('/settings.html', '_blank'); return later(undefined); },
     CheckForUpdates: () => later(undefined),
+    OpenLicences: () => later(undefined),
     RunSetup: () => later(undefined),
 };

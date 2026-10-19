@@ -22,6 +22,14 @@ export function HideJot(): $CancellablePromise<void> {
 }
 
 /**
+ * OpenLicences opens the third-party licences the app bundle carries (Settings > About; build.sh copies
+ * THIRD_PARTY_LICENSES.md into Contents/Resources) in TextEdit.
+ */
+export function OpenLicences(): $CancellablePromise<void> {
+    return $Call.ByID(1345189815);
+}
+
+/**
  * RunSetup shows the main window and opens the setup sheet there again (Settings > About > Run setup again…).
  */
 export function RunSetup(): $CancellablePromise<void> {

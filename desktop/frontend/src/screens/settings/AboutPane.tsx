@@ -1,8 +1,10 @@
+import {useState} from 'react';
 import {Button, Display} from '@personal/ui/react';
 import {Windows} from '../../api';
-import {Panel, Soon, type PaneProps} from './shared';
+import {errText, Panel, type PaneProps} from './shared';
 
 export function AboutPane({info}: PaneProps) {
+    const [error, setError] = useState('');
     const version = info.version && info.version !== 'dev' ? `Version ${info.version}` : 'Development build';
     return (
         <Panel>
@@ -14,10 +16,8 @@ export function AboutPane({info}: PaneProps) {
                 <Button variant="line" size="sm" onClick={() => void Windows.CheckForUpdates()}>Check for updates…</Button>
                 {/* Also in the main window: the setup sheet starts from the current settings there. */}
                 <Button variant="line" size="sm" onClick={() => void Windows.RunSetup()}>Run setup again…</Button>
-                <div className="row-gap">
-                    <Button variant="line" size="sm" disabled title="Open the licences of the bundled editor">Third-party licences</Button>
-                    <Soon/>
-                </div>
+                <Button variant="line" size="sm" onClick={() => { setError(''); Windows.OpenLicences().catch(e => setError(errText(e))); }}>Third-party licences</Button>
+                {error && <p className="small" role="alert">{error}</p>}
             </div>
             <p className="small muted">Released under the MIT licence.</p>
         </Panel>

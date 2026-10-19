@@ -17,8 +17,8 @@ import * as sources$0 from "../internal/sources/models.js";
 import * as $models from "./models.js";
 
 /**
- * AddCommits puts day's commits on day's list page at their commit times, each in its folder's list, and returns how many it
- * added. A classic page gets none. The past-day button calls it; today's commits come by themselves (autoAddCommits).
+ * AddCommits puts day's commits on day's list page, one line per project at its latest commit, each in its folder's list, and
+ * returns how many lines it wrote. A classic page gets none. The past-day button calls it; today's commits come by themselves (autoAddCommits).
  */
 export function AddCommits(day: string): $CancellablePromise<number> {
     return $Call.ByID(979259896, day);

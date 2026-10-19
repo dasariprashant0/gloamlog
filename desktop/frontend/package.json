@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "dev:mock": "vite --mode mock",
-    "test": "node --test src/log/model.test.ts"
+    "test": "node --test src/log/model.test.ts",
+    "licences": "node scripts/licences.mjs"
   },
   "dependencies": {
     "@milkdown/crepe": "7.22.2",
