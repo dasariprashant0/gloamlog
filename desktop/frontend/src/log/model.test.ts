@@ -115,3 +115,25 @@ test('summary counts real lines, next and blocked; Other blocks do not count', (
     assert.equal(M.summary([L('a'), L('b', {mark: 'next'}), L('c', {mark: 'blocked'}), L('p', {other: true})]), '3 lines, 1 next, 1 blocked');
     assert.equal(M.summary([L('a')]), '1 line');
 });
+
+test('standup groups lines by mark in file order; other blocks and empty lines are left out', () => {
+    const lines = [L('a'), L('b', {mark: 'next'}), L('a note', {other: true}), L(''), L('c', {mark: 'blocked'}),
+        L('call Sam', {task: true, mark: 'next'}), L('d')];
+    assert.deepEqual(M.standup(lines), {done: [0, 6], next: [1, 5], blocked: [4]});
+});
+
+test('standupText is the spec example: three titled groups, times dropped', () => {
+    const lines = [
+        L('Fixed the login redirect loop', {time: '09:40'}),
+        L('Waiting on API keys from ops', {time: '15:30', mark: 'blocked'}),
+        L('Write the migration test', {time: '17:45', mark: 'next'}),
+    ];
+    assert.equal(M.standupText(lines),
+        'Done\n- Fixed the login redirect loop\nNext\n- Write the migration test\nBlocked\n- Waiting on API keys from ops');
+});
+
+test('standupText leaves out empty groups and images, keeps markdown, and indents continuation rows', () => {
+    const lines = [L('Shipped **CSV export** `1a2b3c4` ![](assets/a.png)\nNeeds a note'), L('![](assets/b.png)'), L('x', {other: true})];
+    assert.equal(M.standupText(lines), 'Done\n- Shipped **CSV export** `1a2b3c4`\n  Needs a note');
+    assert.equal(M.standupText([]), '');
+});

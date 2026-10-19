@@ -184,3 +184,29 @@ export function summary(lines: Line[]): string {
     if (blocked) parts.push(`${blocked} blocked`);
     return parts.join(', ');
 }
+
+export type Group = 'done' | 'next' | 'blocked';
+/** The standup groups in the order they are shown and copied. */
+export const GROUPS: [Group, string][] = [['done', 'Done'], ['next', 'Next'], ['blocked', 'Blocked']];
+
+/** The standup view: indexes into lines by group, in file order. Other blocks and empty lines are left out. */
+export function standup(lines: Line[]): Record<Group, number[]> {
+    const g: Record<Group, number[]> = {done: [], next: [], blocked: []};
+    lines.forEach((l, i) => { if (!l.other && l.text.trim()) g[l.mark || 'done'].push(i); });
+    return g;
+}
+
+// A line as standup text: images dropped (they mean nothing pasted into a chat), continuation rows indented under it.
+const plain = (text: string) =>
+    text.replace(/!\[[^\]]*\]\([^)]*\)/g, '').split('\n').map(r => r.trim()).filter(Boolean).join('\n  ');
+
+/** What Copy standup copies: each group that has lines, as its title and bullets; no times. */
+export function standupText(lines: Line[]): string {
+    const g = standup(lines);
+    const out: string[] = [];
+    for (const [key, title] of GROUPS) {
+        const rows = g[key].map(i => plain(lines[i].text)).filter(Boolean);
+        if (rows.length) out.push(title, ...rows.map(r => `- ${r}`));
+    }
+    return out.join('\n');
+}
