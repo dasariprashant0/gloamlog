@@ -18,6 +18,7 @@ demo-video/public/
 node_modules/
 desktop/Gloamlog.app/
 desktop/Gloamlog.zip
+desktop/Gloamlog.zip.sha256
 
 # a code-review tool writes notes here
 .cto-toolkit/

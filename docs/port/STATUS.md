@@ -23,9 +23,7 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 - Claude Code: Connect on a Mac where `claude` is installed; the helper must sit at `Gloamlog.app/Contents/Resources/claude/gloamlog-mcp.py` (build.sh copies it).
 
 ## Known gaps vs the Swift app
-- Menu bar is a native menu, not the Swift popover (no Jot field, streak, week strip, snooze in it).
-- Quit with unsaved edits: no "Your latest edits couldn't be saved" alert yet (a failed save is kept in memory and retried, with a banner, while the app runs).
-- App-level sync banners still show apart from the page's status line (writing redesign spec 2.1).
+- Menu bar is a native menu, not the Swift popover: today's state, the streak and this week's days are text lines; no Jot field (Jot… opens the panel) and no snooze in it.
 - Not ported: VoiceOver announcements, Dock bounce, time-zone change while running, iCloud's own download-status query (polling instead, up to 3 s lag), Share… in review export, RTF in rich copy.
 
 ## Safer than the Swift app, on purpose
@@ -36,7 +34,12 @@ Found in the line-by-line review; each has a test.
 - A settings file that can't be read (permissions, disk) stays in place and blocks saves; only one that reads but won't decode is set aside.
 - Removing the CLAUDE.md block tidies only where it was; Swift collapsed blank lines across the whole file.
 
+## Done since the gap list (2026-10-19)
+- Quit with edits that couldn't be saved is held (⌘Q, the Dock, the menu bar's Quit): the page asks Try again / Copy my text / Quit anyway (`desktop/quit.go`). Not yet tried in the real app.
+- Day page: sync copies and the reminder are one status line (writing redesign spec 2.1); folder problems keep the full banner; other views keep the sync banner.
+- Menu bar: the streak and this week's days under today's state.
+
 ## Cutover (when the checks above pass)
-1. `scripts/release.sh`: build with `desktop/build.sh` instead of `app/build.sh`, and bump `VERSION` there (now 0.7.0).
+1. ~~`scripts/release.sh`: build with `desktop/build.sh`~~ done 2026-10-19; `VERSION` in `desktop/build.sh` is 0.7.0. The script releases on the owner's run only.
 2. Release, then `scripts/update-tap.sh` for Homebrew; the Swift app's updater should then offer it to existing users (same bundle id and checksum file; not yet tried).
 3. Remove `app/` and `editor-web/` (the editor now lives in `desktop/frontend/src/editor/`).
