@@ -1,6 +1,6 @@
 # Writing redesign: one log list, in time order
 
-Status: approved 2026-10-18. Pieces 1, 2 and 3 built, then the Work / Personal split (2026-10-19, its own spec); 4 (commits) next. Builds on the Go + Wails port
+Status: approved 2026-10-18. Pieces 1-4 built, with the Work / Personal split (2026-10-19, its own spec) between 3 and 4. Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
@@ -140,9 +140,9 @@ strip. Classic pages keep today's layout and editor.
   PDF and export are unchanged.
 - **Carry-over** on list pages follows the marks (section 2); on classic pages it keeps `CarryOverHeadings`.
 - **Jot** (⌃⌥J) and **`log_work`**: on a list page the line goes at the end of `## Log`, through the existing
-  journal-first `DayWriter` (notes arrive within seconds; only commits use time order). The suggestions strip, while
-  it exists, adds to Log on a list page too. On a classic page they keep going under `JotsHeading`.
-- **Commits:** for today only, commits from the projects ticked in Settings > Sources are added as lines at their
+  journal-first `DayWriter` (notes arrive within seconds; only commits use time order). The suggestions strip shows on
+  classic pages only. On a classic page they keep going under `JotsHeading`.
+- **Commits:** for today only, while Settings > Sources > "Add commits for me" is on, commits from the projects ticked in Settings > Sources are added as lines at their
   commit time, through `DayWriter`, skipped when their short hash is already on the page. Checked when the page
   opens and every 5 minutes while the app runs (the sources cache already limits the cost). A past day has an "Add
   this day's commits" button instead; history is never rewritten by itself. Claude Code prompts and edited-file
@@ -155,8 +155,9 @@ strip. Classic pages keep today's layout and editor.
   Mark, Raw}`; serialize (untouched lines byte for byte); `InsertTimed`; `OpenLines`. Golden tests.
 - `internal/core` changes: `DefaultTemplate`; carry-over picks marks on list pages; review groups map classic
   headings; capture placement targets `## Log` when the page has it; word count drops times, marks and the hash.
-- `desktop/notes_*.go`: `CarryOffer(day)` / `CarryDismiss(day, key)`, `AddCommits(day)`; the commit
-  timer next to the reminder loop.
+- `desktop/notes_*.go`: `CarryOffer(day)` / `CarryDismiss(day, key)`; `notes_commits.go`: `AddCommits(day)` and the
+  5-minute commit timer. A commit is a timed capture note (`CaptureItem.Timed`, `DayWriter.CaptureTimed`) routed to its
+  folder's list: `ApplyJot` and `LogAppendLines` put it by its time with `InsertTimed`.
 - `desktop/frontend/src/screens/LogPage.tsx` (new) with `LogLine.tsx`, `CarryBox.tsx`, `StatusLine.tsx`; `DayPage`
   picks `LogPage` or the classic editor by page kind. App-only styles in `app.css` (DESIGN.md §11); move a piece to
   `@personal/ui` only when a second app needs it.

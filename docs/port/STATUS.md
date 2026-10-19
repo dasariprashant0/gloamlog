@@ -9,6 +9,7 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 - **Writing redesign, piece 2 (the list page)** ([plan](../superpowers/plans/2026-10-18-writing-redesign-2-page.md)): line editor (rows, add field, ⌘1-3 while typing, Enter / ⇧Enter / ↑↓ / Backspace / ⌘Z / Esc, time edit, image paste), From yesterday (Done / Keep / Drop), Edit whole page; saves, jots and suggestions go through the same pipeline.
 - **Writing redesign, piece 3 (standup)** ([plan](../superpowers/plans/2026-10-19-writing-redesign-3-standup.md)): List | Standup switch on a list page (Done / Next / Blocked, times dropped; kept across ⌘[ / ⌘]) and Copy standup (plain text, images left out).
 - **Work and Personal lists** ([spec](../superpowers/specs/2026-10-19-work-personal-split-design.md), [plan](../superpowers/plans/2026-10-19-work-personal-split.md)): new days have `## Work` and `## Personal`; Claude Code sessions, commits and `log_work` notes go to a list by folder (Settings > Page), quick notes to the chosen list; From yesterday and suggestions keep their list; standup and the review copy are Work only, Personal shown apart. `## Log` pages stay one list.
+- **Writing redesign, piece 4 (commits)** ([plan](../superpowers/plans/2026-10-19-writing-redesign-4-commits.md)): with "Add commits for me" on, today's commits go onto its list page at their commit time, in their folder's list (page open, every 5 minutes, `gloamlog://refresh`), once each by short hash; a past list page has "Add this day's commits"; the suggestions strip shows on classic pages only.
 - **Screens**: sidebar, calendar, day page (safe autosave, day switching, carry-over, suggestions strip, reminder notice, still-downloading page), search, go to date, catch up + session, skip / restore / conflict dialogs, sync chip, review (week / month / year / range, copy, export), Settings (7 panes), onboarding, What's new, update dialog.
 - **Run it**: `bash desktop/dev.sh` (live reload) · `bash desktop/build.sh` (makes `desktop/Gloamlog.app` + zip) · `npm run dev:mock` in `desktop/frontend` (UI in a browser, fake data).
 
@@ -23,7 +24,7 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 - Menu bar is a native menu, not the Swift popover (no Jot field, streak, week strip, snooze in it).
 - Quit with unsaved edits: no "Your latest edits couldn't be saved" alert yet (a failed save is kept in memory and retried, with a banner, while the app runs).
 - App-level sync banners still show apart from the page's status line (writing redesign spec 2.1).
-- Not ported: auto-add commits (`sources.autoAdd`), VoiceOver announcements, Dock bounce, time-zone change while running, iCloud's own download-status query (polling instead, up to 3 s lag), Share… in review export, RTF in rich copy.
+- Not ported: VoiceOver announcements, Dock bounce, time-zone change while running, iCloud's own download-status query (polling instead, up to 3 s lag), Share… in review export, RTF in rich copy.
 
 ## Safer than the Swift app, on purpose
 Found in the line-by-line review; each has a test.
