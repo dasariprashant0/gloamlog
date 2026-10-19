@@ -11,8 +11,11 @@ const OPEN_KEY = 'gloamlog.suggestions.expanded';
 const read = <T,>(k: string, fallback: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
 const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage off: not remembered */ } };
 
+/** Lines for one list of the page ("Work" / "Personal"; a page with one list takes them all). */
+export type InsertPart = {list: string; markdown: string; count: number};
+
 export function SuggestionsStrip({day, pageMarkdown, onInsert, onToast}: {
-    day: string; pageMarkdown: () => string; onInsert: (heading: string, markdown: string, count: number) => void;
+    day: string; pageMarkdown: () => string; onInsert: (heading: string, parts: InsertPart[]) => void;
     onToast: (message: string, undo?: () => void) => void;
 }) {
     const [data, setData] = useState<Suggestions | null>(null);
@@ -54,14 +57,20 @@ export function SuggestionsStrip({day, pageMarkdown, onInsert, onToast}: {
     }
     async function insert(list: SuggestedBullet[]) {
         if (!list.length) return;
-        let lines: string;
+        // Each bullet goes to the list its project belongs to (Work unless Settings says Personal).
+        const byList = new Map<string, SuggestedBullet[]>();
+        for (const b of list) {
+            const to = data!.lists?.[b.id] || 'Work';
+            byList.set(to, [...(byList.get(to) ?? []), b]);
+        }
+        const parts: InsertPart[] = [];
         try {
-            lines = await Notes.SuggestionLines(list);
+            for (const [to, bs] of byList) parts.push({list: to, markdown: await Notes.SuggestionLines(bs), count: bs.length});
         } catch (e) {
             onToast(`Couldn't add the suggestions. ${String((e as Error)?.message ?? e)}`);
             return;
         }
-        onInsert(data!.heading, lines, list.length);
+        onInsert(data!.heading, parts);
         setAdded(a => [...a, ...list.map(b => b.id)]);
         setTicked([]);
     }

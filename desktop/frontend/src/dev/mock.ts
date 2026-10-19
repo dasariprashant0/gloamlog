@@ -22,7 +22,8 @@ const words = (body: string) => body.split('\n').filter(l => !l.trim().startsWit
 const settings: Settings = {
     reminderMinutes: 1015, weekdays: [2, 3, 4, 5, 6], mode: 'strict' as Settings['mode'], snoozeMinutes: 15,
     storageFolder: '/Users/someone/Gloamlog', launchAtLogin: true,
-    template: '## Log',
+    template: '## Work\n\n## Personal',
+    lists: {work: ['/Users/someone/Projects/zuddl'], personal: ['/Users/someone/Projects/personal'], jots: 'Work'},
     logTemplateSeen: true, carryOverHeadings: ['To do next', 'Pending / blocked'], minWords: 20, onboarded: true, appearance: 'system' as Settings['appearance'],
     catchUpWindowDays: 30, closedAppReminders: true, showMenuBar: true,
     capture: {hotKey: {keyCode: 38, carbonModifiers: 6144}, timestamps: true, todoShorthand: true, jotsHeading: 'Jots', jotsCountTowardLogged: false},
@@ -42,8 +43,10 @@ const days = new Map<string, {body: string; skipped?: string}>();
         if (i === 9) { days.set(d, {body: '', skipped: 'Holiday'}); continue; }
         const short = i % 7 === 3;
         const done = lines[i % lines.length];
-        if (i <= 3) {
-            days.set(d, {body: `## Log\n\n- 09:40 ${done}\n- 11:15 ${lines[(i + 2) % lines.length]}\n- 15:30 Waiting on the API keys from ops #blocked\n- 17:45 Write the migration test #next`});
+        if (i <= 4) { // the most recent days are list pages: older ones have one list, the newest Work and Personal
+            const work = `- 09:40 ${done}\n- 15:30 Waiting on the API keys from ops #blocked\n- 17:45 Write the migration test #next`;
+            days.set(d, {body: i === 4 ? `## Log\n\n${work}` :
+                `## Work\n\n${work}\n\n## Personal\n\n- 21:10 ${lines[(i + 2) % lines.length]}\n- 22:00 Call mum about the weekend #next`});
             continue;
         }
         days.set(d, {body: short ? `## What I did\n- Looked at ${done.toLowerCase()}` :
@@ -127,11 +130,12 @@ export const Notes = {
                         const present = new Set(parseLog(f?.body ?? '').page.lines.map(l => l.text.toLowerCase())); // like offerFor
                         const open = list.page.lines.filter(l => !l.other && l.mark && !dismissed.has(`${day}|${l.text.toLowerCase()}`) && !present.has(l.text.toLowerCase()));
                         if (open.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}),
-                            items: open.map(l => l.text), marks: open.map(l => l.mark)} as unknown as CarryCard;
+                            items: open.map(l => l.text), marks: open.map(l => l.mark),
+                            lists: open.map(l => { const n = list.page.sections[l.section ?? 0].name; return n === 'Log' ? 'Work' : n; })} as unknown as CarryCard;
                         break;
                     }
                     const items = prev.body.split('\n## To do next\n')[1]?.split('\n').filter(l => l.startsWith('- ')).map(l => l.replace(/^- (\[ \] )?/, '')) ?? [];
-                    if (items.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}), items, marks: []};
+                    if (items.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}), items, marks: [], lists: []};
                     break;
                 }
             }
@@ -175,7 +179,8 @@ export const Notes = {
             {id: 'c1', kind: 'commit', project: 'gloamlog', text: 'Committed: Port the day page to React (gloamlog 3fa2c19)', detail: '', evidence: '3fa2c19', time: ''},
             {id: 's1', kind: 'session', project: 'gloamlog', text: 'Worked in gloamlog with Claude Code for about 1h 20m (3 sessions, 12 files edited)', detail: 'DayPage.tsx, notes.go, app.css', evidence: 'Worked in gloamlog with Claude Code', time: ''},
             {id: 'p1', kind: 'prompt', project: 'design-system', text: 'Worked on design-system: make the theme follow other windows', detail: '', evidence: 'make the theme follow other windows', time: ''},
-        ]}}),
+            {id: 'c2', kind: 'commit', project: 'zuddl-website', text: 'Committed: Fix the demo form redirect (zuddl-website 9b1e2a0)', detail: '', evidence: '9b1e2a0', time: ''},
+        ]}, lists: {c1: 'Personal', s1: 'Personal', p1: 'Personal', c2: 'Work'}}),
     SuggestionLines: (bullets: {text: string}[]) => later(bullets.map(b => '- ' + b.text).join('\n')),
     AlreadyAdded: (bullets: {id: string; evidence: string}[], page: string) => later(bullets.filter(b => b.evidence && page.includes(b.evidence)).map(b => b.id)),
     SourceProjects: () => later([]),

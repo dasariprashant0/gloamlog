@@ -6,7 +6,7 @@ import {Banner, Button, Display, Segmented} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes, Windows, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
-import {SuggestionsStrip} from './SuggestionsStrip';
+import {SuggestionsStrip, type InsertPart} from './SuggestionsStrip';
 import {DownloadingPage} from './SyncChip';
 import {ReminderNotice} from './ReminderNotice';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
@@ -134,27 +134,36 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         (window as unknown as {__dlDoc?: string}).__dlDoc = d;
     }
 
-    // Adds lines under a heading as one undoable step in the live page; the editor replies with appendResult.
-    const insertUnder = useCallback((heading: string, markdown: string, count: number) => {
+    // Adds the suggestions strip's lines: on a list page each part goes to its own list, one after the other (each append starts
+    // from the last one's lines); on a classic page all of them go under heading as one undoable step (the editor replies with
+    // appendResult).
+    const insertUnder = useCallback((heading: string, parts: InsertPart[]) => {
         const d = loaded.current;
-        if (!d) return;
-        if (listMode.current && logRef.current) {
-            void logRef.current.appendLines(markdown).then(r => {
-                if (r.result === 'appended') { void save(d, r.markdown); onToast(`Added ${plural(count, 'line')}.`); }
+        const count = parts.reduce((n, p) => n + p.count, 0);
+        if (!d || !count) return;
+        const log = logRef.current;
+        if (listMode.current && log) {
+            void (async () => {
+                let last = '';
+                for (const p of parts) {
+                    const r = await log.appendLines(p.markdown, p.list);
+                    if (r.result === 'appended') last = r.markdown;
+                }
+                if (last) { void save(d, last); onToast(`Added ${plural(count, 'line')}.`); }
                 else onToast('Those lines are already on the page.');
-            }, e => onToast(`Couldn't add the lines: ${String(e?.message ?? e)}`));
+            })().catch(e => onToast(`Couldn't add the lines: ${String(e?.message ?? e)}`));
             return;
         }
         appending.current = count;
-        editor.appendToSection(`add-${Date.now()}`, d, heading, markdown, {unlessPresent: true});
+        editor.appendToSection(`add-${Date.now()}`, d, heading, parts.map(p => p.markdown).join('\n'), {unlessPresent: true});
     }, [save, onToast]);
 
     // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
-    useEffect(() => on<{id: string; day: string; heading: string; markdown: string}>('jot-into-page', j => {
+    useEffect(() => on<{id: string; day: string; heading: string; list?: string; markdown: string}>('jot-into-page', j => {
         const notLoaded = () => void Notes.JotPlaced(j.id, 'notLoaded', '').catch(() => {}); // capture.go writes the file after 4 s
         if (loaded.current !== j.day) return notLoaded();
         if (listMode.current && logRef.current) {
-            logRef.current.appendLines(j.markdown).then(r => {
+            logRef.current.appendLines(j.markdown, j.list || 'Work').then(r => {
                 void Notes.JotPlaced(j.id, r.result, r.markdown).catch(() => {});
                 if (r.result === 'appended') void save(j.day, r.markdown);
             }, notLoaded);
@@ -334,7 +343,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
             {/* Hidden, not unmounted, in Standup: lines already kept or dropped must not be offered again on the way back. */}
             {listPage && !full && page?.carry && !skipped && (
                 <div hidden={view !== 'list'}>
-                    <CarryBox key={day} day={day} card={page.carry} onAdd={(t, m) => logRef.current?.addLine(t, m)} onToast={onToast}/>
+                    <CarryBox key={day} day={day} card={page.carry} onAdd={(t, m, l) => logRef.current?.addLine(t, m, l)} onToast={onToast}/>
                 </div>
             )}
 

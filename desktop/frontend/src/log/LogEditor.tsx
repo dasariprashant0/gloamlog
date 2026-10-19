@@ -12,10 +12,10 @@ import * as M from './model';
 export type LogEditorHandle = {
     /** The page as markdown, the line being edited included. */
     markdown(): Promise<string>;
-    /** Adds the bullets in markdown at the end (a jot, the suggestions strip). */
-    appendLines(markdown: string): Promise<{result: string; markdown: string}>;
-    /** From yesterday's Keep / Done: a line at the end, at the current time. */
-    addLine(text: string, mark: M.Mark): void;
+    /** Adds the bullets in markdown at the end of list ("Work" / "Personal"; a one-list page takes them): a jot, suggestions. */
+    appendLines(markdown: string, list: string): Promise<{result: string; markdown: string}>;
+    /** From yesterday's Keep / Done: a line at the end of list, at the current time. */
+    addLine(text: string, mark: M.Mark, list: string): void;
 };
 
 /** What the list page shows: the rows to edit, or the same lines as a standup. */
@@ -49,6 +49,10 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
 
     const act = useCallback((f: (s: M.State) => M.State) => { dirty.current = true; setState(f); }, []);
 
+    // The page's lists ("Log", or "Work" and "Personal"), by section index; a routed line goes to the list of its name, else the first.
+    const names = (page.sections ?? []).map(s => s.name);
+    const targetOf = (list: string) => Math.max(0, names.indexOf(list));
+
     const render = useCallback((lines: M.Line[]) => {
         const n = ++seq.current;
         return Notes.LogRender({...page, lines} as unknown as LogPage).then(r => {
@@ -74,13 +78,18 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
             clearTimeout(timer.current);
             return (await render(M.withDraft(stateRef.current))).markdown;
         },
-        async appendLines(md) {
-            const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md);
-            if (a.result === 'appended') { dirty.current = true; setState(s => M.adopt(s, a.lines as unknown as M.Line[])); }
+        async appendLines(md, list) {
+            const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md, list);
+            if (a.result === 'appended') {
+                // stateRef first: a second append right after this one (another list) must start from these lines
+                dirty.current = true;
+                stateRef.current = M.adopt(stateRef.current, a.lines as unknown as M.Line[]);
+                setState(stateRef.current);
+            }
             return {result: a.result, markdown: a.rendered.markdown};
         },
-        addLine(text, mark) { act(s => M.append(s, text, now(), mark)); },
-    }), [page, render, act]);
+        addLine(text, mark, list) { act(s => M.append(s, text, now(), mark, targetOf(list))); },
+    }), [page, render, act]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
         const file = [...e.clipboardData.files].find(f => f.type.startsWith('image/'));
@@ -115,19 +124,27 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
     }
 
     // The same state in both views: the draft, undo and the From yesterday picks survive a switch. html is per withDraft line.
-    if (view === 'standup') return <StandupView lines={M.withDraft(state)} html={html} onToast={onToast}/>;
+    if (view === 'standup') return <StandupView lines={M.withDraft(state)} html={html} names={names} onToast={onToast}/>;
 
+    // A split page shows each list under its name with its own add field; a one-list page looks as it always did.
+    const lists = names.length > 1 ? names : [''];
     return (
         <div className="log">
-            <ul className="log-list" aria-label="Lines">
-                {state.lines.map((l, i) => (
-                    <LogRow key={i} line={l} editing={state.edit === i} draft={state.draft} html={html[M.renderIndex(state, i)] ?? ''}
-                            readOnly={readOnly} onEdit={() => act(s => M.focus(s, i))} onDraft={d => act(s => M.setDraft(s, d))}
-                            onKey={e => onKey(e, i)} onPaste={onPaste} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
-                            onTime={t => act(s => M.setTime(s, i, t))}/>
-                ))}
-            </ul>
-            {!readOnly && <AddField autoFocus={autoFocus} onAdd={(text, mark) => act(s => M.append(s, text, now(), mark))}/>}
+            {lists.map((name, si) => (
+                <section key={si} className="log-section" aria-label={name || undefined}>
+                    {name && <h2 className="label log-list-title">{name}</h2>}
+                    <ul className="log-list" aria-label={name ? `${name} lines` : 'Lines'}>
+                        {state.lines.map((l, i) => (M.sec(l) !== si && name ? null :
+                            <LogRow key={i} line={l} editing={state.edit === i} draft={state.draft} html={html[M.renderIndex(state, i)] ?? ''}
+                                    readOnly={readOnly} onEdit={() => act(s => M.focus(s, i))} onDraft={d => act(s => M.setDraft(s, d))}
+                                    onKey={e => onKey(e, i)} onPaste={onPaste} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
+                                    onTime={t => act(s => M.setTime(s, i, t))}/>
+                        ))}
+                    </ul>
+                    {!readOnly && <AddField id={`log-add-${si}`} list={name} autoFocus={autoFocus && si === 0} hint={si === lists.length - 1}
+                                            onAdd={(text, mark) => act(s => M.append(s, text, now(), mark, si))}/>}
+                </section>
+            ))}
         </div>
     );
 });
@@ -178,29 +195,33 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
     );
 }
 
-function AddField({autoFocus, onAdd}: {autoFocus: boolean; onAdd: (text: string, mark: M.Mark) => void}) {
+function AddField({id, list, autoFocus, hint, onAdd}: {
+    id: string; list: string; autoFocus: boolean; hint: boolean; onAdd: (text: string, mark: M.Mark) => void;
+}) {
     const [text, setText] = useState('');
     const add = (mark: M.Mark) => { if (!text.trim()) return; onAdd(text, mark); setText(''); };
     return (
         <div className="log-add">
-            <label className="sr-only" htmlFor="log-add">Add a line</label>
-            <input id="log-add" className="input" placeholder="What did you just do?" autoFocus={autoFocus} value={text}
+            <label className="sr-only" htmlFor={id}>{list ? `Add a line to ${list}` : 'Add a line'}</label>
+            <input id={id} className="input" placeholder={list === 'Personal' ? 'Something for you?' : 'What did you just do?'} autoFocus={autoFocus} value={text}
                    onChange={e => setText(e.target.value)}
                    onKeyDown={e => {
                        const mark = markKey(e);
                        if (mark !== null) { e.preventDefault(); e.stopPropagation(); add(mark); }
                        else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(''); }
                    }}/>
-            <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>
+            {hint && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
         </div>
     );
 }
 
-function StandupView({lines, html, onToast}: {lines: M.Line[]; html: string[]; onToast: (message: string) => void}) {
+function StandupView({lines, html, names, onToast}: {lines: M.Line[]; html: string[]; names: string[]; onToast: (message: string) => void}) {
     const [copied, setCopied] = useState(false);
-    const groups = M.standup(lines);
-    const text = M.standupText(lines);
-    if (M.GROUPS.every(([g]) => !groups[g].length)) return <p className="muted">Nothing on this day yet.</p>;
+    const groups = M.standup(lines, names);
+    const mine = M.personal(lines, names);
+    const text = M.standupText(lines, names);
+    if (M.GROUPS.every(([g]) => !groups[g].length) && !mine.length) return <p className="muted">Nothing on this day yet.</p>;
+    const item = (i: number) => <li key={i} dangerouslySetInnerHTML={{__html: html[i] || `<p>${esc(lines[i].text)}</p>`}}/>;
 
     async function copy() {
         try {
@@ -223,12 +244,16 @@ function StandupView({lines, html, onToast}: {lines: M.Line[]; html: string[]; o
             {M.GROUPS.filter(([g]) => groups[g].length).map(([g, title]) => (
                 <section key={g} aria-label={title}>
                     <h2 className="label">{title}</h2>
-                    <ul className="standup-list">
-                        {groups[g].map(i => <li key={i} dangerouslySetInnerHTML={{__html: html[i] || `<p>${esc(lines[i].text)}</p>`}}/>)}
-                    </ul>
+                    <ul className="standup-list">{groups[g].map(item)}</ul>
                 </section>
             ))}
             <div><Button variant="line" size="sm" disabled={!text} onClick={() => void copy()}>{copied ? 'Copied ✓' : 'Copy standup'}</Button></div>
+            {mine.length > 0 && (
+                <section aria-label="Personal" className="standup-personal">
+                    <h2 className="label">Personal · not copied</h2>
+                    <ul className="standup-list">{mine.map(item)}</ul>
+                </section>
+            )}
         </div>
     );
 }

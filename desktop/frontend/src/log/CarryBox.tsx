@@ -6,15 +6,16 @@ import {Notes, type CarryCard} from '../api';
 import type {Mark} from './model';
 
 export function CarryBox({day, card, onAdd, onToast}: {
-    day: string; card: CarryCard; onAdd: (text: string, mark: Mark) => void; onToast: (message: string) => void;
+    day: string; card: CarryCard; onAdd: (text: string, mark: Mark, list: string) => void; onToast: (message: string) => void;
 }) {
     const marks = (card as unknown as {marks?: Mark[]}).marks ?? [];
-    const [left, setLeft] = useState(() => card.items.map((text, i) => ({text, mark: (marks[i] ?? 'next') as Mark})));
+    // Each line goes back to its own list (Work or Personal); an item without one goes to Work.
+    const [left, setLeft] = useState(() => card.items.map((text, i) => ({text, mark: (marks[i] ?? 'next') as Mark, list: card.lists?.[i] || 'Work'})));
     const [hidden, setHidden] = useState(false);
     if (hidden || left.length === 0) return null;
     const take = (i: number) => setLeft(l => l.filter((_, k) => k !== i));
-    const keep = (i: number) => { onAdd(left[i].text, left[i].mark); take(i); };
-    const done = (i: number) => { onAdd(left[i].text, ''); take(i); };
+    const keep = (i: number) => { onAdd(left[i].text, left[i].mark, left[i].list); take(i); };
+    const done = (i: number) => { onAdd(left[i].text, '', left[i].list); take(i); };
     const drop = (i: number) => {
         const it = left[i];
         take(i);
@@ -25,7 +26,7 @@ export function CarryBox({day, card, onAdd, onToast}: {
             <div className="carry-head">
                 <p className="label">From {card.sourceLabel} · {left.length} open</p>
                 <div className="row-gap">
-                    <Button variant="ghost" size="sm" onClick={() => { left.forEach(it => onAdd(it.text, it.mark)); setLeft([]); }}>Keep all</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { left.forEach(it => onAdd(it.text, it.mark, it.list)); setLeft([]); }}>Keep all</Button>
                     <Button variant="ghost" size="sm" onClick={() => setHidden(true)}>Hide</Button>
                 </div>
             </div>
