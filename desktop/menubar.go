@@ -1,11 +1,12 @@
 package main
 
 // The menu bar item: an icon that says whether today is logged, and a menu with today's state, Jot, Open Gloamlog, Today,
-// "Copy this week's summary", Settings and Quit. A native menu replaces the Swift popover (no Jot field, streak line or week
+// "Copy this week's summary", Settings, Check for Updates and Quit. A native menu replaces the Swift popover (no Jot field, streak line or week
 // strip in it; the Jot panel is one click away). The menu re-reads the log every 30 s and when "refresh-menubar" arrives
 // (capture.go emits it after every jot, delivery and page save).
 //
 // Events emitted: "open-today" {}   Today was chosen: the main window is shown, its page should open today.
+//                 "check-updates" {}   Check for Updates was chosen: the main window is shown and opens its update dialog.
 // Needs from main.go: the showMain, showJot, showSettings variables, and the tray (see setupMenuBar).
 
 import (
@@ -165,6 +166,10 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 	})
 	menu.AddSeparator()
 	menu.Add("Settings…").OnClick(func(*application.Context) { showSettings() })
+	menu.Add("Check for Updates…").OnClick(func(*application.Context) {
+		showMain()
+		app.Event.Emit("check-updates")
+	})
 	menu.AddSeparator()
 	menu.Add("Quit Gloamlog").OnClick(func(*application.Context) { app.Quit() })
 
