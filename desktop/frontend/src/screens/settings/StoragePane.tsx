@@ -1,7 +1,10 @@
-import {useState} from 'react';
-import {Banner, Button, Dialog, Facts, Setting} from '@personal/ui/react';
+import {useEffect, useState} from 'react';
+import {Banner, Button, Dialog, Setting} from '@personal/ui/react';
 import {Notes} from '../../api';
-import {Block, errText, Panel, Soon, tilde, type PaneProps} from './shared';
+import {on} from '../../events';
+import {ConflictDialog} from '../ConflictDialog';
+import {SyncSettings, useSyncState} from '../SyncChip';
+import {Block, errText, Panel, tilde, type PaneProps} from './shared';
 
 type Plan = Awaited<ReturnType<typeof Notes.PlanFolderChange>>;
 type Notice = {text: string; conflicts: string[]};
@@ -9,21 +12,16 @@ type Notice = {text: string; conflicts: string[]};
 const MAX_COPIES = 10; // core.MaxBackupsPerDay
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Where the folder lives, from its path: the same labels the Swift app used. */
-function folderKind(path: string): string {
-    if (path.includes('/Library/Mobile Documents/')) return 'iCloud Drive';
-    if (/\/Dropbox(\/|$)/.test(path)) return 'Dropbox';
-    if (path.includes('/OneDrive')) return 'OneDrive';
-    if (/\/(GoogleDrive|Google Drive)/.test(path)) return 'Google Drive';
-    if (path.startsWith('/Volumes/')) return 'Network or external drive';
-    return 'Local';
-}
-
 export function StoragePane({s, info, overview, reload}: PaneProps) {
     const [plan, setPlan] = useState<Plan | null>(null);
     const [notice, setNotice] = useState<Notice | null>(null);
     const [error, setError] = useState('');
     const isDefault = s.storageFolder.replace(/\/$/, '') === info.defaultFolder;
+    // Sync: read again whenever the folder changes (Go's "folder-changed"), and after a conflict is settled.
+    const [syncKey, setSyncKey] = useState(0);
+    const sync = useSyncState(syncKey);
+    const [conflictsOpen, setConflictsOpen] = useState(false);
+    useEffect(() => on('folder-changed', () => setSyncKey(k => k + 1)), []);
     const sum = overview?.summary;
 
     async function change(path: string) {
@@ -101,9 +99,10 @@ export function StoragePane({s, info, overview, reload}: PaneProps) {
                 <p className="small muted">Before a page is overwritten, Gloamlog keeps up to {MAX_COPIES} earlier versions of it here, outside your log folder, so they never sync. To bring one back, open the page and choose Restore previous version in the page's menu.</p>
             </Block>
             <Block title="Sync">
-                <Facts items={[['Folder kind', folderKind(s.storageFolder)]]}/>
-                <p className="small muted" style={{marginTop: 'var(--s3)'}}>Sync status, Download all and Resolve conflicts need the sync checks. <Soon/></p>
+                {sync ? <SyncSettings state={sync} onReview={() => setConflictsOpen(true)}/> : <p className="small muted">Checking the folder…</p>}
             </Block>
+            {/* The open page lives in the main window: its own copy is saved by the next flush there; settled days reload on folder-changed. */}
+            {conflictsOpen && <ConflictDialog open onClose={() => setConflictsOpen(false)} onResolved={() => setSyncKey(k => k + 1)}/>}
 
             <Dialog open={!!plan} onClose={() => setPlan(null)}
                 title={plan ? (empty ? `Move your ${plan.mine} logs to "${plan.name}"?` : `"${plan.name}" already has ${plan.theirs} logs.`) : ''}
