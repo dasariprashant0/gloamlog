@@ -4,6 +4,9 @@
 /* The main and Settings windows hide their title bar (MacTitleBarHiddenInset, InvisibleTitleBarHeight 44 in main.go),
    so their top 44px belong to the window buttons and dragging: content starts below them. One number, matching main.go. */
 :root { --titlebar: 44px; }
+/* The window itself never scrolls (the sidebar and the main column do): no rubber-band pull of the whole page past its
+   edge when a column hits its end. */
+html, body { overscroll-behavior: none; }
 .side { padding-top: var(--titlebar); }
 .settings-head { padding: var(--titlebar) var(--s5) 0; }
 
