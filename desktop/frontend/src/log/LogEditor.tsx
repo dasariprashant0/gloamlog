@@ -44,6 +44,9 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
     const stateRef = useRef(state);
     stateRef.current = state;
     const dirty = useRef(false); // the person changed something: only then does DayPage hear about it (opening never writes)
+    // Notes delivered together (Claude, commits, the Jot panel) are added one after another, each from the lines the one before
+    // left: run side by side, each started from the same lines and the last to finish dropped the others' (acknowledged) lines.
+    const appendChain = useRef<Promise<unknown>>(Promise.resolve());
     const seq = useRef(0);
     const timer = useRef(0);
 
@@ -81,15 +84,19 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
             clearTimeout(timer.current);
             return (await render(M.withDraft(stateRef.current))).markdown;
         },
-        async appendLines(md, list, timed = false) {
-            const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md, list, timed);
-            if (a.result === 'appended') {
-                // stateRef first: a second append right after this one (another list) must start from these lines
-                dirty.current = true;
-                stateRef.current = M.adopt(stateRef.current, a.lines as unknown as M.Line[]);
-                setState(stateRef.current);
-            }
-            return {result: a.result, markdown: a.rendered.markdown};
+        appendLines(md, list, timed = false) {
+            const run = appendChain.current.then(async () => {
+                const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md, list, timed);
+                if (a.result === 'appended') {
+                    // stateRef first: the next append in the chain starts from these lines
+                    dirty.current = true;
+                    stateRef.current = M.adopt(stateRef.current, a.lines as unknown as M.Line[]);
+                    setState(stateRef.current);
+                }
+                return {result: a.result, markdown: a.rendered.markdown};
+            });
+            appendChain.current = run.catch(() => undefined);
+            return run;
         },
         addLine(text, mark, list) { act(s => M.append(s, text, now(), mark, targetOf(list))); },
     }), [page, render, act]); // eslint-disable-line react-hooks/exhaustive-deps
