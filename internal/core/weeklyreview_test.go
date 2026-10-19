@@ -262,3 +262,29 @@ func TestReviewGroupsListAndClassicPagesIntoDoneNextBlocked(t *testing.T) {
 	sum = BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
 	expect(t, sum.Groups[0].Title == "What I did", "a classic template keeps the Swift groups: %v", sum.Groups[0].Title)
 }
+
+func TestReviewKeepsPersonalApart(t *testing.T) {
+	cal := NewCalendar(time.UTC, 2)
+	s := DefaultSettings("/Users/someone") // the split template
+	s.MinWords = 1
+	docs := map[string]DayDocument{
+		"2026-10-13": {Day: "2026-10-13", Body: "## Work\n\n- 09:00 work done\n- 10:00 work next #next\n\n## Notes\n\nbetween lists\n\n## Personal\n\n- 21:00 home thing\n- 22:00 home next #next"},
+	}
+	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	p := ReviewPeriodContaining(ScaleWeek, time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC), cal)
+	sum := BuildReview(p, docs, nil, s, ReviewOptions{Grouping: WeekBySection}, cal, now)
+	var titles []string
+	byTitle := map[string]ReviewGroup{}
+	for _, g := range sum.Groups {
+		titles = append(titles, g.Title)
+		byTitle[g.Title] = g
+	}
+	expect(t, equal(titles, []string{"Done", "Next", ListPersonal, WeekOtherTitle}), "groups: %v", titles)
+	expect(t, byTitle["Done"].Items[0].Text == "- work done" && byTitle["Next"].Items[0].Text == "- work next", "Work lines group by mark: %+v", byTitle)
+	pers := byTitle[ListPersonal]
+	expect(t, pers.Kind == GroupPersonal && len(pers.Items) == 1 && pers.Items[0].Text == "- home thing\n- home next", "Personal is one group: %+v", pers)
+	expect(t, strings.Contains(byTitle[WeekOtherTitle].Items[0].Text, "between lists"), "text between the lists is kept: %+v", byTitle[WeekOtherTitle])
+
+	cp := WithoutPersonal(sum)
+	expect(t, len(cp.Groups) == len(sum.Groups)-1 && len(sum.Groups) == 4, "the copy leaves Personal out, the review keeps it")
+}

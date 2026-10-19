@@ -187,13 +187,34 @@ func markGroup(m LogMark) int {
 	return 0
 }
 
-// outsideLog is a list page without its Log section: what Before holds above the heading, and After.
+// outsideLog is a list page without its lists: what Before holds above the first list heading, the text between lists (each
+// Join without the heading it ends with), and After.
 func outsideLog(p LogPage) string {
-	before := ""
-	if i := strings.LastIndexByte(p.Before, '\n'); i >= 0 {
-		before = p.Before[:i]
+	parts := []string{withoutLastLine(p.Before)}
+	for i, s := range p.Sections {
+		if i > 0 && !s.Virtual {
+			parts = append(parts, withoutLastLine(s.Join))
+		}
 	}
-	return TrimBody(strings.TrimSpace(before + "\n\n" + p.After))
+	parts = append(parts, p.After)
+	return TrimBody(strings.TrimSpace(strings.Join(parts, "\n\n")))
+}
+
+func withoutLastLine(s string) string {
+	if i := strings.LastIndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return ""
+}
+
+// isListHeading is true for a normalised heading that names a list (Log, Work, Personal).
+func isListHeading(normalized string) bool {
+	for _, h := range ListHeadings {
+		if NormalizeHeading(h) == normalized {
+			return true
+		}
+	}
+	return false
 }
 
 // BuildReview turns the day files of a period into a summary (see the header). now decides which days are over.
@@ -278,7 +299,7 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		extra := map[string]int{}
 		for _, t := range template {
 			n := NormalizeHeading(t)
-			if _, classic := classicGroupOf[n]; !classic && n != NormalizeHeading(LogHeading) && extra[n] == 0 {
+			if _, classic := classicGroupOf[n]; !classic && !isListHeading(n) && extra[n] == 0 {
 				slotTitles = append(slotTitles, t)
 				extra[n] = len(slotTitles) - 1 // 3 or more, so 0 means "not seen"
 			}
@@ -295,7 +316,7 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		nSlots = len(slotTitles)
 	}
 	buckets := make([][]ReviewItem, nSlots)
-	var other, jots, skipped []ReviewItem
+	var other, jots, skipped, personal []ReviewItem
 	seenDone := map[string]bool{}
 	lastLoggedBody, haveLogged := "", false
 
@@ -341,12 +362,20 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		per := map[int][]string{}
 		if page, ok := ParseLog(rest); ok && listMode {
 			marked := map[int][]string{}
+			var home []string // the Personal list: its own group, whatever the marks
 			for _, l := range page.Lines {
+				if page.Sections[l.Section].Name == ListPersonal {
+					home = append(home, l.Plain())
+					continue
+				}
 				g := markGroup(l.Mark)
 				marked[g] = append(marked[g], l.Plain())
 			}
 			for g, texts := range marked {
 				per[g] = []string{strings.Join(texts, "\n")} // one list per group per day
+			}
+			if len(home) > 0 {
+				personal = append(personal, ReviewItem{Day: k, Text: strings.Join(home, "\n")})
 			}
 			otherText = outsideLog(page)
 		} else {
@@ -388,7 +417,7 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 		}
 	}
 	if haveLogged {
-		if items, _ := OpenItems(lastLoggedBody, settings.CarryOverHeadings); len(items) > 0 { // a list page: its open lines
+		if items, _, _ := OpenItems(lastLoggedBody, settings.CarryOverHeadings); len(items) > 0 { // a list page: its open lines
 			summary.Tasks.OpenAtEnd = items
 		}
 	}
@@ -402,6 +431,9 @@ func BuildReview(p ReviewPeriod, documents map[string]DayDocument, states map[st
 			title = slotTitles[i]
 		}
 		summary.Groups = append(summary.Groups, ReviewGroup{Title: title, Kind: GroupHeading, Items: items})
+	}
+	if len(personal) > 0 {
+		summary.Groups = append(summary.Groups, ReviewGroup{Title: ListPersonal, Kind: GroupPersonal, Items: personal})
 	}
 	if len(jots) > 0 {
 		summary.Groups = append(summary.Groups, ReviewGroup{Title: jotsHeadingText(settings.Capture.JotsHeading), Kind: GroupJots, Items: jots})

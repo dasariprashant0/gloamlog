@@ -167,6 +167,11 @@ func TestCarryCardFromAListPageCarriesItsOpenLines(t *testing.T) {
 	card := CarryCardBefore("2026-10-17", cal, s, load)
 	expect(t, card != nil && equal(card.Items, []string{"write the test", "keys from ops", "call Sam"}), "%+v", card)
 	expect(t, equal(card.Marks, []LogMark{MarkNext, MarkBlocked, MarkNext}), "marks travel with the items: %+v", card.Marks)
+	expect(t, equal(card.Lists, []string{ListWork, ListWork, ListWork}), "a one-list page's lines go to Work: %+v", card.Lists)
+
+	pages["2026-10-16"].Body = "## Work\n\n- 10:00 write the test #next\n\n## Personal\n\n- 21:00 call mum #next"
+	card = CarryCardBefore("2026-10-17", cal, s, load)
+	expect(t, card != nil && equal(card.Lists, []string{ListWork, ListPersonal}), "each item keeps its list: %+v", card)
 
 	pages["2026-10-16"].Body = "## Log\n\n- 10:00 write the test #next\n- 11:00 Write  the test #blocked"
 	card = CarryCardBefore("2026-10-17", cal, s, load)

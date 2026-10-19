@@ -86,6 +86,8 @@ const (
 	GroupJots    ReviewGroupKind = "jots"
 	GroupOther   ReviewGroupKind = "other"
 	GroupSkipped ReviewGroupKind = "skipped"
+	// GroupPersonal is the Personal list of split pages: shown in the review, left out of a copy (WithoutPersonal).
+	GroupPersonal ReviewGroupKind = "personal"
 )
 
 // ReviewGroup is one roll-up of the "by section" view.
@@ -133,6 +135,18 @@ type ReviewSummary struct {
 }
 
 // IsEmpty: nothing to show: no page and no (included) skip in the period; for a Year, no page or skip in any month.
+// WithoutPersonal is the summary as copied: the Personal group left out (the review and its export keep it).
+func WithoutPersonal(s ReviewSummary) ReviewSummary {
+	out := s
+	out.Groups = make([]ReviewGroup, 0, len(s.Groups))
+	for _, g := range s.Groups {
+		if g.Kind != GroupPersonal {
+			out.Groups = append(out.Groups, g)
+		}
+	}
+	return out
+}
+
 func (s ReviewSummary) IsEmpty() bool {
 	if s.Period.Scale == ScaleYear {
 		for _, m := range s.Months {

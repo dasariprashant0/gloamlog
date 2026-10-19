@@ -34,6 +34,9 @@ type CarryCard struct {
 	SourceLabel string    `json:"sourceLabel"` // "Mon 5 Oct"
 	Items       []string  `json:"items"`
 	Marks       []LogMark `json:"marks"` // list-page source only: Items[i] is Marks[i]; nil for a classic source
+	// Lists is each item's list on a list-page source (ListWork for a one-list page's line, "" for an item under a carry-over
+	// heading); nil for a classic source.
+	Lists []string `json:"lists"`
 }
 
 // HeadingText is the heading ApplyCarryOver inserts: "Carried over from Mon 5 Oct".
@@ -72,24 +75,32 @@ func CarryItems(body string, headings []string) []string {
 
 // OpenItems is what a page still has open: on a list page its #next / #blocked / unticked lines with their marks, then any
 // items under the carry-over headings (as next); otherwise just those items (marks nil). Cleaned and de-duplicated the same way either way.
-func OpenItems(body string, headings []string) (items []string, marks []LogMark) {
-	if !IsLogPage(body) {
-		return CarryItems(body, headings), nil
+func OpenItems(body string, headings []string) (items []string, marks []LogMark, lists []string) {
+	p, ok := ParseLog(body)
+	if !ok {
+		return CarryItems(body, headings), nil, nil
 	}
 	seen := map[string]bool{}
-	add := func(text string, m LogMark) {
+	add := func(text string, m LogMark, list string) {
 		if key := ItemKey(text); key != "" && !seen[key] {
 			seen[key] = true
-			items, marks = append(items, text), append(marks, m)
+			items, marks, lists = append(items, text), append(marks, m), append(lists, list)
 		}
 	}
-	for _, l := range OpenLines(body) {
-		add(Collapse(RemoveNoise(l.Text)), l.Mark)
+	for _, l := range p.Lines {
+		if l.Other || l.Mark == MarkDone {
+			continue
+		}
+		list := p.Sections[l.Section].Name
+		if list == LogHeading {
+			list = ListWork
+		}
+		add(Collapse(RemoveNoise(l.Text)), l.Mark, list)
 	}
 	for _, t := range CarryItems(body, headings) { // a page that also has carry-over headings keeps carrying them
-		add(t, MarkNext)
+		add(t, MarkNext, "")
 	}
-	return items, marks
+	return items, marks, lists
 }
 
 // CarryCardBefore builds the card for `today` from the most recent logged day. load returns nil for a day without a page.
@@ -105,11 +116,11 @@ func CarryCardBefore(today string, cal Calendar, settings Settings, load func(da
 		if doc == nil || doc.IsSkipped || doc.Status(settings.MinWords) != StatusLogged {
 			continue
 		}
-		items, marks := OpenItems(doc.Body, settings.CarryOverHeadings)
+		items, marks, lists := OpenItems(doc.Body, settings.CarryOverHeadings)
 		if len(items) == 0 {
 			return nil
 		}
-		return &CarryCard{SourceDay: d, SourceLabel: DayKeyFormat(d, "EEE d MMM", cal.location()), Items: items, Marks: marks}
+		return &CarryCard{SourceDay: d, SourceLabel: DayKeyFormat(d, "EEE d MMM", cal.location()), Items: items, Marks: marks, Lists: lists}
 	}
 	return nil
 }
