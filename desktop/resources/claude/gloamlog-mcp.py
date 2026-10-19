@@ -23,12 +23,15 @@ def write_entry(text):
     text = " ".join(str(text).split())[:1500]
     if not text:
         return False
+    try:
+        cwd = os.getcwd()                                                     # the folder Claude ran in: Work or Personal
+    except OSError:
+        cwd = ""                                                              # gone: the app uses the list for notes without one
     os.makedirs(INBOX, exist_ok=True)
     name = "%d-%s.json" % (int(time.time() * 1000), uuid.uuid4().hex[:8])
     fd, tmp = tempfile.mkstemp(prefix=".", suffix=".tmp", dir=INBOX)          # hidden until complete, then renamed
     with os.fdopen(fd, "w") as f:
-        json.dump({"text": text, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                   "cwd": os.getcwd()}, f)                                    # the folder Claude ran in: Work or Personal
+        json.dump({"text": text, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cwd": cwd}, f)
     os.replace(tmp, os.path.join(INBOX, name))
     return True
 
