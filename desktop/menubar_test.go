@@ -17,17 +17,38 @@ func TestMenuViewFor(t *testing.T) {
 		reason string
 		want   menuView
 	}{
-		{"logged", Overview{TodayStatus: core.StatusLogged}, "", menuView{iconLogged, "Logged today ✓"}},
-		{"started only", Overview{TodayStatus: core.StatusPartial}, "", menuView{iconNotLogged, "Not logged yet"}},
-		{"nothing yet", Overview{TodayStatus: core.StatusMissed}, "", menuView{iconNotLogged, "Not logged yet"}},
-		{"skipped with a reason", Overview{TodayStatus: core.StatusSkipped}, "Holiday", menuView{iconLogged, "Skipped today (Holiday)"}},
-		{"skipped", Overview{TodayStatus: core.StatusSkipped}, "", menuView{iconLogged, "Skipped today"}},
-		{"not a workday", Overview{TodayStatus: core.StatusOff}, "", menuView{iconLogged, "Not a workday"}},
-		{"folder problem wins", Overview{TodayStatus: core.StatusLogged, FolderError: "gone"}, "", menuView{iconProblem, "Saving problem: folder unavailable"}},
+		{"logged", Overview{TodayStatus: core.StatusLogged}, "", menuView{Icon: iconLogged, Status: "Logged today ✓"}},
+		{"started only", Overview{TodayStatus: core.StatusPartial}, "", menuView{Icon: iconNotLogged, Status: "Not logged yet"}},
+		{"nothing yet", Overview{TodayStatus: core.StatusMissed}, "", menuView{Icon: iconNotLogged, Status: "Not logged yet"}},
+		{"skipped with a reason", Overview{TodayStatus: core.StatusSkipped}, "Holiday", menuView{Icon: iconLogged, Status: "Skipped today (Holiday)"}},
+		{"skipped", Overview{TodayStatus: core.StatusSkipped}, "", menuView{Icon: iconLogged, Status: "Skipped today"}},
+		{"not a workday", Overview{TodayStatus: core.StatusOff}, "", menuView{Icon: iconLogged, Status: "Not a workday"}},
+		{"folder problem wins", Overview{TodayStatus: core.StatusLogged, FolderError: "gone"}, "", menuView{Icon: iconProblem, Status: "Saving problem: folder unavailable"}},
 	} {
 		if got := menuViewFor(c.o, c.reason); got != c.want {
 			t.Errorf("%s: %+v, want %+v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestStreakAndWeekLines(t *testing.T) {
+	if got := streakLine(core.StreakResult{}); got != "No streak yet" {
+		t.Errorf("no streak: %q", got)
+	}
+	if got := streakLine(core.StreakResult{Current: 5, Best: 14}); got != "5-day streak · best 14" {
+		t.Errorf("streak: %q", got)
+	}
+	week := []core.HeatCell{ // Sun 18 Oct 2026 .. Sat 24 Oct: weekends off
+		{Day: "2026-10-18", Status: core.StatusOff}, {Day: "2026-10-19", Status: core.StatusLogged},
+		{Day: "2026-10-20", Status: core.StatusPartial}, {Day: "2026-10-21", Status: core.StatusSkipped},
+		{Day: "2026-10-22", Status: core.StatusMissed}, {Day: "2026-10-23", Status: core.StatusFuture},
+		{Day: "2026-10-24", Status: core.StatusOff},
+	}
+	if got := weekLine(week); got != "This week  M ●  T ◐  W –  T ○  F ·" {
+		t.Errorf("week: %q", got)
+	}
+	if got := weekLine(nil); got != "" {
+		t.Errorf("no week: %q", got)
 	}
 }
 
@@ -39,7 +60,7 @@ func TestCurrentMenuViewReadsTheFolder(t *testing.T) {
 	if err := os.MkdirAll(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := currentMenuView(n); got != (menuView{iconNotLogged, "Not logged yet"}) {
+	if got := currentMenuView(n); got.Icon != iconNotLogged || got.Status != "Not logged yet" || got.Streak != "No streak yet" {
 		t.Fatalf("empty folder: %+v", got)
 	}
 	// Twenty words make a day "logged" (the default minimum).
@@ -47,7 +68,7 @@ func TestCurrentMenuViewReadsTheFolder(t *testing.T) {
 	if _, err := n.Save(today, body); err != nil {
 		t.Fatal(err)
 	}
-	if got := currentMenuView(n); got != (menuView{iconLogged, "Logged today ✓"}) {
+	if got := currentMenuView(n); got.Icon != iconLogged || got.Status != "Logged today ✓" || !strings.HasPrefix(got.Week, "This week") {
 		t.Fatalf("logged day: %+v", got)
 	}
 }

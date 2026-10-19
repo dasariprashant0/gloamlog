@@ -1,8 +1,8 @@
 package main
 
-// The menu bar item: an icon that says whether today is logged, and a menu with today's state, Jot, Open Gloamlog, Today,
-// "Copy this week's summary", Settings, Check for Updates and Quit. A native menu replaces the Swift popover (no Jot field, streak line or week
-// strip in it; the Jot panel is one click away). The menu re-reads the log every 30 s and when "refresh-menubar" arrives
+// The menu bar item: an icon that says whether today is logged, and a menu with today's state, the streak, this week's days,
+// Jot, Open Gloamlog, Today, "Copy this week's summary", Settings, Check for Updates and Quit. A native menu replaces the Swift
+// popover: the streak and the week are text lines, and the Jot panel is one click away instead of a field in the menu. The menu re-reads the log every 30 s and when "refresh-menubar" arrives
 // (capture.go emits it after every jot, delivery and page save).
 //
 // Events emitted: "open-today" {}   Today was chosen: the main window is shown, its page should open today.
@@ -11,10 +11,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,25 +41,55 @@ const (
 type menuView struct {
 	Icon   menuIcon
 	Status string // the first menu line
+	Streak string // "5-day streak · best 14" (currentMenuView fills it)
+	Week   string // "This week  M ● T ● W ○ T · F ·" (currentMenuView fills it)
 }
 
 // menuViewFor reads today's state. skipReason is only used when the day is skipped.
 func menuViewFor(o Overview, skipReason string) menuView {
 	if o.FolderError != "" {
-		return menuView{iconProblem, "Saving problem: folder unavailable"}
+		return menuView{Icon: iconProblem, Status: "Saving problem: folder unavailable"}
 	}
 	switch o.TodayStatus {
 	case core.StatusLogged:
-		return menuView{iconLogged, "Logged today ✓"}
+		return menuView{Icon: iconLogged, Status: "Logged today ✓"}
 	case core.StatusSkipped:
 		if skipReason != "" {
-			return menuView{iconLogged, "Skipped today (" + skipReason + ")"}
+			return menuView{Icon: iconLogged, Status: "Skipped today (" + skipReason + ")"}
 		}
-		return menuView{iconLogged, "Skipped today"}
+		return menuView{Icon: iconLogged, Status: "Skipped today"}
 	case core.StatusOff:
-		return menuView{iconLogged, "Not a workday"}
+		return menuView{Icon: iconLogged, Status: "Not a workday"}
 	}
-	return menuView{iconNotLogged, "Not logged yet"}
+	return menuView{Icon: iconNotLogged, Status: "Not logged yet"}
+}
+
+// streakLine is the menu's streak line, as the sidebar says it.
+func streakLine(s core.StreakResult) string {
+	if s.Current == 0 {
+		return "No streak yet"
+	}
+	return fmt.Sprintf("%d-day streak · best %d", s.Current, s.Best)
+}
+
+// weekMarks draws the week's scheduled days: ● logged, ◐ started, – skipped, ○ missed, · still to come. Days off are left out.
+var weekMarks = map[core.DayStatus]string{core.StatusLogged: "●", core.StatusPartial: "◐", core.StatusSkipped: "–", core.StatusMissed: "○", core.StatusFuture: "·"}
+
+// weekLine is "This week  M ● T ● W ○ T · F ·" for this week's cells ("" when there is no week to show).
+func weekLine(week []core.HeatCell) string {
+	var parts []string
+	for _, c := range week {
+		mark, ok := weekMarks[c.Status]
+		d, err := time.Parse("2006-01-02", c.Day)
+		if !ok || err != nil {
+			continue
+		}
+		parts = append(parts, d.Weekday().String()[:1]+" "+mark)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "This week  " + strings.Join(parts, "  ")
 }
 
 // currentMenuView reads the overview (and the skip reason when needed) from n.
@@ -72,7 +104,14 @@ func currentMenuView(n *Notes) menuView {
 			reason = p.SkipReason
 		}
 	}
-	return menuViewFor(o, reason)
+	v := menuViewFor(o, reason)
+	if o.FolderError == "" {
+		v.Streak = streakLine(o.Streak)
+		if weeks, err := n.Heatmap(1); err == nil && len(weeks) > 0 {
+			v.Week = weekLine(weeks[len(weeks)-1])
+		}
+	}
+	return v
 }
 
 // ---- icons: template images drawn here (black on transparent, macOS tints them), 44 px for a 22 pt bar ----
@@ -150,6 +189,8 @@ func drawMenuIcon(k menuIcon) []byte {
 func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) {
 	menu := app.NewMenu()
 	status := menu.Add("Not logged yet").SetEnabled(false)
+	streak := menu.Add("").SetEnabled(false).SetHidden(true)
+	week := menu.Add("").SetEnabled(false).SetHidden(true)
 	menu.AddSeparator()
 	menu.Add("Jot…").OnClick(func(*application.Context) { showJot() })
 	menu.Add("Open Gloamlog").OnClick(func(*application.Context) { showMain() })
@@ -189,6 +230,8 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 		defer mu.Unlock()
 		application.InvokeSync(func() {
 			status.SetLabel(v.Status)
+			streak.SetLabel(v.Streak).SetHidden(v.Streak == "")
+			week.SetLabel(v.Week).SetHidden(v.Week == "")
 			if v.Icon != shown {
 				shown = v.Icon
 				tray.SetTemplateIcon(menuIconPNG(v.Icon))
