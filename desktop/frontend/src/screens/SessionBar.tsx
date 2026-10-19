@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {Banner, Button, Kbd} from '@personal/ui/react';
 import {Notes, shortDay} from '../api';
 import {errText} from './settings/shared';
+import {announce} from '../announce';
 
 type Props = {
     /** The unlogged days when the session began, oldest first. They stay fixed: "3 of 5" never moves. */
@@ -25,6 +26,10 @@ export function SessionBar({days, current, onGo, onEnd, onSkip, onFinish, flush}
     const [live, setLive] = useState<string[] | null>(null);
     const [note, setNote] = useState('');
     const i = days.indexOf(current);
+    // Each day of the session, said once (VoiceOver): the bar's own text changes without being read.
+    useEffect(() => {
+        if (i >= 0) announce(`Catching up, ${i + 1} of ${Math.max(1, days.length)}, ${shortDay(current)}.`);
+    }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Which of the session's days are still unlogged, for the progress line.
     useEffect(() => {

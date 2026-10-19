@@ -16,6 +16,7 @@ import {UpdateDialog} from './screens/UpdateDialog';
 import {ConflictDialog} from './screens/ConflictDialog';
 import {ConflictBanner, SyncChip, useSyncState} from './screens/SyncChip';
 import {on} from './events';
+import {announce} from './announce';
 
 type ToastState = {message: string; undo?: () => void} | null;
 
@@ -106,6 +107,7 @@ export function App() {
         const days = session ?? [];
         const pages = await Promise.all(days.map(d => Notes.Open(d).catch(() => null)) /* a summary count only */);
         setFinished({logged: pages.filter(p => p?.status === 'logged').length, skipped: pages.filter(p => p?.isSkipped).length});
+        announce('All caught up.');
         setSession(null);
         setRoute({kind: 'catchup'});
         reload();

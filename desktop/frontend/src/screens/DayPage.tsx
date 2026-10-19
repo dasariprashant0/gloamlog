@@ -11,6 +11,7 @@ import {DownloadingPage} from './SyncChip';
 import {StatusLine, conflictItem, reminderItem, type ConflictNote, type StatusItem} from './StatusLine';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 import {emit, on} from '../events';
+import {announce} from '../announce';
 import {LogEditor, type LogEditorHandle, type View} from '../log/LogEditor';
 import * as LogModel from '../log/model';
 import {CarryBox} from '../log/CarryBox';
@@ -51,6 +52,15 @@ export function DayPage({day, today, minWords, active, folderError, conflict, re
     // flush and every 30 s until it succeeds. Switching days after a failed save used to lose that text.
     const orphans = useRef(new Map<string, string>());
     const [orphanCount, setOrphanCount] = useState(0);
+
+    // Today becoming "logged" as the person writes: said once (VoiceOver), not on opening an already logged day.
+    const loggedSeen = useRef<{day: string; logged: boolean} | null>(null);
+    useEffect(() => {
+        if (!page || day !== today) return;
+        const logged = words >= Math.max(1, minWords);
+        if (loggedSeen.current?.day === day && !loggedSeen.current.logged && logged) announce('Logged for today.');
+        loggedSeen.current = {day, logged};
+    }, [words, minWords, page, day, today]);
 
     // Go holds a quit while text couldn't be saved (desktop/quit.go): say so whenever that changes, and ask when a quit is held.
     const [quitHeld, setQuitHeld] = useState(false);

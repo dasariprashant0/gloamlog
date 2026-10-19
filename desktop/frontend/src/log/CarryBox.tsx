@@ -5,6 +5,7 @@ import {useState} from 'react';
 import {Button} from '@personal/ui/react';
 import {Notes, type CarryCard} from '../api';
 import type {Mark} from './model';
+import {announce} from '../announce';
 
 export function CarryBox({day, card, onAdd, onToast}: {
     day: string; card: CarryCard; onAdd: (text: string, mark: Mark, list: string) => void; onToast: (message: string) => void;
@@ -28,7 +29,11 @@ export function CarryBox({day, card, onAdd, onToast}: {
             <div className="carry-head">
                 <p className="small muted">{left.length} open from {card.sourceLabel}</p>
                 <div className="row-gap carry-actions">
-                    {open && <Button variant="ghost" size="sm" onClick={() => { left.forEach(it => onAdd(it.text, it.mark, it.list)); setLeft([]); }}>Keep all</Button>}
+                    {open && <Button variant="ghost" size="sm" onClick={() => {
+                        left.forEach(it => onAdd(it.text, it.mark, it.list));
+                        announce(`Carried over ${left.length === 1 ? 'one line' : `${left.length} lines`} from ${card.sourceLabel}.`);
+                        setLeft([]);
+                    }}>Keep all</Button>}
                     {open && <Button variant="ghost" size="sm" onClick={() => setHidden(true)}>Hide</Button>}
                     <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(o => !o)}>{open ? 'Close' : 'Review'}</Button>
                 </div>

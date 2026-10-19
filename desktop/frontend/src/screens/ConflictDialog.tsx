@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState, type KeyboardEvent} from 'react';
 import {Banner, Button, Dialog} from '@personal/ui/react';
 import {Notes, dayDate} from '../api';
+import {announce} from '../announce';
 import type {ConflictItem, ConflictSide} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 
 const UNSAVED = "This page has edits that couldn't be saved yet. Fix that first, so nothing you typed is lost.";
@@ -87,6 +88,7 @@ export function ConflictDialog({open, onClose, flush, onResolved}: Props) {
         try {
             if (flushRef.current && !(await flushRef.current())) { setError(UNSAVED); return; }
             await Notes.ResolveConflict(item.name, choice);
+            announce('Conflict settled.');
             onResolved(item.day);
             const left = await load(index);
             setDone(SETTLED);
