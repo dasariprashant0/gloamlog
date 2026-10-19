@@ -109,6 +109,9 @@ func escapeJotLine(line string) string {
 
 // ApplyJot puts the note into body (see the header). jotsHeading is the configured Jots heading.
 func ApplyJot(item CaptureItem, body, jotsHeading string) string {
+	if out, ok := applyTimed(item, body); ok {
+		return out
+	}
 	line := RenderJot(item)
 	text := strings.ReplaceAll(body, "\r\n", "\n")
 	lines := strings.Split(text, "\n")
@@ -135,6 +138,40 @@ func ApplyJot(item CaptureItem, body, jotsHeading string) string {
 		}
 	}
 	return first
+}
+
+// applyTimed puts a timed note (a commit) among its list's lines by its time (the list named item.List; a one-list page's Log).
+// ok is false on a classic page, or when the line would not show as a note there (the page ends inside an open code fence):
+// ApplyJot then places it as usual.
+func applyTimed(item CaptureItem, body string) (string, bool) {
+	if !item.Timed {
+		return "", false
+	}
+	p, ok := ParseLog(body)
+	if !ok {
+		return "", false
+	}
+	l, ok := parseLogRows(splitLines(RenderJot(item)))
+	if !ok {
+		return "", false
+	}
+	list := item.List
+	if list == "" {
+		list = ListWork
+	}
+	target := p.Target(list)
+	l.Section = target
+	var mine, rest []LogLine
+	for _, x := range p.Lines {
+		if x.Section == target {
+			mine = append(mine, x)
+		} else {
+			rest = append(rest, x)
+		}
+	}
+	p.Lines = append(rest, InsertTimed(mine, l)...) // Markdown writes each list's lines in their own order
+	out := TrimBody(p.Markdown())
+	return out, JotPresent(item, out, p.Sections[target].Name)
 }
 
 func placeJot(line string, closers []string, text string, lines []string, scanned []ScannedLine, jotsHeading string) string {

@@ -200,11 +200,19 @@ func jsonString(s string) string {
 // journalLine is the journal line (without the newline) for a note. Tests build journals of any size with it, without 2,000 fsyncs.
 func journalLine(item CaptureItem) string {
 	var b strings.Builder
-	b.WriteString(`{"day":` + jsonString(item.Day) + `,"id":` + jsonString(item.ID) + `,"source":` + jsonString(item.Source))
+	b.WriteString(`{"day":` + jsonString(item.Day) + `,"id":` + jsonString(item.ID))
+	if item.List != "" { // only when set (here and timed below): an ordinary note's line stays as Swift wrote it
+		b.WriteString(`,"list":` + jsonString(item.List))
+	}
+	b.WriteString(`,"source":` + jsonString(item.Source))
 	if item.Stamp != "" {
 		b.WriteString(`,"stamp":` + jsonString(item.Stamp))
 	}
-	b.WriteString(`,"text":` + jsonString(item.Text) + `,"todo":`)
+	b.WriteString(`,"text":` + jsonString(item.Text))
+	if item.Timed {
+		b.WriteString(`,"timed":true`)
+	}
+	b.WriteString(`,"todo":`)
 	if item.Todo {
 		b.WriteString("true")
 	} else {
@@ -263,11 +271,14 @@ func parseJournalLine(line []byte) journalEntry {
 	}
 	stamp, _ := obj["stamp"].(string)
 	todo, _ := obj["todo"].(bool)
+	timed, _ := obj["timed"].(bool)
+	list, _ := obj["list"].(string)
 	source, ok := obj["source"].(string)
 	if !ok {
 		source = "unknown"
 	}
-	return journalEntry{isItem: true, item: CaptureItem{ID: id, Ts: ts, Day: day, Text: text, Stamp: stamp, Todo: todo, Source: source}}
+	return journalEntry{isItem: true, item: CaptureItem{ID: id, Ts: ts, Day: day, Text: text, Stamp: stamp, Todo: todo, Source: source,
+		List: list, Timed: timed}}
 }
 
 type journalLive struct {

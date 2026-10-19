@@ -746,3 +746,31 @@ func TestNotesGoToTheirList(t *testing.T) {
 	expect(t, JotsHeadingIn("## Work\n- a", "Jots", ListPersonal) == ListPersonal, "the missing partner")
 	expect(t, JotsHeadingIn("", "Jots", ListPersonal) == ListPersonal, "a new split day")
 }
+
+func TestCaptureTimedPlacesTheLineByItsTimeAlwaysStamped(t *testing.T) {
+	c := newCapCore(t)
+	save(t, c.store, capToday, "## Log\n\n- 09:00 a\n- 15:00 c")
+	prefs := DefaultCapturePrefs()
+	prefs.Timestamps = false // a commit is stamped anyway: its time is where it goes
+	w := NewDayWriter(c.store, NewCaptureJournal(c.journalDir), newCapLookup(), func() CapturePrefs { return prefs },
+		func() time.Time { return capNow }, func() Calendar { return ny })
+	_, ok := w.CaptureTimed("[] Add CSV export `1a2b3c4`", "git", ListWork, mk(2026, 10, 7, 13, 2))
+	expect(t, ok)
+	expect(t, c.body(capToday) == "## Log\n\n- 09:00 a\n- 13:02 [] Add CSV export `1a2b3c4`\n- 15:00 c", "by time, never a to-do: %q", c.body(capToday))
+}
+
+func TestTimedNoteInAnOpenPageIsKnownByItsOwnLine(t *testing.T) {
+	c := newCapCore(t)
+	lookup := newCapLookup()
+	page := newCapPage(capToday)
+	page.kind = JotAppended
+	page.reply = "## Log\n\n- 13:02 x `5d6e7f8`\n- 15:00 c" // the editor put it by time: the last line is another one
+	lookup.pages[capToday] = page
+	w := c.writer(lookup, nil)
+	r, _ := w.CaptureTimed("x `5d6e7f8`", "git", ListWork, mk(2026, 10, 7, 13, 2))
+	expect(t, r.Waiting == 1 && len(page.received) == 1 && page.received[0].Timed, "handed to the page as a timed note")
+	w.AcknowledgeSaved(capToday, "## Log\n\n- 15:00 c")
+	expect(t, w.Waiting() == 1, "a save without the commit's line does not acknowledge it")
+	w.AcknowledgeSaved(capToday, page.reply)
+	expect(t, w.Waiting() == 0, "the save that holds it does")
+}

@@ -125,23 +125,29 @@ func (w *DayWriter) Capture(text, source string) (CaptureReceipt, bool) {
 // CaptureAt is Capture dated with at: the note's day and time stamp come from at, not from the clock. It goes to the list for
 // notes without a folder (ListsPrefs.Jots).
 func (w *DayWriter) CaptureAt(text, source string, at time.Time) (CaptureReceipt, bool) {
-	return w.captureIn(text, source, "", at)
+	return w.captureIn(text, source, "", at, false)
 }
 
-// captureIn is CaptureAt for a note routed to list; "" means the list for notes without a folder.
-func (w *DayWriter) captureIn(text, source, list string, at time.Time) (CaptureReceipt, bool) {
+// CaptureTimed is CaptureAt for a line that belongs at its own time in list (a commit): always stamped, never a to-do, and put
+// among that list's lines by time (ApplyJot, InsertTimed) rather than at the end. On a classic page it goes under Jots like any note.
+func (w *DayWriter) CaptureTimed(text, source, list string, at time.Time) (CaptureReceipt, bool) {
+	return w.captureIn(text, source, list, at, true)
+}
+
+// captureIn is CaptureAt for a note routed to list ("" means the list for notes without a folder), timed or not.
+func (w *DayWriter) captureIn(text, source, list string, at time.Time, timed bool) (CaptureReceipt, bool) {
 	if list == "" {
 		list = w.listsPrefs().Jots
 	}
 	p := w.prefs()
-	norm, todo, ok := normaliseCapture(text, p.TodoShorthand)
+	norm, todo, ok := normaliseCapture(text, p.TodoShorthand && !timed)
 	if !ok {
 		return CaptureReceipt{}, false
 	}
 	loc := w.cal().location()
 	local := at.In(loc)
-	item := CaptureItem{ID: newUUID(), Ts: at, Day: DayKeyString(at, loc), Text: norm, Todo: todo, Source: source, List: list}
-	if p.Timestamps && !todo {
+	item := CaptureItem{ID: newUUID(), Ts: at, Day: DayKeyString(at, loc), Text: norm, Todo: todo, Source: source, List: list, Timed: timed}
+	if (p.Timestamps || timed) && !todo {
 		item.Stamp = fmt.Sprintf("%02d:%02d", local.Hour(), local.Minute())
 	}
 	w.mu.Lock()
@@ -180,7 +186,7 @@ func (w *DayWriter) DrainInbox(dir string, mode InboxTimeMode) int {
 		if e.Cwd != "" {
 			list = w.listsPrefs().ListFor(e.Cwd)
 		}
-		w.captureIn(e.Text, "claude", list, e.CaptureTime(w.clock(), mode))
+		w.captureIn(e.Text, "claude", list, e.CaptureTime(w.clock(), mode), false)
 		if err := os.Remove(e.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			w.mu.Lock()
 			if w.undeletable == nil {
@@ -454,7 +460,9 @@ func (w *DayWriter) completed(item CaptureItem, page PageHandle, r JotAppendResu
 	reroute := false
 	switch r.Kind {
 	case JotAppended:
-		if k, ok := LastJotKey(r.NormalizedMarkdown, JotsHeadingIn(r.NormalizedMarkdown, w.prefs().JotsHeading, item.List)); ok { // the note is the last item of its section
+		// The note is the last item of its section, except a timed one (the page put it by time): that one is known by its own
+		// line only, or another line's save would acknowledge it.
+		if k, ok := LastJotKey(r.NormalizedMarkdown, JotsHeadingIn(r.NormalizedMarkdown, w.prefs().JotsHeading, item.List)); ok && !item.Timed {
 			w.editorKeys[item.ID] = k
 		}
 		w.sent[item.ID] = sentNote{page: page, at: w.clock(), confirmed: true} // the editor's autosave writes it; AcknowledgeSaved acks it

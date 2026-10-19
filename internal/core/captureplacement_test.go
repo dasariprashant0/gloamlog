@@ -289,3 +289,20 @@ func indexOf(a []string, s string) int {
 	}
 	return -1
 }
+
+func TestCaptureApplyTimedGoesInTimeOrderOnAListPage(t *testing.T) {
+	item := CaptureItem{Text: "Add CSV export `1a2b3c4`", Stamp: "13:02", Timed: true}
+	got := ApplyJot(item, "## Log\n\n- 09:40 Fixed it\n- a line without time\n- 15:30 Later\n\n## Notes\nkept", LogHeading)
+	expect(t, got == "## Log\n\n- 09:40 Fixed it\n- a line without time\n- 13:02 Add CSV export `1a2b3c4`\n- 15:30 Later\n\n## Notes\nkept", "%q", got)
+	got = ApplyJot(item, "## Log\n\n- 15:30 Later", LogHeading)
+	expect(t, got == "## Log\n\n- 13:02 Add CSV export `1a2b3c4`\n- 15:30 Later", "the earliest line goes first: %q", got)
+	got = ApplyJot(item, "## Jots\n\n- 09:00 a", "Jots")
+	expect(t, got == "## Jots\n\n- 09:00 a\n- 13:02 Add CSV export `1a2b3c4`", "a classic page: at the end, like any note: %q", got)
+	got = ApplyJot(item, "## Log\n\n- 09:00 a\n\n```\ncode", LogHeading)
+	expect(t, JotPresent(item, got, LogHeading) && countOf(got, "1a2b3c4") == 1, "a page ending in an open fence: the fence is closed first: %q", got)
+
+	home := item
+	home.List = ListPersonal
+	got = ApplyJot(home, "## Work\n\n- 14:00 w\n\n## Personal\n\n- 09:00 p\n- 18:00 q", ListPersonal)
+	expect(t, got == "## Work\n\n- 14:00 w\n\n## Personal\n\n- 09:00 p\n- 13:02 Add CSV export `1a2b3c4`\n- 18:00 q", "a split page: by time in its own list: %q", got)
+}

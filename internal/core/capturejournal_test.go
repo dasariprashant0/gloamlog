@@ -297,3 +297,14 @@ func TestJournalDroppingTheWriterWithoutAnyAckLosesNothing(t *testing.T) {
 	j = nil // the process dies here: no flush, no compact, no goodbye
 	expect(t, sameItems(NewCaptureJournal(d).Pending(), []CaptureItem{items[0], items[2], items[4]}), "pending equals exactly the unacknowledged notes")
 }
+
+func TestJournalKeepsATimedNoteAndItsList(t *testing.T) {
+	j := NewCaptureJournal(t.TempDir())
+	timed := jitem(1)
+	timed.Timed, timed.List = true, ListPersonal
+	must(t, j.Append(timed))
+	must(t, j.Append(jitem(2)))
+	p := j.Pending()
+	expect(t, len(p) == 2 && p[0].Timed && p[0].List == ListPersonal && !p[1].Timed && p[1].List == "", "%+v", p)
+	expect(t, !strings.Contains(journalLine(jitem(2)), "timed") && !strings.Contains(journalLine(jitem(2)), "list"), "an ordinary note's line is unchanged")
+}
