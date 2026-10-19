@@ -87,7 +87,13 @@ button.cal-day:hover { background: var(--wash-2); }
 .log-row.is-clamped .log-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .log-row.is-clamped .log-text p { display: inline; }
 .log-row.is-clamped .log-text p + p::before { content: " "; }
-.log-add { display: grid; gap: var(--s1); }
+/* The add field stays at the bottom of the window while the lines scroll under it (a long day needs no scrolling to add). */
+.log-add { display: grid; gap: var(--s1); position: sticky; bottom: 0; z-index: 1; padding: var(--s3) 0 var(--s4); background: var(--background); }
+.log-row.is-editing { scroll-margin-bottom: var(--s9); }
+/* A sticky box stops at the scroll column's padding edge: on a list page the column's bottom padding moves onto the page,
+   so the field sits on the window's bottom edge. */
+.main:has(.log-add) { padding-bottom: 0; }
+.main:has(.log-add) > .page { padding-bottom: var(--s9); }
 .log-add-field { position: relative; }
 .log-add-field .input { width: 100%; padding-right: var(--s9); }
 .log-add-list { position: absolute; right: var(--s2); top: 50%; transform: translateY(-50%); background: none; color: var(--muted); cursor: pointer; }

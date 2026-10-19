@@ -208,9 +208,19 @@ function AddField({lists, start, autoFocus, onAdd}: {
     const [text, setText] = useState('');
     const [picked, setPicked] = useState(-1); // the list chosen with the chip while the page is open; -1: start's
     const [focused, setFocused] = useState(false);
+    const [added, setAdded] = useState(''); // "Added to Work at 19:42": the list may be scrolled out of sight
+    const addedTimer = useRef(0);
+    useEffect(() => () => clearTimeout(addedTimer.current), []);
     const at = picked >= 0 ? picked : Math.max(0, lists.indexOf(start));
     const other = (at + 1) % lists.length;
-    const add = (mark: M.Mark) => { if (!text.trim()) return; onAdd(text, mark, at); setText(''); };
+    const add = (mark: M.Mark) => {
+        if (!text.trim()) return;
+        onAdd(text, mark, at);
+        setText('');
+        setAdded(lists[at] ? `Added to ${lists[at]} at ${now()}` : `Added at ${now()}`);
+        clearTimeout(addedTimer.current);
+        addedTimer.current = window.setTimeout(() => setAdded(''), 2500);
+    };
     return (
         <div className="log-add">
             <label className="sr-only" htmlFor="log-add">{lists.length > 1 ? `Add a line to ${lists[at]}` : 'Add a line'}</label>
@@ -227,7 +237,8 @@ function AddField({lists, start, autoFocus, onAdd}: {
                             onMouseDown={e => e.preventDefault() /* keep typing */} onClick={() => setPicked(other)}>{lists[at]} ▾</button>
                 )}
             </div>
-            {focused && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
+            {added ? <p className="small muted" role="status">{added}</p>
+                : focused && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
         </div>
     );
 }

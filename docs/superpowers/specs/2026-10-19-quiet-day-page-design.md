@@ -46,6 +46,9 @@ too narrow for long monospace notes).
 ### 4. One add field
 
 - One field below the last list replaces the per-list fields. Placeholder "What did you just do?".
+- It is pinned to the bottom of the window (sticky) while the lines scroll under it, so a long day needs no scrolling to
+  add; at the end of the page it rests below the last list. After an add, "Added to Work at 19:42" shows under it for
+  2.5 s, since the list may be out of sight. (Added after the owner tried it: a long day meant scrolling to the field.)
 - On a split page a chip on the field's right names the list it adds to ("Work"); clicking it switches to the other list.
   It starts on the quick-notes list from Settings > Page (`settings.lists.jots`; Work if unreadable) and keeps the
   choice while the page is open. A one-list page (`## Log`) has no chip.
