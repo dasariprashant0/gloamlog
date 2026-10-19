@@ -1,8 +1,10 @@
-// loglist.go - the list page: one "## Log" section of timed bullets, each done unless it ends in #next or #blocked. Pure.
-// Spec: docs/superpowers/specs/2026-10-18-writing-redesign-design.md, section 1.
+// loglist.go - the list page: lists of timed bullets, each done unless it ends in #next or #blocked. A page has one list
+// ("## Log") or two ("## Work" and "## Personal"). Pure.
+// Specs: docs/superpowers/specs/2026-10-18-writing-redesign-design.md, section 1; 2026-10-19-work-personal-split-design.md.
 //
-//	IsLogPage(body)        the body has a Log heading (any level, matched with NormalizeHeading)
-//	ParseLog(body)         LogPage{Before, Lines, Trail, After}; ok=false when there is no Log heading
+//	IsLogPage(body)        the body has a list heading: Log, Work or Personal (any level, matched with NormalizeHeading)
+//	ParseLog(body)         LogPage{Before, Lines, Sections, After}; ok=false when there is no list heading
+//	(p LogPage) Target(l)  the section a line routed to list l goes in
 //	(p LogPage) Markdown() the page back; an untouched page comes back byte for byte
 //	(l LogLine) Markdown() one bullet: its bytes as read while nothing changed, else rendered
 //	(l LogLine) Plain()    the bullet without time and mark, for reviews and standups
@@ -15,12 +17,21 @@
 package core
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 )
 
-// LogHeading is the section a list page keeps its lines under. A constant, not a setting.
-const LogHeading = "Log"
+// LogHeading is the section a one-list page keeps its lines under; ListWork and ListPersonal are the two lists of a split page.
+// Constants, not settings.
+const (
+	LogHeading   = "Log"
+	ListWork     = "Work"
+	ListPersonal = "Personal"
+)
+
+// ListHeadings are the headings that make a list section.
+var ListHeadings = []string{LogHeading, ListWork, ListPersonal}
 
 // LogMark is what a line is: done (no mark), next or blocked.
 type LogMark string
@@ -40,6 +51,8 @@ type LogLine struct {
 	Other bool    `json:"other"` // not a bullet: Text is the block as written
 	Blank int     `json:"blank"` // blank lines before it in the file
 	Raw   string  `json:"raw"`   // the rows as read; "" for a new line. Used only while the fields still match it.
+	// Section is the index into LogPage.Sections of the list it belongs to (0 on a one-list page).
+	Section int `json:"section"`
 }
 
 func splitLines(s string) []string { return strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n") }
@@ -168,35 +181,107 @@ func (l LogLine) Plain() string {
 	return strings.TrimRight("- "+strings.ReplaceAll(l.Text, "\n", "\n  "), " ")
 }
 
-// LogPage is a list page split around its first Log section.
+// LogSection is one list of a page, in file order.
+type LogSection struct {
+	Name  string `json:"name"`  // LogHeading, ListWork or ListPersonal, whatever case the heading is written in
+	Join  string `json:"join"`  // after the first section: the page from the end of the previous list up to and including this heading line
+	Trail int    `json:"trail"` // blank lines after its last line (a trailing newline counts as one)
+	// Virtual is the missing partner of a split page (Work without Personal, or the reverse): it writes its heading line (Join),
+	// after the last list, only once it has lines.
+	Virtual bool `json:"virtual"`
+}
+
+// LogPage is a list page split around its lists.
 type LogPage struct {
-	Before string    `json:"before"` // the page up to and including the Log heading line
-	Lines  []LogLine `json:"lines"`
-	Trail  int       `json:"trail"` // blank lines after the last line (a trailing newline counts as one), before After
-	After  string    `json:"after"` // the page from the heading that ends the section; "" when it runs to the end
+	Before   string       `json:"before"` // the page up to and including the first list heading line
+	Lines    []LogLine    `json:"lines"`  // every list's lines; LogLine.Section says which
+	Sections []LogSection `json:"sections"`
+	Trail    int          `json:"trail"` // the last list's trailing blank lines; only read when Sections is empty (one list)
+	After    string       `json:"after"` // the page from the heading that ends the last list; "" when it runs to the end
 }
 
-// IsLogPage is true when body has a Log heading outside code.
+// listBlock is one list section in a scan.
+type listBlock struct {
+	jotsBlock
+	name string
+}
+
+// listBlocks lists the list sections of a scan in file order. A list heading inside an earlier list is not a section: it stays
+// an Other line of that list.
+func listBlocks(scanned []ScannedLine) []listBlock {
+	var all []listBlock
+	for _, name := range ListHeadings {
+		for _, b := range jotsBlocks(scanned, name) {
+			all = append(all, listBlock{b, name})
+		}
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].heading < all[j].heading })
+	var out []listBlock
+	for _, b := range all {
+		if len(out) > 0 && b.heading < out[len(out)-1].end {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// IsLogPage is true when body has a list heading outside code.
 func IsLogPage(body string) bool {
-	return len(jotsBlocks(ScanBody(strings.ReplaceAll(body, "\r\n", "\n")), LogHeading)) > 0
+	return len(listBlocks(ScanBody(strings.ReplaceAll(body, "\r\n", "\n")))) > 0
 }
 
-// ParseLog splits body around its first Log section (see the header). ok=false when there is none.
+// ParseLog splits body around its lists (see the header). ok=false when there is none.
 // A whitespace-only line reads as blank and is written back as "": a deliberate exception to byte for byte (markdown ignores it,
 // and a page is only rewritten after a real edit). A comment line is not blank: ScanBody blanks it, so the raw text decides.
 func ParseLog(body string) (LogPage, bool) {
 	text := strings.ReplaceAll(body, "\r\n", "\n")
 	lines := strings.Split(text, "\n")
 	scanned := ScanBody(text) // splits exactly like lines, so the indexes match
-	blocks := jotsBlocks(scanned, LogHeading)
+	blocks := listBlocks(scanned)
 	if len(blocks) == 0 {
 		return LogPage{}, false
 	}
-	b := blocks[0]
-	p := LogPage{Before: strings.Join(lines[:b.heading+1], "\n"), Lines: []LogLine{}}
-	if b.end < len(lines) {
-		p.After = strings.Join(lines[b.end:], "\n")
+	p := LogPage{Before: strings.Join(lines[:blocks[0].heading+1], "\n"), Lines: []LogLine{}}
+	has := map[string]bool{}
+	for i, b := range blocks {
+		s := LogSection{Name: b.name}
+		if i > 0 {
+			s.Join = strings.Join(lines[blocks[i-1].end:b.heading+1], "\n")
+		}
+		var ls []LogLine
+		ls, s.Trail = parseListLines(lines, scanned, b.heading+1, b.end)
+		for _, l := range ls {
+			l.Section = i
+			p.Lines = append(p.Lines, l)
+		}
+		p.Sections = append(p.Sections, s)
+		has[b.name] = true
 	}
+	last := blocks[len(blocks)-1]
+	if last.end < len(lines) {
+		p.After = strings.Join(lines[last.end:], "\n")
+	}
+	p.Trail = p.Sections[len(p.Sections)-1].Trail
+	if has[ListWork] != has[ListPersonal] { // a split page with one list: the other is there to be written into
+		missing, level := ListWork, 2
+		if has[ListWork] {
+			missing = ListPersonal
+		}
+		for _, b := range blocks {
+			if b.name != LogHeading {
+				level = b.level
+				break
+			}
+		}
+		p.Sections = append(p.Sections, LogSection{Name: missing, Join: strings.Repeat("#", level) + " " + missing, Virtual: true})
+	}
+	return p, true
+}
+
+// parseListLines reads the lines from..to-1 of one list: its bullets and Other blocks, and the blank lines after the last.
+func parseListLines(lines []string, scanned []ScannedLine, from, to int) ([]LogLine, int) {
+	var out []LogLine
 	var rows []string
 	bullet, blank, startBlank := false, 0, 0
 	flush := func() {
@@ -208,10 +293,10 @@ func ParseLog(body string) (LogPage, bool) {
 			l, _ = parseLogRows(rows) // rows[0] was already checked as a bullet
 		}
 		l.Blank = startBlank
-		p.Lines = append(p.Lines, l)
+		out = append(out, l)
 		rows = nil
 	}
-	for i := b.heading + 1; i < b.end; i++ {
+	for i := from; i < to; i++ {
 		l := scanned[i]
 		if l.Kind != LineCode && strings.TrimSpace(lines[i]) == "" { // a blank inside a fence is code
 			flush()
@@ -231,23 +316,74 @@ func ParseLog(body string) (LogPage, bool) {
 		}
 	}
 	flush()
-	p.Trail = blank
-	return p, true
+	return out, blank
 }
 
-// Markdown is the page with its Log section written back.
+// Target is the section a line routed to list (ListWork / ListPersonal) goes in: the list of that name, else the first list
+// (a one-list page takes everything).
+func (p LogPage) Target(list string) int {
+	for i, s := range p.Sections {
+		if s.Name == list {
+			return i
+		}
+	}
+	return 0
+}
+
+// Markdown is the page with its lists written back. A line whose Section is out of range is written into the first list, never
+// dropped.
 func (p LogPage) Markdown() string {
 	out := []string{p.Before}
-	for _, l := range p.Lines {
-		for i := 0; i < l.Blank; i++ {
+	write := func(ls []LogLine) {
+		for _, l := range ls {
+			for i := 0; i < l.Blank; i++ {
+				out = append(out, "")
+			}
+			out = append(out, l.Markdown())
+		}
+	}
+	blanks := func(n int) {
+		for i := 0; i < n; i++ {
 			out = append(out, "")
 		}
-		out = append(out, l.Markdown())
 	}
-	for i := 0; i < p.Trail; i++ {
-		out = append(out, "")
+	if len(p.Sections) == 0 { // one list, from a caller that built the page by hand
+		write(p.Lines)
+		blanks(p.Trail)
+		if p.After != "" {
+			out = append(out, p.After)
+		}
+		return strings.Join(out, "\n")
+	}
+	of := make([][]LogLine, len(p.Sections))
+	for _, l := range p.Lines {
+		s := l.Section
+		if s < 0 || s >= len(p.Sections) {
+			s = 0
+		}
+		of[s] = append(of[s], l)
+	}
+	wroteVirtual := false
+	for i, s := range p.Sections {
+		switch {
+		case s.Virtual && len(of[i]) == 0:
+			continue
+		case s.Virtual:
+			if out[len(out)-1] != "" {
+				out = append(out, "")
+			}
+			out = append(out, s.Join)
+			wroteVirtual = true
+		case i > 0:
+			out = append(out, s.Join)
+		}
+		write(of[i])
+		blanks(s.Trail)
 	}
 	if p.After != "" {
+		if wroteVirtual && out[len(out)-1] != "" {
+			out = append(out, "")
+		}
 		out = append(out, p.After)
 	}
 	return strings.Join(out, "\n")

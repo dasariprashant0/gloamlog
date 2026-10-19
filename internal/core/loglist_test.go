@@ -181,3 +181,56 @@ func TestListPagesCountEveryLogLineAndNoMarks(t *testing.T) {
 	expect(t, JotsHeadingFor("", "Jots") == LogHeading && JotsHeadingFor("  \n", "Jots") == LogHeading, "new days are list pages")
 	expect(t, JotsHeadingFor("words", "Jots") == "Jots", "a page with writing but no Log stays classic")
 }
+
+func TestSplitPageRoundTripsAndKnowsSections(t *testing.T) {
+	body := "# d\n\n## Work\n\n- 09:40 fixed it\n- 15:30 keys #blocked\n\n## Notes\nfree text\n\n## Personal\n\n- 21:10 standup view\n\n## After\nx"
+	p, ok := ParseLog(body)
+	if !ok || len(p.Sections) != 2 || p.Sections[0].Name != "Work" || p.Sections[1].Name != "Personal" {
+		t.Fatalf("%v %+v", ok, p.Sections)
+	}
+	if got := []int{p.Lines[0].Section, p.Lines[1].Section, p.Lines[2].Section}; got[0] != 0 || got[1] != 0 || got[2] != 1 {
+		t.Fatalf("sections %v", got)
+	}
+	if p.Markdown() != body {
+		t.Fatalf("not byte for byte:\n%q", p.Markdown())
+	}
+	if p.Target("Personal") != 1 || p.Target("Work") != 0 {
+		t.Fatal("target")
+	}
+}
+
+func TestLogPageStaysOneListAndNestedHeadingIsOther(t *testing.T) {
+	body := "## Log\n\n- a\n\n### Personal\n- b\n"
+	p, _ := ParseLog(body)
+	if len(p.Sections) != 1 || p.Target("Personal") != 0 || p.Markdown() != body {
+		t.Fatalf("%+v", p.Sections)
+	}
+	if !p.Lines[1].Other {
+		t.Fatal("a nested list heading is an Other line")
+	}
+}
+
+func TestMissingPartnerWritesOnlyWithLines(t *testing.T) {
+	body := "## Work\n\n- a\n\n## Notes\nx"
+	p, _ := ParseLog(body)
+	if len(p.Sections) != 2 || !p.Sections[1].Virtual || p.Markdown() != body {
+		t.Fatalf("%+v\n%q", p.Sections, p.Markdown())
+	}
+	p.Lines = append(p.Lines, LogLine{Time: "21:00", Text: "home", Section: 1, Blank: 1})
+	if got := p.Markdown(); got != "## Work\n\n- a\n\n## Personal\n\n- 21:00 home\n\n## Notes\nx" {
+		t.Fatalf("%q", got)
+	}
+	// the partner of a page that ends with its list
+	q, _ := ParseLog("## Personal\n- b\n")
+	q.Lines = append(q.Lines, LogLine{Text: "c", Section: 1, Blank: 1})
+	if got := q.Markdown(); got != "## Personal\n- b\n\n## Work\n\n- c" {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestOpenLinesCoverEveryList(t *testing.T) {
+	got := OpenLines("## Work\n- a #next\n## Personal\n- b #blocked\n")
+	if len(got) != 2 || got[1].Section != 1 {
+		t.Fatalf("%+v", got)
+	}
+}
