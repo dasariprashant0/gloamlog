@@ -2,7 +2,7 @@
 // out by Go (Notes.LogRender), which also gives each line's HTML. DayPage owns saving: it hears the markdown through onChange
 // and asks for the latest with markdown() before it flushes.
 import {forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState} from 'react';
-import type {KeyboardEvent} from 'react';
+import type {ClipboardEvent, KeyboardEvent} from 'react';
 import {Kbd} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes} from '../api';
@@ -79,6 +79,25 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
         addLine(text, mark) { act(s => M.append(s, text, now(), mark)); },
     }), [page, render, act]);
 
+    async function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+        const file = [...e.clipboardData.files].find(f => f.type.startsWith('image/'));
+        if (!file) return; // text pastes as usual
+        e.preventDefault();
+        const at = e.currentTarget.selectionStart;
+        try {
+            const b64 = await new Promise<string>((ok, fail) => {
+                const r = new FileReader();
+                r.onload = () => ok(String(r.result).split(',')[1] ?? '');
+                r.onerror = () => fail(r.error);
+                r.readAsDataURL(file);
+            });
+            const path = await Notes.SaveImage(day, file.name || 'pasted.png', file.type, b64);
+            act(s => M.setDraft(s, `${s.draft.slice(0, at)}![](${path})${s.draft.slice(at)}`));
+        } catch (err) {
+            onToast(`Couldn't add the image: ${String((err as Error)?.message ?? err)}`);
+        }
+    }
+
     function onKey(e: KeyboardEvent<HTMLTextAreaElement>, i: number) {
         const cmd = e.metaKey || e.ctrlKey;
         const ta = e.currentTarget;
@@ -98,7 +117,7 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
                 {state.lines.map((l, i) => (
                     <LogRow key={i} line={l} editing={state.edit === i} draft={state.draft} html={html[M.renderIndex(state, i)] ?? ''}
                             readOnly={readOnly} onEdit={() => act(s => M.focus(s, i))} onDraft={d => act(s => M.setDraft(s, d))}
-                            onKey={e => onKey(e, i)} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
+                            onKey={e => onKey(e, i)} onPaste={onPaste} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
                             onTime={t => act(s => M.setTime(s, i, t))}/>
                 ))}
             </ul>
@@ -107,9 +126,10 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
     );
 });
 
-function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, onBlur, onCycle, onTime}: {
+function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, onPaste, onBlur, onCycle, onTime}: {
     line: M.Line; editing: boolean; draft: string; html: string; readOnly: boolean;
     onEdit: () => void; onDraft: (d: string) => void; onKey: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+    onPaste: (e: ClipboardEvent<HTMLTextAreaElement>) => void;
     onBlur: () => void; onCycle: () => void; onTime: (t: string) => void;
 }) {
     const ta = useRef<HTMLTextAreaElement>(null);
@@ -141,7 +161,7 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
                           onClick={() => setTiming(true)}>{line.time || '–'}</button>}
             {editing
                 ? <textarea ref={ta} className="log-input" rows={1} aria-label="Line" value={draft}
-                            onChange={e => onDraft(e.target.value)} onKeyDown={onKey} onBlur={onBlur}/>
+                            onChange={e => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} onBlur={onBlur}/>
                 : <div className="log-text" role="button" tabIndex={readOnly ? -1 : 0} aria-label={`Edit: ${line.text || 'empty line'}`}
                        onClick={e => { e.preventDefault(); openLinkOrEdit(e.target); }}
                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!readOnly) onEdit(); } }}
