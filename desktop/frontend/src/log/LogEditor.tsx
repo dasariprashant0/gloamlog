@@ -52,6 +52,9 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
     // The page's lists ("Log", or "Work" and "Personal"), by section index; a routed line goes to the list of its name, else the first.
     const names = (page.sections ?? []).map(s => s.name);
     const targetOf = (list: string) => Math.max(0, names.indexOf(list));
+    // The add field starts on the list quick notes go to (Settings > Page); Work when settings can't be read.
+    const [jots, setJots] = useState('Work');
+    useEffect(() => { Notes.Settings().then(s => setJots(s.lists?.jots || 'Work'), () => {}); }, []);
 
     const render = useCallback((lines: M.Line[]) => {
         const n = ++seq.current;
@@ -126,7 +129,7 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
     // The same state in both views: the draft, undo and the From yesterday picks survive a switch. html is per withDraft line.
     if (view === 'standup') return <StandupView lines={M.withDraft(state)} html={html} names={names} onToast={onToast}/>;
 
-    // A split page shows each list under its name with its own add field; a one-list page looks as it always did.
+    // A split page shows each list under its name; one add field below them adds to the list its chip names.
     const lists = names.length > 1 ? names : [''];
     return (
         <div className="log">
@@ -143,10 +146,10 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
                                         onTime={t => act(s => M.setTime(s, i, t))}/>
                             ))}
                         </ul>}
-                    {!readOnly && <AddField id={`log-add-${si}`} list={name} autoFocus={autoFocus && si === 0} hint={si === lists.length - 1}
-                                            onAdd={(text, mark) => act(s => M.append(s, text, now(), mark, si))}/>}
                 </section>
             ))}
+            {!readOnly && <AddField lists={lists} start={jots} autoFocus={autoFocus}
+                                    onAdd={(text, mark, si) => act(s => M.append(s, text, now(), mark, si))}/>}
         </div>
     );
 });
@@ -199,22 +202,32 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
     );
 }
 
-function AddField({id, list, autoFocus, hint, onAdd}: {
-    id: string; list: string; autoFocus: boolean; hint: boolean; onAdd: (text: string, mark: M.Mark) => void;
+function AddField({lists, start, autoFocus, onAdd}: {
+    lists: string[]; start: string; autoFocus: boolean; onAdd: (text: string, mark: M.Mark, list: number) => void;
 }) {
     const [text, setText] = useState('');
-    const add = (mark: M.Mark) => { if (!text.trim()) return; onAdd(text, mark); setText(''); };
+    const [picked, setPicked] = useState(-1); // the list chosen with the chip while the page is open; -1: start's
+    const [focused, setFocused] = useState(false);
+    const at = picked >= 0 ? picked : Math.max(0, lists.indexOf(start));
+    const other = (at + 1) % lists.length;
+    const add = (mark: M.Mark) => { if (!text.trim()) return; onAdd(text, mark, at); setText(''); };
     return (
         <div className="log-add">
-            <label className="sr-only" htmlFor={id}>{list ? `Add a line to ${list}` : 'Add a line'}</label>
-            <input id={id} className="input" placeholder={list === 'Personal' ? 'Something for you?' : 'What did you just do?'} autoFocus={autoFocus} value={text}
-                   onChange={e => setText(e.target.value)}
-                   onKeyDown={e => {
-                       const mark = markKey(e);
-                       if (mark !== null) { e.preventDefault(); e.stopPropagation(); add(mark); }
-                       else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(''); }
-                   }}/>
-            {hint && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
+            <label className="sr-only" htmlFor="log-add">{lists.length > 1 ? `Add a line to ${lists[at]}` : 'Add a line'}</label>
+            <div className="log-add-field">
+                <input id="log-add" className="input" placeholder="What did you just do?" autoFocus={autoFocus} value={text}
+                       onChange={e => setText(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                       onKeyDown={e => {
+                           const mark = markKey(e);
+                           if (mark !== null) { e.preventDefault(); e.stopPropagation(); add(mark); }
+                           else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(''); }
+                       }}/>
+                {lists.length > 1 && (
+                    <button type="button" className="badge log-add-list" aria-label={`Adds to ${lists[at]}. Switch to ${lists[other]}`}
+                            onMouseDown={e => e.preventDefault() /* keep typing */} onClick={() => setPicked(other)}>{lists[at]} ▾</button>
+                )}
+            </div>
+            {focused && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
         </div>
     );
 }
