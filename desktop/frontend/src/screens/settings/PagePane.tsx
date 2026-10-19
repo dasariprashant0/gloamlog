@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
-import {Button, Field, Setting} from '@personal/ui/react';
-import {Block, CLASSIC_TEMPLATE, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, Panel, ResetBar, type PaneProps} from './shared';
+import {Button, Field, Segmented, Setting} from '@personal/ui/react';
+import {Block, CLASSIC_TEMPLATE, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, ONE_LIST_TEMPLATE, Panel, ResetBar, type PaneProps} from './shared';
 
 const WINDOWS = [7, 14, 30, 60, 90, 180, 365];
 const windowLabel = (d: number) => (d === 365 ? '1 year' : `${d} days`);
@@ -8,7 +8,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
 const PRESETS: {title: string; markdown: string; carry: string[]}[] = [
-    {title: 'Log list', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY},
+    {title: 'Work and Personal', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY},
+    {title: 'One list', markdown: ONE_LIST_TEMPLATE, carry: DEFAULT_CARRY},
     {title: 'Daily review', markdown: CLASSIC_TEMPLATE, carry: DEFAULT_CARRY},
     {title: 'Standup', markdown: '## Yesterday\n\n## Today\n\n## Blockers', carry: ['Today', 'Blockers']},
     {title: 'Blank page', markdown: '', carry: DEFAULT_CARRY},
@@ -52,6 +53,18 @@ export function PagePane({s, set, overview}: PaneProps) {
                 <TemplateEditor template={s.template} onTemplate={template => set({template})} onPreset={(template, carryOverHeadings) => set({template, carryOverHeadings})}
                     isDefault={s.template === DEFAULT_TEMPLATE && s.carryOverHeadings.join('\n') === DEFAULT_CARRY.join('\n')}/>
             </Block>
+            <Block title="Work and Personal">
+                <Setting title="Work folders" hint="Claude Code sessions, commits and Claude's notes from these folders go to the Work list. One folder per line.">
+                    <Folders label="Work folders" folders={s.lists?.work ?? []} onChange={work => set({lists: {...s.lists, work}})}/>
+                </Setting>
+                <Setting title="Personal folders" hint="The same for the Personal list. Anything in neither goes to Work; the deepest folder wins.">
+                    <Folders label="Personal folders" folders={s.lists?.personal ?? []} onChange={personal => set({lists: {...s.lists, personal}})}/>
+                </Setting>
+                <Setting title="Quick notes go to" hint="A note from the Jot shortcut or the menu bar has no folder.">
+                    <Segmented options={[['Work', 'Work'], ['Personal', 'Personal']]} value={s.lists?.jots === 'Personal' ? 'Personal' : 'Work'}
+                        onChange={jots => set({lists: {...s.lists, jots}})}/>
+                </Setting>
+            </Block>
             <Block title="Carried over from yesterday">
                 <CarryHeadings headings={s.carryOverHeadings} onChange={carryOverHeadings => set({carryOverHeadings})}/>
             </Block>
@@ -90,6 +103,18 @@ function TemplateEditor({template, onTemplate, onPreset, isDefault}: {template: 
             </Field>
         </div>
     );
+}
+
+/** A list of folders, one per line. Saves when you leave the box. */
+function Folders({label, folders, onChange}: {label: string; folders: string[]; onChange: (f: string[]) => void}) {
+    const [text, setText] = useState(folders.join('\n'));
+    useEffect(() => setText(folders.join('\n')), [folders.join('\n')]); // eslint-disable-line react-hooks/exhaustive-deps
+    const commit = () => {
+        const next = text.split('\n').map(f => f.trim()).filter(Boolean);
+        if (next.join('\n') !== folders.join('\n')) onChange(next);
+    };
+    return <textarea className="textarea" rows={2} spellCheck={false} aria-label={label} placeholder="/Users/you/Projects/…"
+                     value={text} onChange={e => setText(e.target.value)} onBlur={commit}/>;
 }
 
 /** The headings "From yesterday" carries over. Edits save when you leave the box. */

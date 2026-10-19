@@ -12,7 +12,7 @@ import {CLASSIC_TEMPLATE, DAY_NAMES, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberFiel
 
 type Preset = {id: string; title: string; detail: string; markdown: string; carry: string[]; preview: string[]};
 const PRESETS: Preset[] = [
-    {id: 'log', title: 'Log list', detail: 'One list through the day. Mark lines next or blocked.', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY,
+    {id: 'log', title: 'Log list', detail: 'A Work list and a Personal list through the day. Mark lines next or blocked.', markdown: DEFAULT_TEMPLATE, carry: DEFAULT_CARRY,
         preview: ['09:40 Fixed the login loop', '17:45 Write the test #next']},
     {id: 'review', title: 'Daily review', detail: 'Five prompts for the end of the day.', markdown: CLASSIC_TEMPLATE, carry: DEFAULT_CARRY,
         preview: ['What I did', 'Finished', 'Started', 'Pending / blocked', 'To do next']},
