@@ -85,7 +85,7 @@ function render(page: MockPage) {
 export const logMock = {
     LogParse: (body: string) => later(parseLog(body)),
     LogRender: (page: MockPage) => later(render(page)),
-    LogAppendLines: (page: MockPage, markdown: string, list: string) => {
+    LogAppendLines: (page: MockPage, markdown: string, list: string, _timed = false) => { // no mock path sends a timed line
         const section = Math.max(0, page.sections.findIndex(s => s.name === list));
         const have = new Set(page.lines.map(l => l.text.toLowerCase()));
         let empty = !page.lines.some(l => (l.section ?? 0) === section);

@@ -159,11 +159,11 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
     }, [save, onToast]);
 
     // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
-    useEffect(() => on<{id: string; day: string; heading: string; list?: string; markdown: string}>('jot-into-page', j => {
+    useEffect(() => on<{id: string; day: string; heading: string; list?: string; markdown: string; timed?: boolean}>('jot-into-page', j => {
         const notLoaded = () => void Notes.JotPlaced(j.id, 'notLoaded', '').catch(() => {}); // capture.go writes the file after 4 s
         if (loaded.current !== j.day) return notLoaded();
         if (listMode.current && logRef.current) {
-            logRef.current.appendLines(j.markdown, j.list || 'Work').then(r => {
+            logRef.current.appendLines(j.markdown, j.list || 'Work', !!j.timed).then(r => {
                 void Notes.JotPlaced(j.id, r.result, r.markdown).catch(() => {});
                 if (r.result === 'appended') void save(j.day, r.markdown);
             }, notLoaded);

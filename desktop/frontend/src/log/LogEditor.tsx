@@ -13,7 +13,7 @@ export type LogEditorHandle = {
     /** The page as markdown, the line being edited included. */
     markdown(): Promise<string>;
     /** Adds the bullets in markdown at the end of list ("Work" / "Personal"; a one-list page takes them): a jot, suggestions. */
-    appendLines(markdown: string, list: string): Promise<{result: string; markdown: string}>;
+    appendLines(markdown: string, list: string, timed?: boolean): Promise<{result: string; markdown: string}>; // timed: each at its time (a commit)
     /** From yesterday's Keep / Done: a line at the end of list, at the current time. */
     addLine(text: string, mark: M.Mark, list: string): void;
 };
@@ -78,8 +78,8 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
             clearTimeout(timer.current);
             return (await render(M.withDraft(stateRef.current))).markdown;
         },
-        async appendLines(md, list) {
-            const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md, list);
+        async appendLines(md, list, timed = false) {
+            const a = await Notes.LogAppendLines({...page, lines: M.withDraft(stateRef.current)} as unknown as LogPage, md, list, timed);
             if (a.result === 'appended') {
                 // stateRef first: a second append right after this one (another list) must start from these lines
                 dirty.current = true;

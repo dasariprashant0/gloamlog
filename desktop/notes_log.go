@@ -47,33 +47,55 @@ type LogAppended struct {
 	Result   string         `json:"result"`
 }
 
-// LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) at the end
-// of list (core.ListWork / core.ListPersonal; a one-list page takes them in its list), skipping any whose text is already a
-// line in any list. Used while the list editor has the page open.
-func (n *Notes) LogAppendLines(page core.LogPage, markdown, list string) LogAppended {
+// LogAppendLines adds the bullets of markdown (a jot as capture renders it, or the suggestions strip's lines) to list
+// (core.ListWork / core.ListPersonal; a one-list page takes them in its list): at its end, or each by its time when timed (a
+// commit: core.InsertTimed). A line whose text is already a line in any list is skipped. Used while the list editor has the
+// page open. The lines come back list by list, in page order.
+func (n *Notes) LogAppendLines(page core.LogPage, markdown, list string, timed bool) LogAppended {
 	add, _ := core.ParseLog("## " + core.LogHeading + "\n" + markdown)
 	section := page.Target(list)
 	have := map[string]bool{}
-	empty := true // the target list has no line yet
+	var mine []core.LogLine // the target list's lines
 	for _, l := range page.Lines {
 		have[core.ItemKey(l.Text)] = true
 		if l.Section == section {
-			empty = false
+			mine = append(mine, l)
 		}
 	}
-	lines, added := append([]core.LogLine{}, page.Lines...), 0
+	added := 0
 	for _, l := range add.Lines {
 		key := core.ItemKey(l.Text)
 		if l.Other || key == "" || have[key] {
 			continue
 		}
 		l.Blank, l.Section = 0, section
-		if empty {
-			l.Blank, empty = 1, false // a blank line between the heading and the first line
+		switch {
+		case timed:
+			mine = core.InsertTimed(mine, l)
+		case len(mine) == 0:
+			l.Blank = 1 // a blank line between the heading and the first line
+			mine = append(mine, l)
+		default:
+			mine = append(mine, l)
 		}
-		lines = append(lines, l)
 		have[key] = true
 		added++
+	}
+	lists := max(len(page.Sections), 1)
+	var lines []core.LogLine
+	for s := 0; s < lists; s++ {
+		if s == section {
+			lines = append(lines, mine...)
+			continue
+		}
+		for _, l := range page.Lines {
+			if l.Section == s {
+				lines = append(lines, l)
+			}
+		}
+	}
+	if lines == nil {
+		lines = []core.LogLine{}
 	}
 	page.Lines = lines
 	res := LogAppended{Lines: lines, Rendered: n.LogRender(page), Result: "appended"}
