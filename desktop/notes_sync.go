@@ -159,7 +159,7 @@ type ConflictItem struct {
 func sideTitle(who string, at time.Time, words int) string {
 	when := "time unknown"
 	if !at.IsZero() {
-		at = at.In(time.Local)
+		at = at.In(appZone())
 		when = at.Format("Mon 2 Jan") + ", " + at.Format("3:04 pm")
 	}
 	count := strconv.Itoa(words) + " words"

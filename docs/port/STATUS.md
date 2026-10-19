@@ -39,8 +39,8 @@ Found in the line-by-line review; each has a test.
 - Day page: sync copies and the reminder are one status line (writing redesign spec 2.1); folder problems keep the full banner; other views keep the sync banner.
 - Menu bar: the streak and this week's days under today's state.
 - Settings > Storage: the Sync section (folder type, Resolve conflicts, Download all). Settings > About: Third-party licences (`npm run licences` in `desktop/frontend` writes `THIRD_PARTY_LICENSES.md`; build.sh bundles it).
-- A time-zone change while the app runs is followed (`timezone.go`, checked every minute); the Dock bounces when a reminder brings the app forward, unless Reduce Motion is on (`dock_darwin.go`); VoiceOver hears Logged for today, Catching up N of M, All caught up, Conflict settled and lines carried over (`src/announce.ts`).
-- Known flaky test: `TestAddCommitsGoThroughAnOpenPageAsTimedJots` failed once in about 40 full runs of the desktop package (never alone in 40 runs); the cause is not found yet.
+- A time-zone change while the app runs is followed (`timezone.go`, checked every minute; `appZone()` holds the zone atomically); the Dock bounces when a reminder brings the app forward, unless Reduce Motion is on (`dock_darwin.go`); VoiceOver hears Logged for today, Catching up N of M, All caught up, Conflict settled and lines carried over (`src/announce.ts`).
+- The app reads local time through `appZone()` (`timezone.go`), never by writing `time.Local`, so a zone change is not a data race.
 - Claude integration: `log_work` notes carry the folder Claude names (they went to Work when the helper, started before an update, sent none), and the helper reloads itself after an app update. Commits: Git also reads the repositories Claude Code worked in (0 → 89 commits found on 19 Oct), and a day's commits in one project are one line that keeps its count.
 
 ## Cutover (when the checks above pass)

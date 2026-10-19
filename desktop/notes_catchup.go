@@ -38,8 +38,8 @@ func (n *Notes) CatchUp(windowDays int) (CatchUpData, error) {
 	cal := n.cal()
 	for _, d := range core.CatchUpMissing(states, n.now(), cal, n.settings.Weekdays, since, windowDays) {
 		item := CatchUpDay{Day: d, WeekStart: d, Started: states[d] == core.StatusPartial}
-		if t, ok := core.DayKeyDate(d, time.Local); ok {
-			item.WeekStart = core.DayKeyString(cal.StartOfWeek(t), time.Local)
+		if t, ok := core.DayKeyDate(d, appZone()); ok {
+			item.WeekStart = core.DayKeyString(cal.StartOfWeek(t), appZone())
 		}
 		if item.Started {
 			if doc, _ := n.store.Load(d); doc != nil { // a word count only: an unreadable day shows none

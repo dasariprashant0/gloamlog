@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestZoneNameReadsTheLocaltimeLink(t *testing.T) {
@@ -17,5 +18,20 @@ func TestZoneNameReadsTheLocaltimeLink(t *testing.T) {
 	}
 	if got := zoneName(filepath.Join(dir, "missing")); got != "" {
 		t.Fatalf("missing link: %q", got)
+	}
+}
+
+func TestAppZoneIsLocalUntilTheZoneChanges(t *testing.T) {
+	defer zone.Store(nil)
+	if appZone() != time.Local {
+		t.Fatal("before any change the app uses the Mac's zone")
+	}
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Skip("no zone database")
+	}
+	zone.Store(tokyo)
+	if appZone() != tokyo {
+		t.Fatal("after a change the app uses the new zone")
 	}
 }

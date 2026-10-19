@@ -83,7 +83,7 @@ func (n *Notes) Suggestions(day string, again bool) (Suggestions, error) {
 	scanner := scans.get(home)
 	scans.mu.Unlock()
 
-	result := scanner.Scan(ctx, day, core.DayKeyString(now, time.Local), cal, prefs, nil)
+	result := scanner.Scan(ctx, day, core.DayKeyString(now, appZone()), cal, prefs, nil)
 	if ctx.Err() != nil {
 		return out, context.Canceled // a newer scan replaced this one: the caller drops it
 	}

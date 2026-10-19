@@ -47,6 +47,17 @@ func (r *recorder) add(name string, data any) {
 	r.events = append(r.events, recorded{name, data})
 	r.mu.Unlock()
 }
+
+// namedSoon is named, waiting up to a second for at least n events: a page opening starts a replay in the background, and a note
+// that replay routes is sent from its goroutine a moment later.
+func (r *recorder) namedSoon(name string, n int) []any {
+	for deadline := time.Now().Add(time.Second); ; time.Sleep(5 * time.Millisecond) {
+		if got := r.named(name); len(got) >= n || time.Now().After(deadline) {
+			return got
+		}
+	}
+}
+
 func (r *recorder) named(name string) []any {
 	r.mu.Lock()
 	defer r.mu.Unlock()

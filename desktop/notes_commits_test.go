@@ -117,7 +117,7 @@ func TestAddCommitsGoThroughAnOpenPageAsTimedJots(t *testing.T) {
 	if added, err := n.AddCommits(commitDay); err != nil || added != 1 {
 		t.Fatalf("added %d, err %v", added, err)
 	}
-	got := events.named("jot-into-page")
+	got := events.namedSoon("jot-into-page", 1)
 	if len(got) != 1 {
 		t.Fatalf("jot-into-page events = %v", got)
 	}

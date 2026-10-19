@@ -81,7 +81,7 @@ func isSplitTemplate(t string) bool {
 	return ok && len(p.Sections) > 1
 }
 
-func (n *Notes) cal() core.Calendar { return core.NewCalendar(time.Local, n.settings.WeekStart) }
+func (n *Notes) cal() core.Calendar { return core.NewCalendar(appZone(), n.settings.WeekStart) }
 
 // states is the status of every day with a file, and the day the log starts.
 func (n *Notes) states() (map[string]core.DayStatus, string, error) {
@@ -154,7 +154,7 @@ func (n *Notes) Overview() (Overview, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	now, cal, s := n.now(), n.cal(), n.settings
-	o := Overview{Today: core.DayKeyString(now, time.Local), Folder: s.StorageFolder, Onboarded: s.Onboarded, SettingsNote: n.settingsNote}
+	o := Overview{Today: core.DayKeyString(now, appZone()), Folder: s.StorageFolder, Onboarded: s.Onboarded, SettingsNote: n.settingsNote}
 	if err := n.store.CheckFolder(true); err != nil {
 		o.FolderError = core.LogErrorDetail(err)
 		return o, nil
@@ -236,7 +236,7 @@ func (n *Notes) Open(day string) (Page, error) {
 	}
 	now, cal, s := n.now(), n.cal(), n.settings
 	p := Page{Day: day, NotLocal: n.store.IsNotLocal(day)}
-	if t, ok := core.DayKeyDate(day, time.Local); ok {
+	if t, ok := core.DayKeyDate(day, appZone()); ok {
 		p.Title = t.Format("Monday 2 January")
 		if t.Year() != now.Year() {
 			p.Title = t.Format("Monday 2 January 2006")
@@ -256,7 +256,7 @@ func (n *Notes) Open(day string) (Page, error) {
 	} else {
 		p.Body = s.Template
 	}
-	if day == core.DayKeyString(now, time.Local) && !p.IsSkipped {
+	if day == core.DayKeyString(now, appZone()) && !p.IsSkipped {
 		load := func(d string) *core.DayDocument { doc, _ := n.store.Load(d); return doc } // an unreadable day offers no carry-over; nothing is written
 		if c := n.offerFor(day, p.Body, core.CarryCardBefore(day, cal, s, load)); c != nil {
 			p.Carry, p.CarryApplied = c, core.IsCarryApplied(*c, p.Body)
@@ -378,13 +378,13 @@ func (n *Notes) Week(day string, shift int, bySection bool) (Week, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	now, cal := n.now(), n.cal()
-	date, ok := core.DayKeyDate(day, time.Local)
+	date, ok := core.DayKeyDate(day, appZone())
 	if !ok {
 		date = now
 	}
 	date = core.ShiftWeek(date, shift, cal)
 	start := cal.StartOfWeek(date)
-	from, to := core.DayKeyString(start, time.Local), core.DayKeyString(start.AddDate(0, 0, 6), time.Local)
+	from, to := core.DayKeyString(start, appZone()), core.DayKeyString(start.AddDate(0, 0, 6), appZone())
 	docs, err := n.store.Documents(from, to)
 	if err != nil {
 		return Week{}, err

@@ -170,7 +170,7 @@ func startReminders(app *application.App, n *Notes) {
 // run is the app's start: grace after launch, the notification buttons, permission, then the 30 s tick.
 func (e *reminderEngine) run() {
 	e.refreshPermission()
-	cal := core.NewCalendar(time.Local, 1) // PlannerAtLaunch only needs the zone
+	cal := core.NewCalendar(appZone(), 1) // PlannerAtLaunch only needs the zone
 	if in, err := e.snap(); err == nil {
 		cal = in.Cal
 	}
@@ -242,7 +242,7 @@ func (e *reminderEngine) tick() {
 // step is one tick: observe changes, decide, perform, tell the page, keep the Mac's requests equal to the plan.
 func (e *reminderEngine) step(in reminderInput) {
 	now := e.now()
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	status := core.ResolveStatus(today, in.States[today], now, in.Cal, in.Settings.Weekdays, in.Since)
 	before := e.f.Planner
 
@@ -313,7 +313,7 @@ func (e *reminderEngine) post(now time.Time, in reminderInput, today string) {
 
 // inAppCopy: within 5 minutes of the reminder time "Time to write up your day", later "Today isn't logged yet".
 func inAppCopy(now time.Time, reminderMinutes int, cal core.Calendar, use24 bool) (title, body string) {
-	t := now.In(time.Local)
+	t := now.In(appZone())
 	if t.Hour()*60+t.Minute()-reminderMinutes > 5 {
 		return "Today isn't logged yet", "It's " + core.ReminderTimeText(now, cal, use24) + ". Open Gloamlog whenever you're ready."
 	}
@@ -349,7 +349,7 @@ func (e *reminderEngine) dropToday(today string) {
 }
 
 func fireTime(f core.ReminderFire) time.Time {
-	return time.Date(f.Year, time.Month(f.Month), f.Day, f.Hour, f.Minute, 0, 0, time.Local)
+	return time.Date(f.Year, time.Month(f.Month), f.Day, f.Hour, f.Minute, 0, 0, appZone())
 }
 
 // ---- the page's notice ----
@@ -475,9 +475,9 @@ func (e *reminderEngine) snooze(now time.Time, in reminderInput, fromBanner bool
 	}
 	e.f.Planner = next
 	e.os.Remove(inAppReminderID)
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	if until := next.SnoozedUntil; fromBanner && e.os.Available() && e.allowed && in.Settings.ClosedAppReminders && until.After(now) &&
-		core.DayKeyString(until, time.Local) == today && until.In(time.Local).Hour()*60+until.In(time.Local).Minute() < core.ReminderCutoffMinutes {
+		core.DayKeyString(until, appZone()) == today && until.In(appZone()).Hour()*60+until.In(appZone()).Minute() < core.ReminderCutoffMinutes {
 		title, body := core.ReminderCopy(until, in.Cal, e.use24())
 		err := e.os.Post(notifications.NotificationOptions{
 			ID: core.ReminderSnoozeID(today), Title: title, Body: body, CategoryID: core.ReminderCategory,
@@ -505,7 +505,7 @@ func (e *reminderEngine) handle(r notifications.NotificationResponse) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	now := e.now()
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	day, _ := r.UserInfo["day"].(string)
 	if !core.DayKeyIsWellFormed(day) {
 		day = today
@@ -610,7 +610,7 @@ func (n *Notes) CurrentReminderNotice() ReminderNoticeState {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	now := e.now()
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	return e.noticeState(now, in, today, core.ResolveStatus(today, in.States[today], now, in.Cal, in.Settings.Weekdays, in.Since))
 }
 
@@ -632,7 +632,7 @@ func (n *Notes) SkipToday() error {
 	if reminders != nil {
 		now = reminders.now()
 	}
-	if err := n.Skip(core.DayKeyString(now, time.Local), ""); err != nil {
+	if err := n.Skip(core.DayKeyString(now, appZone()), ""); err != nil {
 		return err
 	}
 	if reminders != nil {

@@ -200,7 +200,7 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 	})
 	menu.Add("Copy this week's summary").OnClick(func(*application.Context) {
 		go func() {
-			if w, err := n.Week(core.DayKeyString(n.now(), time.Local), 0, false); err == nil {
+			if w, err := n.Week(core.DayKeyString(n.now(), appZone()), 0, false); err == nil {
 				app.Clipboard.SetText(w.Markdown)
 			}
 		}()

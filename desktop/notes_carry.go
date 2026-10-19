@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/dasariprashant0/gloamlog/internal/core"
 )
@@ -46,7 +45,7 @@ func (n *Notes) CarryDismiss(day, text string) error {
 		}
 	}
 	d[day] = append(d[day], key)
-	cutoff := core.DayKeyString(n.now().AddDate(0, 0, -30), time.Local)
+	cutoff := core.DayKeyString(n.now().AddDate(0, 0, -30), appZone())
 	for k := range d {
 		if k < cutoff {
 			delete(d, k)

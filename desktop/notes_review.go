@@ -121,15 +121,15 @@ type reviewBuilt struct {
 // the days that exist. A range never reaches past today.
 func (n *Notes) reviewPeriod(req ReviewRequest) core.ReviewPeriod {
 	now, cal := n.now(), n.cal()
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	scale := core.ReviewScale(req.Scale)
 	if scale != core.ScaleWeek && scale != core.ScaleMonth && scale != core.ScaleYear && scale != core.ScaleRange {
 		scale = core.ScaleWeek
 	}
 	var p core.ReviewPeriod
 	if scale == core.ScaleRange {
-		from, ok1 := core.DayKeyDate(req.From, time.Local)
-		to, ok2 := core.DayKeyDate(req.To, time.Local)
+		from, ok1 := core.DayKeyDate(req.From, appZone())
+		to, ok2 := core.DayKeyDate(req.To, appZone())
 		if !ok1 {
 			from = cal.StartOfWeek(now)
 		}
@@ -138,7 +138,7 @@ func (n *Notes) reviewPeriod(req ReviewRequest) core.ReviewPeriod {
 		}
 		p = core.ReviewRange(from, to, cal)
 	} else {
-		anchor, ok := core.DayKeyDate(req.Day, time.Local)
+		anchor, ok := core.DayKeyDate(req.Day, appZone())
 		if !ok {
 			anchor = now
 		}
@@ -167,7 +167,7 @@ func stepAllowed(next core.ReviewPeriod, dir int, today string) bool {
 func (n *Notes) reviewBuild(req ReviewRequest) (reviewBuilt, error) {
 	p := n.reviewPeriod(req)
 	b := reviewBuilt{cal: n.cal(), now: n.now()}
-	b.today = core.DayKeyString(b.now, time.Local)
+	b.today = core.DayKeyString(b.now, appZone())
 	states, since, err := n.states()
 	if err != nil {
 		return b, err
@@ -212,7 +212,7 @@ func (n *Notes) Review(req ReviewRequest) (ReviewData, error) {
 	if err != nil {
 		return ReviewData{}, err
 	}
-	loc := time.Local
+	loc := appZone()
 	s, cal, p := b.sum, b.cal, b.sum.Period
 	d := ReviewData{
 		Period: p, Title: core.ReviewTitle(p, cal, false), FileName: core.ReviewFileName(p, cal),
@@ -310,7 +310,7 @@ func reviewEmptyText(p core.ReviewPeriod, cal core.Calendar) string {
 	case core.ScaleWeek:
 		return "Nothing logged this week yet."
 	case core.ScaleMonth:
-		return "Nothing logged in " + core.DayKeyFormat(p.Start, "MMMM", time.Local) + " yet."
+		return "Nothing logged in " + core.DayKeyFormat(p.Start, "MMMM", appZone()) + " yet."
 	case core.ScaleYear:
 		return "No pages in " + p.Start[:4] + " yet."
 	}
@@ -326,7 +326,7 @@ var statusWords = map[core.DayStatus]string{
 func (n *Notes) reviewTiles(b reviewBuilt) []ReviewTile {
 	tiles := make([]ReviewTile, 0, 7)
 	for i := 0; i < 7; i++ {
-		day, ok := core.DayKeyAdding(b.sum.Period.Start, i, time.Local)
+		day, ok := core.DayKeyAdding(b.sum.Period.Start, i, appZone())
 		if !ok {
 			continue
 		}
@@ -350,9 +350,9 @@ func (n *Notes) reviewTiles(b reviewBuilt) []ReviewTile {
 		for _, r := range day[8:] {
 			num = num*10 + int(r-'0')
 		}
-		tiles = append(tiles, ReviewTile{Day: day, Weekday: core.DayKeyFormat(day, "EEE", time.Local), Number: num, Status: st,
+		tiles = append(tiles, ReviewTile{Day: day, Weekday: core.DayKeyFormat(day, "EEE", appZone()), Number: num, Status: st,
 			Bottom: bottom, IsToday: day == b.today, Opens: day <= b.today,
-			Spoken: core.DayKeyFormat(day, "EEEE d MMMM", time.Local) + ", " + statusWords[st]})
+			Spoken: core.DayKeyFormat(day, "EEEE d MMMM", appZone()) + ", " + statusWords[st]})
 	}
 	return tiles
 }

@@ -48,7 +48,7 @@ func (n *Notes) AddCommits(day string) (int, error) {
 	n.mu.Lock()
 	s, cal, home, now := n.settings, n.cal(), n.home, n.now()
 	n.mu.Unlock()
-	today := core.DayKeyString(now, time.Local)
+	today := core.DayKeyString(now, appZone())
 	if !core.DayKeyIsWellFormed(day) || day > today {
 		return 0, errors.New("not a day with commits: " + day)
 	}
@@ -160,7 +160,7 @@ func (n *Notes) autoAddCommits() int {
 	}
 	// No one to tell in the background: sources off, a classic page or an unreadable one all mean "nothing this time", and the
 	// next look (page open, the timer, gloamlog://refresh) tries again. The past-day button shows AddCommits' errors.
-	added, _ := n.AddCommits(core.DayKeyString(n.now(), time.Local))
+	added, _ := n.AddCommits(core.DayKeyString(n.now(), appZone()))
 	return added
 }
 

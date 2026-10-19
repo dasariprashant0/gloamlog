@@ -195,7 +195,7 @@ func (n *Notes) EditorOpened(day string) {
 	}
 	c.mu.Unlock()
 	go c.replay()
-	if day == core.DayKeyString(n.now(), time.Local) {
+	if day == core.DayKeyString(n.now(), appZone()) {
 		go n.autoAddCommits() // today's commits, while "Add commits for me" is on (notes_commits.go)
 	}
 }
@@ -266,7 +266,7 @@ func (c *captureState) jot(text, source string) JotResult {
 	c.n.mu.Lock()
 	heading, list := c.n.settings.Capture.JotsHeading, c.n.settings.Lists.Jots
 	c.n.mu.Unlock()
-	day := core.DayKeyString(c.n.now(), time.Local)
+	day := core.DayKeyString(c.n.now(), appZone())
 	heading = c.headingFor(day, heading, list)
 	res := JotResult{Outcome: "empty", Day: day, Heading: heading}
 	rec, ok := c.writer.Capture(text, source)
