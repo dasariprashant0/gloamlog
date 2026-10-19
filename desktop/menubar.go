@@ -212,7 +212,7 @@ func setupMenuBar(app *application.App, n *Notes, tray *application.SystemTray) 
 		app.Event.Emit("check-updates")
 	})
 	menu.AddSeparator()
-	menu.Add("Quit Gloamlog").OnClick(func(*application.Context) { app.Quit() })
+	menu.Add("Quit Gloamlog").OnClick(func(*application.Context) { requestQuit(app) }) // held while edits are unsaved (quit.go)
 
 	first := menuIconPNG(iconNotLogged)
 	tray.SetTemplateIcon(first)

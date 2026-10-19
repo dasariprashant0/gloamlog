@@ -65,11 +65,13 @@ func main() {
 			// Closing the window keeps the app in the menu bar, for reminders and Jot.
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
+		ShouldQuit: shouldQuit, // held while the page has edits it couldn't save (quit.go)
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID:               bundleID,
 			OnSecondInstanceLaunch: func(application.SecondInstanceData) { showMain() },
 		},
 	})
+	watchQuit(app)
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",

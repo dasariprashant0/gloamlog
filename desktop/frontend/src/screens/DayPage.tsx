@@ -2,7 +2,7 @@
 // Saving rules (Swift DayEditor): only real edits are written, 600 ms after the last change and at once on day switch, on
 // leaving the page and on window blur; saves run one at a time; opening a page never writes it.
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {Banner, Button, Display, Segmented} from '@personal/ui/react';
+import {Banner, Button, Dialog, Display, Segmented} from '@personal/ui/react';
 import {Browser} from '@wailsio/runtime';
 import {Notes, Windows, plural, relativeDay, type Page} from '../api';
 import {Editor, editor, type EditorMessage} from '../editor/Editor';
@@ -10,7 +10,7 @@ import {SuggestionsStrip, type InsertPart} from './SuggestionsStrip';
 import {DownloadingPage} from './SyncChip';
 import {StatusLine, conflictItem, reminderItem, type ConflictNote, type StatusItem} from './StatusLine';
 import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
-import {on} from '../events';
+import {emit, on} from '../events';
 import {LogEditor, type LogEditorHandle, type View} from '../log/LogEditor';
 import * as LogModel from '../log/model';
 import {CarryBox} from '../log/CarryBox';
@@ -51,6 +51,11 @@ export function DayPage({day, today, minWords, active, folderError, conflict, re
     // flush and every 30 s until it succeeds. Switching days after a failed save used to lose that text.
     const orphans = useRef(new Map<string, string>());
     const [orphanCount, setOrphanCount] = useState(0);
+
+    // Go holds a quit while text couldn't be saved (desktop/quit.go): say so whenever that changes, and ask when a quit is held.
+    const [quitHeld, setQuitHeld] = useState(false);
+    useEffect(() => { emit('unsaved-edits', !!saveError || orphanCount > 0); }, [saveError, orphanCount]);
+    useEffect(() => on('quit-blocked', () => { onDay(day); setQuitHeld(true); }), [day]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Saves one page; resolves true when it reached the file. Saves run one at a time.
     const save = useCallback((d: string, md: string): Promise<boolean> => {
@@ -408,6 +413,16 @@ export function DayPage({day, today, minWords, active, folderError, conflict, re
                     {page.exists && <Button variant="ghost" size="sm" onClick={() => onRestore(day)}>Restore previous version…</Button>}
                 </footer>
             )}
+            <Dialog open={quitHeld} onClose={() => setQuitHeld(false)} title="Your latest edits couldn't be saved" actions={<>
+                <Button variant="line" onClick={() => { setQuitHeld(false); void flush(); }}>Try again</Button>
+                <Button variant="line" onClick={() => void copyText(async () => [
+                    ...(saveError ? [`# ${day}\n\n${await pageText()}`] : []),
+                    ...[...orphans.current].map(([d, md]) => `# ${d}\n\n${md}`),
+                ].join('\n\n'))}>Copy my text</Button>
+                <Button variant="danger" onClick={() => emit('quit-anyway')}>Quit anyway</Button>
+            </>}>
+                <p>Gloamlog keeps trying to save them while it's open. If you quit now, the text it couldn't save is lost: copy it first to keep it.</p>
+            </Dialog>
         </article>
     );
 }

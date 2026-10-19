@@ -8,3 +8,10 @@ export function on<T = unknown>(name: string, handler: (data: T) => void): () =>
         return () => {};
     }
 }
+
+// React -> Go (app.Event.On in desktop/*.go). The browser mock has no Go side: nothing to tell.
+export function emit(name: string, data?: unknown): void {
+    try {
+        void Events.Emit(name, data);
+    } catch { /* no Wails runtime */ }
+}
