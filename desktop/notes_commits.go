@@ -60,7 +60,11 @@ func (n *Notes) AddCommits(day string) (int, error) {
 	result := scanCommits(home, day, today, cal, prefs)
 
 	have := "" // the page and the notes waiting for it: where a commit already written shows its hash
-	if doc, err := c.store.Load(day); err == nil && doc != nil {
+	doc, err := c.store.Load(day)
+	if err != nil {
+		return 0, err // an unreadable page: its hashes can't be checked, so nothing is added (the next look tries again)
+	}
+	if doc != nil {
 		have = doc.Body
 	}
 	for _, it := range c.journal.Pending() {
@@ -100,6 +104,8 @@ func (n *Notes) autoAddCommits() int {
 	if !on {
 		return 0
 	}
+	// No one to tell in the background: sources off, a classic page or an unreadable one all mean "nothing this time", and the
+	// next look (page open, the timer, gloamlog://refresh) tries again. The past-day button shows AddCommits' errors.
 	added, _ := n.AddCommits(core.DayKeyString(n.now(), time.Local))
 	return added
 }
