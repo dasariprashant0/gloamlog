@@ -73,6 +73,11 @@ func (n *Notes) OpenLoginItems() error {
 	return exec.Command("open", "x-apple.systempreferences:com.apple.LoginItems-Settings.extension").Run()
 }
 
+// OpenNotificationSettings opens System Settings at Gloamlog's notifications (Settings > Reminders > Notification access).
+func (n *Notes) OpenNotificationSettings() error {
+	return exec.Command("open", "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=io.github.dasariprashant0.gloamlog").Run()
+}
+
 // Reveal shows the paths selected in Finder.
 func (n *Notes) Reveal(paths []string) error {
 	if len(paths) == 0 {

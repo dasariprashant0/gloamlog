@@ -12,6 +12,7 @@ export const settingsMock = {
     SettingsInfo: () => later(info()),
     SetLoginItem: (on: boolean) => { login = on; return later(info()); },
     OpenLoginItems: () => later(undefined),
+    OpenNotificationSettings: () => later(undefined),
     Reveal: (_paths: string[]) => later(undefined),
     RecreateFolder: () => later(undefined),
     // The picker answers with a folder that already holds logs when the name says so, so both questions can be tried.

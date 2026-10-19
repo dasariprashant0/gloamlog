@@ -317,6 +317,13 @@ export function OpenLoginItems(): $CancellablePromise<void> {
 }
 
 /**
+ * OpenNotificationSettings opens System Settings at Gloamlog's notifications (Settings > Reminders > Notification access).
+ */
+export function OpenNotificationSettings(): $CancellablePromise<void> {
+    return $Call.ByID(2377133829);
+}
+
+/**
  * OpenReleasePage opens a release page in the browser (github.com only).
  */
 export function OpenReleasePage(url: string): $CancellablePromise<void> {

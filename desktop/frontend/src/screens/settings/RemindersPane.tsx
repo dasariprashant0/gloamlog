@@ -1,7 +1,16 @@
-import {Setting, Segmented, Switch} from '@personal/ui/react';
-import {Block, DAY_NAMES, Panel, ResetBar, Soon, systemWeekStart, type PaneProps} from './shared';
+import {useEffect, useState} from 'react';
+import {Button, Setting, Segmented, Switch} from '@personal/ui/react';
+import {Notes} from '../../api';
+import {Block, DAY_NAMES, Panel, ResetBar, errText, systemWeekStart, type PaneProps} from './shared';
 
 const SNOOZE = [5, 10, 15, 20, 30];
+/** desktop/reminders.go NotificationStatus: "allowed", "denied" or "unknown" (not asked yet, or no notifications in this build). */
+const ACCESS: Record<string, [string, string]> = {
+    allowed: ['Allowed', 'macOS lets Gloamlog send notifications. Banner style, sound and Focus are set in System Settings.'],
+    denied: ['Off', 'macOS does not let Gloamlog send notifications, so Gentle reminders and closed-app reminders cannot arrive. Turn them on in System Settings.'],
+    unknown: ['Not asked yet', 'Gloamlog has not asked macOS yet. Allow shows the system prompt once; after that, System Settings is the place to change it.'],
+};
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** "Thu 8 Oct, 4:55 pm", or "" when no day is on. Today counts only while its time is still ahead and the day still needs a log. */
@@ -23,6 +32,19 @@ export function RemindersPane({s, set, overview}: PaneProps) {
     const done = ['logged', 'skipped'].includes(String(overview?.todayStatus));
     const next = nextReminder(s.reminderMinutes, s.weekdays, done);
     const strict = String(s.mode) === 'strict';
+
+    // Looked up when the pane opens and again when the window comes back from System Settings.
+    const [access, setAccess] = useState('');
+    const [accessNote, setAccessNote] = useState('');
+    useEffect(() => {
+        const look = () => { Notes.NotificationStatus().then(setAccess).catch(e => setAccessNote(`Couldn't ask macOS: ${errText(e)}`)); };
+        look();
+        window.addEventListener('focus', look);
+        return () => window.removeEventListener('focus', look);
+    }, []);
+    const askAccess = () => { Notes.RequestNotifications().then(setAccess).catch(e => setAccessNote(`Couldn't ask macOS: ${errText(e)}`)); };
+    const openAccess = () => { Notes.OpenNotificationSettings().catch(e => setAccessNote(`Couldn't open System Settings: ${errText(e)}`)); };
+    const [accessWord, accessHint] = ACCESS[access] ?? ['', 'Whether macOS lets Gloamlog send notifications, and a way to allow them.'];
     const past = 'Past days are never forced on you; they wait in Catch up.';
 
     return (
@@ -64,8 +86,12 @@ export function RemindersPane({s, set, overview}: PaneProps) {
                 </Setting>
             </Block>
             <Block title="Notifications">
-                <Setting title="Notification access" hint="Whether macOS lets Gloamlog send notifications, and a way to allow them.">
-                    <Soon/>
+                <Setting title="Notification access" hint={accessNote || accessHint}>
+                    <div className="row-gap">
+                        <span className="muted small" role="status">{access ? accessWord : 'Checking…'}</span>
+                        {access === 'unknown' && <Button variant="line" size="sm" onClick={askAccess}>Allow notifications</Button>}
+                        {access && <Button variant="line" size="sm" onClick={openAccess}>Open System Settings</Button>}
+                    </div>
                 </Setting>
                 <Setting title="Remind me when Gloamlog is closed" hint={s.closedAppReminders
                     ? 'macOS holds your next 14 reminders, so one arrives even when Gloamlog is quit. Nothing arrives while the Mac sleeps (it comes when it wakes), and a Focus can silence it. Strict\'s window needs Gloamlog running. Open Gloamlog now and then to renew the reminders.'
