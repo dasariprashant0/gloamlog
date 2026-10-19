@@ -5,7 +5,8 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 ## Built (committed, tests pass, UI checked in the browser mock)
 - **Go logic**: all of app/Core in `internal/core` (incl. sync), with a differential test against the Swift core's own output on 5,869 cases; Claude Code + Git sources in `internal/sources`.
 - **App** (`desktop/`): main window, Jot panel, Settings window, menu bar item, single instance, same bundle id and `gloamlog://` scheme; Jot shortcut from Settings; capture (journal first, inbox every 15 s); Claude connect; reminders + notifications (incl. scheduled closed-app reminders); sync watcher; updater.
-- **Writing redesign, piece 1 (core)** ([spec](../superpowers/specs/2026-10-18-writing-redesign-design.md), [plan](../superpowers/plans/2026-10-18-writing-redesign-1-core.md)): list pages (`## Log`, #next / #blocked) in counting, capture, carry-over and the review; new days are list pages (an untouched old template moves once); the app now sets the jot rules on every settings change (the port never did). Until piece 2, list pages open in the classic editor and the old carry-over card.
+- **Writing redesign, piece 1 (core)** ([spec](../superpowers/specs/2026-10-18-writing-redesign-design.md), [plan](../superpowers/plans/2026-10-18-writing-redesign-1-core.md)): list pages (`## Log`, #next / #blocked) in counting, capture, carry-over and the review; new days are list pages (an untouched old template moves once); the app now sets the jot rules on every settings change (the port never did).
+- **Writing redesign, piece 2 (the list page)** ([plan](../superpowers/plans/2026-10-18-writing-redesign-2-page.md)): line editor (rows, add field, ⌘1-3 while typing, Enter / ⇧Enter / ↑↓ / Backspace / ⌘Z / Esc, time edit, image paste), From yesterday (Done / Keep / Drop), Edit whole page; saves, jots and suggestions go through the same pipeline.
 - **Screens**: sidebar, calendar, day page (safe autosave, day switching, carry-over, suggestions strip, reminder notice, still-downloading page), search, go to date, catch up + session, skip / restore / conflict dialogs, sync chip, review (week / month / year / range, copy, export), Settings (7 panes), onboarding, What's new, update dialog.
 - **Run it**: `bash desktop/dev.sh` (live reload) · `bash desktop/build.sh` (makes `desktop/Gloamlog.app` + zip) · `npm run dev:mock` in `desktop/frontend` (UI in a browser, fake data).
 
@@ -19,6 +20,7 @@ Branch `port/wails`; `main` still ships the Swift app (v0.6.6). The checklist is
 ## Known gaps vs the Swift app
 - Menu bar is a native menu, not the Swift popover (no Jot field, streak, week strip, snooze in it).
 - Quit with unsaved edits: no "Your latest edits couldn't be saved" alert yet (a failed save is kept in memory and retried, with a banner, while the app runs).
+- App-level sync banners still show apart from the page's status line (writing redesign spec 2.1).
 - Not ported: auto-add commits (`sources.autoAdd`), VoiceOver announcements, Dock bounce, time-zone change while running, iCloud's own download-status query (polling instead, up to 3 s lag), Share… in review export, RTF in rich copy.
 
 ## Safer than the Swift app, on purpose

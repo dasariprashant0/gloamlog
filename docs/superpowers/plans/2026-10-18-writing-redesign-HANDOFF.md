@@ -1,5 +1,7 @@
 # Handoff: writing redesign, piece 2 (2026-10-18)
 
+**Update 2026-10-19: piece 2 is done** (Tasks 2-9, commits d67d8f6..the docs commit after 9276d4f; checked in the browser mock). Next: plans for piece 3 and piece 4, then rebuild and reinstall the app. The rest of this file is the piece 2 handoff as it was.
+
 For the next session. Read this, then the plan. Nothing here is a new decision: everything is in the spec and the plans.
 
 ## Where things are

@@ -1,6 +1,6 @@
 # Writing redesign: one log list, in time order
 
-Status: approved 2026-10-18. Piece 1 (core rules) built; pieces 2-4 next. Builds on the Go + Wails port
+Status: approved 2026-10-18. Pieces 1 and 2 built; 3 (standup) and 4 (commits) next. Builds on the Go + Wails port
 (`port/wails`). Supersedes the five-heading day page for new days; [EDITOR_CONTRACT.md](../../EDITOR_CONTRACT.md) still
 governs the full-page editor.
 
@@ -97,6 +97,9 @@ strip. Classic pages keep today's layout and editor.
   | Backspace on an empty line | remove it |
   | ⌘Z / ⇧⌘Z | undo / redo, across lines |
   | Esc | leave the line |
+
+  ⌘1-3 mark a line while typing in it or in the add field; elsewhere they keep their app meaning (Today / Catch up /
+  Review).
 
 - Clicking a time edits it (`HH:MM`); the line moves to its time position.
 - Pasting an image saves it through the existing `SaveImage` (`assets/`, content-hash names) and puts
