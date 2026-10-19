@@ -21,6 +21,13 @@
 
 **Not in this piece** (known ceilings): a commit line the person deletes comes back after a restart (the per-session set is in memory; add a `commits-dismissed.json` like `carry-dismissed.json` if it bothers the owner); a commit that arrives while the page is in Edit whole page lands at the end of Log (Milkdown's append), not at its time; pull requests. `Notes.Suggestions` keeps its now-unused "Log on a list page" heading branch.
 
+**Depends on the Work / Personal split (added 2026-10-19, after this plan was written).** The owner approved splitting each day page into `## Work` and `## Personal`, routed by project folder (Settings-configurable; spec `docs/superpowers/specs/2026-10-19-work-personal-split-design.md`, being written). That split is built **before** this piece. Before running it, re-read that spec and plan and adjust these tasks to the names they settle on:
+- **Task 1:** commit bullets also carry their repository root: `Root string `json:"-"`` on `SuggestedBullet` (from `ActivityItem.Root`; `json:"-"` keeps the path off the screen and out of the bindings).
+- **Task 2:** a timed note names its section, e.g. `CaptureItem.Section` (journal key `"section"`, written only when set), and `applyTimed` / `CaptureTimed` put it in that section with `InsertTimed`, not always `## Log`. The open-fence fallback places it at the end of the same section.
+- **Task 3:** `jot-into-page` carries the section too, and `LogAppendLines` inserts into it (whatever the split makes of the list editor's page shape).
+- **Task 4:** `AddCommits` routes each commit with the split's core helper (e.g. `ListFor(root)`), and its "is this a list page" check becomes the split's own test instead of `headingFor(...) == core.LogHeading`. Add a test: two commits from a `~/Projects/zuddl` and a `~/Projects/personal` repository land in Work and Personal at their times.
+- The de-duplication by hash, the gating on "Add commits for me", the timer and the frontend button are unchanged.
+
 **Commands:**
 
 - Go, in the sandbox first:
