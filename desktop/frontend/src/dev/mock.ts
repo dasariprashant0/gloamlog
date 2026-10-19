@@ -124,7 +124,8 @@ export const Notes = {
                 if (prev && !prev.skipped) {
                     const list = parseLog(prev.body);
                     if (list.ok) {
-                        const open = list.page.lines.filter(l => !l.other && l.mark && !dismissed.has(`${day}|${l.text.toLowerCase()}`));
+                        const present = new Set(parseLog(f?.body ?? '').page.lines.map(l => l.text.toLowerCase())); // like offerFor
+                        const open = list.page.lines.filter(l => !l.other && l.mark && !dismissed.has(`${day}|${l.text.toLowerCase()}`) && !present.has(l.text.toLowerCase()));
                         if (open.length) carry = {sourceDay: d, sourceLabel: parse(d).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}),
                             items: open.map(l => l.text), marks: open.map(l => l.mark)} as unknown as CarryCard;
                         break;

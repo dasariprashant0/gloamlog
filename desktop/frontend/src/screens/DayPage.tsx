@@ -13,6 +13,7 @@ import type {ReminderNoticeState} from '../../bindings/github.com/dasariprashant
 import {on} from '../events';
 import {LogEditor, type LogEditorHandle} from '../log/LogEditor';
 import * as LogModel from '../log/model';
+import {CarryBox} from '../log/CarryBox';
 import type {LogPage} from '../../bindings/github.com/dasariprashant0/gloamlog/internal/core';
 
 const SAVE_DELAY = 600;
@@ -322,6 +323,10 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                     {recentlySaved && <span className="page-saved"> · Saved</span>}
                 </p>}
             </header>
+
+            {listPage && !full && page?.carry && !skipped && (
+                <CarryBox key={day} day={day} card={page.carry} onAdd={(t, m) => logRef.current?.addLine(t, m)} onToast={onToast}/>
+            )}
 
             {page?.carry && !page.carryApplied && !skipped && !listPage && (
                 <section className="carry rule-top">

@@ -77,3 +77,8 @@ button.cal-day:hover { background: var(--wash-2); }
 .log-mark.mark-blocked { color: var(--warning); border-color: var(--warning); }
 .log-add { display: grid; gap: var(--s1); }
 .log-keys .kbd { margin: 0 var(--s1); }
+
+/* From yesterday on a list page. */
+.carry-box { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border: 1px dashed var(--rule); }
+.carry-head, .carry-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.carry-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
