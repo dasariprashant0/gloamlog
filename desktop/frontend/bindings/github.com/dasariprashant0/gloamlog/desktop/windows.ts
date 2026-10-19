@@ -21,6 +21,13 @@ export function HideJot(): $CancellablePromise<void> {
     return $Call.ByID(4127958848);
 }
 
+/**
+ * RunSetup shows the main window and opens the setup sheet there again (Settings > About > Run setup again…).
+ */
+export function RunSetup(): $CancellablePromise<void> {
+    return $Call.ByID(3857184697);
+}
+
 export function ShowJot(): $CancellablePromise<void> {
     return $Call.ByID(3657424919);
 }

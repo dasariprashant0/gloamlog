@@ -41,6 +41,12 @@ func (*Windows) CheckForUpdates() {
 	application.Get().Event.Emit("check-updates")
 }
 
+// RunSetup shows the main window and opens the setup sheet there again (Settings > About > Run setup again…).
+func (*Windows) RunSetup() {
+	showMain()
+	application.Get().Event.Emit("run-setup")
+}
+
 func main() {
 	notes, err := NewNotes()
 	if err != nil {

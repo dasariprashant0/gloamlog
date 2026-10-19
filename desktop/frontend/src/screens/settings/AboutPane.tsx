@@ -12,8 +12,9 @@ export function AboutPane({info}: PaneProps) {
                 <p className="lede">A calm end-of-day log. One plain markdown file per day, on your Mac. No account, no telemetry; the only network request is the update check you ask for.</p>
                 {/* The update dialog lives in the main window: this brings it forward and opens it there. */}
                 <Button variant="line" size="sm" onClick={() => void Windows.CheckForUpdates()}>Check for updates…</Button>
+                {/* Also in the main window: the setup sheet starts from the current settings there. */}
+                <Button variant="line" size="sm" onClick={() => void Windows.RunSetup()}>Run setup again…</Button>
                 <div className="row-gap">
-                    <Button variant="line" size="sm" disabled title="Walk through the setup steps again">Run setup again…</Button>
                     <Button variant="line" size="sm" disabled title="Open the licences of the bundled editor">Third-party licences</Button>
                     <Soon/>
                 </div>
