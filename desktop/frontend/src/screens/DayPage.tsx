@@ -330,19 +330,32 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                                 onSkipDay={() => onSkip([day])}/>
             )}
 
-            <header className="page-head">
-                {(label || (listPage && !full)) && <p className="label">{listPage && !full ? [label, page?.title].filter(Boolean).join(' · ') : label}</p>}
-                {page && (listPage && !full
-                    ? <Display key={day} lines={[summary || 'Nothing yet']}/>
-                    : <Display key={day} lines={[weekday, rest.join(' ')]}/>)}
-                {page && listPage && !full && !skipped && (
-                    <div role="group" aria-label="View"><Segmented options={VIEWS} value={view} onChange={setView}/></div>
-                )}
-                {page && !skipped && <p className="small muted page-progress" aria-live="polite">
-                    {words >= Math.max(1, minWords) ? `Logged, ${plural(words, 'word')}` : `${plural(words, 'word')}. Counts as logged at ${minWords}.`}
-                    {recentlySaved && <span className="page-saved"> · Saved</span>}
-                </p>}
-            </header>
+            {listPage && !full ? (
+                <header className="page-head page-head-list">
+                    <p className="label" aria-live="polite">
+                        {[label, page?.title].filter(Boolean).join(' · ')}
+                        {recentlySaved && <span className="page-saved"> · Saved</span>}
+                    </p>
+                    {page && (
+                        <div className="page-title-row">
+                            <Display key={day} size="sm" lines={[summary || 'Nothing yet']}/>
+                            {!skipped && <div role="group" aria-label="View"><Segmented options={VIEWS} value={view} onChange={setView}/></div>}
+                        </div>
+                    )}
+                    {page && !skipped && words < Math.max(1, minWords) && (
+                        <p className="small muted">{plural(words, 'word')}. Counts as logged at {minWords}.</p>
+                    )}
+                </header>
+            ) : (
+                <header className="page-head">
+                    {label && <p className="label">{label}</p>}
+                    {page && <Display key={day} lines={[weekday, rest.join(' ')]}/>}
+                    {page && !skipped && <p className="small muted page-progress" aria-live="polite">
+                        {words >= Math.max(1, minWords) ? `Logged, ${plural(words, 'word')}` : `${plural(words, 'word')}. Counts as logged at ${minWords}.`}
+                        {recentlySaved && <span className="page-saved"> · Saved</span>}
+                    </p>}
+                </header>
+            )}
 
             {/* Hidden, not unmounted, in Standup: lines already kept or dropped must not be offered again on the way back. */}
             {listPage && !full && page?.carry && !skipped && (

@@ -133,14 +133,16 @@ export const LogEditor = forwardRef<LogEditorHandle, Props>(function LogEditor({
             {lists.map((name, si) => (
                 <section key={si} className="log-section" aria-label={name || undefined}>
                     {name && <h2 className="label log-list-title">{name}</h2>}
-                    <ul className="log-list" aria-label={name ? `${name} lines` : 'Lines'}>
-                        {state.lines.map((l, i) => (M.sec(l) !== si && name ? null :
-                            <LogRow key={i} line={l} editing={state.edit === i} draft={state.draft} html={html[M.renderIndex(state, i)] ?? ''}
-                                    readOnly={readOnly} onEdit={() => act(s => M.focus(s, i))} onDraft={d => act(s => M.setDraft(s, d))}
-                                    onKey={e => onKey(e, i)} onPaste={onPaste} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
-                                    onTime={t => act(s => M.setTime(s, i, t))}/>
-                        ))}
-                    </ul>
+                    {name && !state.lines.some(l => M.sec(l) === si)
+                        ? <p className="small muted">Nothing yet.</p>
+                        : <ul className="log-list" aria-label={name ? `${name} lines` : 'Lines'}>
+                            {state.lines.map((l, i) => (M.sec(l) !== si && name ? null :
+                                <LogRow key={i} line={l} editing={state.edit === i} draft={state.draft} html={html[M.renderIndex(state, i)] ?? ''}
+                                        readOnly={readOnly} onEdit={() => act(s => M.focus(s, i))} onDraft={d => act(s => M.setDraft(s, d))}
+                                        onKey={e => onKey(e, i)} onPaste={onPaste} onBlur={() => act(M.commit)} onCycle={() => act(s => M.setMark(s, i, nextMark(l.mark)))}
+                                        onTime={t => act(s => M.setTime(s, i, t))}/>
+                            ))}
+                        </ul>}
                     {!readOnly && <AddField id={`log-add-${si}`} list={name} autoFocus={autoFocus && si === 0} hint={si === lists.length - 1}
                                             onAdd={(text, mark) => act(s => M.append(s, text, now(), mark, si))}/>}
                 </section>
@@ -167,6 +169,8 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
     }, [editing, draft]);
 
     const shown = html || `<p>${esc(line.text)}</p>`;
+    // Two rows at most until opened; an image line and a page that can't be opened for editing always show in full.
+    const clamp = !readOnly && !editing && !/!\[[^\]]*\]\(/.test(line.text);
     if (line.other) return <li className="log-row log-other"><div className="log-text" dangerouslySetInnerHTML={{__html: shown}}/></li>;
 
     const openLinkOrEdit = (target: EventTarget) => {
@@ -175,7 +179,7 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
         if (!readOnly) onEdit();
     };
     return (
-        <li className={`log-row${editing ? ' is-editing' : ''}`}>
+        <li className={`log-row${editing ? ' is-editing' : ''}${line.mark ? '' : ' is-done'}${clamp ? ' is-clamped' : ''}`}>
             {timing && !readOnly
                 ? <input className="input input-sm log-time-input" type="time" aria-label="Time" autoFocus defaultValue={line.time.padStart(5, '0')}
                          onBlur={e => { setTiming(false); if (!cancelTime.current) onTime(e.currentTarget.value); cancelTime.current = false; }}

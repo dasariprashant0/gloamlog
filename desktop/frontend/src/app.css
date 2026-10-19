@@ -42,6 +42,8 @@ button.cal-day:hover { background: var(--wash-2); }
 .page-head { display: grid; gap: var(--s3); margin-bottom: var(--s5); }
 .page-progress { min-height: 1.55em; }
 .page-saved { color: var(--accent-text); }
+.page-head-list { gap: var(--s2); }
+.page-title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
 .carry { display: grid; gap: var(--s3); justify-items: start; padding: var(--s4) 0 var(--s5); margin-bottom: var(--s4); }
 .carry-items { display: grid; gap: var(--s1); font-size: var(--text-sm); }
 .carry-items li::before { content: "– "; color: var(--muted); }
@@ -61,9 +63,10 @@ button.cal-day:hover { background: var(--wash-2); }
 .suggest-item input { margin-top: 3px; accent-color: var(--accent); }
 
 /* The list page (src/log): a row per line, the add field under it. */
-.log { display: grid; gap: var(--s4); }
-.log-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
-.log-row { display: grid; grid-template-columns: var(--s7) minmax(0, 1fr) auto; gap: var(--s3); align-items: baseline; padding: var(--s2) 0; border-bottom: 1px solid var(--rule); }
+.log { display: grid; gap: var(--s6); }
+.log-section { display: grid; gap: var(--s2); }
+.log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.log-row { display: grid; grid-template-columns: var(--s7) minmax(0, 1fr) auto; gap: var(--s3); align-items: baseline; padding: var(--s1) 0; }
 .log-row.is-editing { background: var(--wash); }
 .log-other { grid-template-columns: minmax(0, 1fr); }
 .log-time { color: var(--muted); font-size: var(--text-sm); text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -75,6 +78,12 @@ button.cal-day:hover { background: var(--wash-2); }
 .log-mark { background: none; color: var(--muted); cursor: pointer; }
 .log-mark.mark-next { color: var(--accent-text); border-color: var(--accent); }
 .log-mark.mark-blocked { color: var(--warning); border-color: var(--warning); }
+/* A done line's mark is the default: shown only on hover, focus or while editing (still in the tab order). */
+.log-row.is-done .log-mark { opacity: 0; transition: opacity var(--fast) var(--ease); }
+.log-row.is-done:hover .log-mark, .log-row.is-done:focus-within .log-mark, .log-row.is-editing .log-mark { opacity: 1; }
+.log-row.is-clamped .log-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.log-row.is-clamped .log-text p { display: inline; }
+.log-row.is-clamped .log-text p + p::before { content: " "; }
 .log-add { display: grid; gap: var(--s1); }
 .log-keys .kbd { margin: 0 var(--s1); }
 
