@@ -72,6 +72,7 @@ func main() {
 		},
 	})
 	watchQuit(app)
+	watchTimeZone(app)
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",

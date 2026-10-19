@@ -288,7 +288,7 @@ func (e *reminderEngine) perform(a core.ReminderAction, now time.Time, in remind
 		}
 		e.os.RaiseMain(true)
 		e.os.Emit("reminder-open-day", today)
-		// ponytail: no Dock bounce (Wails has no requestUserAttention); add it when the lead exposes one.
+		bounceDock() // dock_darwin.go; skipped while Reduce Motion is on
 	case core.KindReopen:
 		e.os.RaiseMain(false)
 	}
