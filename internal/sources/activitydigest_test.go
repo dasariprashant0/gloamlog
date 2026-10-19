@@ -55,8 +55,11 @@ func TestBulletsExactTexts(t *testing.T) {
 	if b := d.Bullets[1]; b.ID != "prompt|/work/acme|Add a pricing table to the landing page" || b.Evidence != "Add a pricing table to the landing page" {
 		t.Errorf("prompt bullet: %+v", b)
 	}
-	if b := d.Bullets[2]; b.ID != "commit|/work/acme|3f2a9c1" || b.Evidence != "acme 3f2a9c1" {
+	if b := d.Bullets[2]; b.ID != "commit|/work/acme|3f2a9c1" || b.Evidence != "acme 3f2a9c1" || b.Subject != "Add pricing table" || b.Sha != "3f2a9c1" {
 		t.Errorf("commit bullet: %+v", b)
+	}
+	if b := d.Bullets[1]; b.Subject != "" || b.Sha != "" {
+		t.Errorf("only a commit has a subject and a hash: %+v", b)
 	}
 	if b := d.Bullets[3]; b.ID != "pr|/work/acme|https://github.com/acme/site/pull/42" || b.Evidence != "https://github.com/acme/site/pull/42" {
 		t.Errorf("pr bullet: %+v", b)
@@ -260,5 +263,22 @@ func TestMarkdownAndAlreadyOnPage(t *testing.T) {
 	}
 	if !IsAdded(SuggestedBullet{Evidence: "acme   abc1234"}, page) {
 		t.Error("whitespace is collapsed on both sides")
+	}
+}
+
+func TestCommitLine(t *testing.T) {
+	line, ok := CommitLine(SuggestedBullet{Kind: KindCommit, Subject: "Fix *the* build #next", Sha: "1a2b3c4"})
+	if !ok || line != "Fix \\*the\\* build \\#next `1a2b3c4`" {
+		t.Errorf("escaped like BulletsMarkdown, hash in backticks: %q %v", line, ok)
+	}
+	for _, b := range []SuggestedBullet{
+		{Kind: KindCommit, Subject: "no hash"},
+		{Kind: KindCommit, Subject: "odd hash", Sha: "12`45"},
+		{Kind: KindCommit, Sha: "1a2b3c4"},
+		{Kind: KindPrompt, Subject: "x", Sha: "1a2b3c4"},
+	} {
+		if _, ok := CommitLine(b); ok {
+			t.Errorf("not a line: %+v", b)
+		}
 	}
 }

@@ -20,6 +20,8 @@ type SuggestedBullet struct {
 	Evidence string       `json:"evidence"` // the part of Text that shows the bullet is already on the page
 	Time     time.Time    `json:"time"`     // zero = unknown
 	Root     string       `json:"root"`     // the project root it came from: Work or Personal is decided from it (core.ListsPrefs)
+	Subject  string       `json:"subject"`  // a commit: its subject, redacted and cut like Text; "" for other kinds
+	Sha      string       `json:"sha"`      // a commit: its short hash; "" when unknown
 }
 
 // DigestResult is the bullets and what the redactor hid, for "4 values hidden (2 emails, 2 tokens)".
@@ -195,7 +197,7 @@ func Bullets(raw []ActivityItem, red Redactor) DigestResult {
 				ev = name + " " + sha
 			}
 			out = append(out, SuggestedBullet{ID: "commit|" + first.Root + "|" + id, Kind: KindCommit, Project: name, Root: first.Root,
-				Text: text + ")", Evidence: ev, Time: c.Time})
+				Text: text + ")", Evidence: ev, Time: c.Time, Subject: subject, Sha: sha})
 		}
 		for _, p := range g {
 			if p.Kind != KindPullRequest {
@@ -237,6 +239,16 @@ func EscapeMarkdown(s string) string {
 		b.WriteRune(c)
 	}
 	return b.String()
+}
+
+// CommitLine is a commit bullet as a list-page line: its subject escaped like BulletsMarkdown, then its short hash in backticks
+// (the page's de-duplication key). ok is false for anything but a commit with a subject and a hex hash (a transcript is
+// untrusted text: nothing else may sit inside the backticks).
+func CommitLine(b SuggestedBullet) (string, bool) {
+	if b.Kind != KindCommit || b.Subject == "" || b.Sha == "" || strings.Trim(b.Sha, "0123456789abcdef") != "" {
+		return "", false
+	}
+	return EscapeMarkdown(b.Subject) + " `" + b.Sha + "`", true
 }
 
 var mdEscapes = regexp.MustCompile("\\\\([!-/:-@\\[-`{-~])")
