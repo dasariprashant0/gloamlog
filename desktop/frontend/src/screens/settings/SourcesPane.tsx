@@ -1,8 +1,10 @@
 import {useEffect, useState} from 'react';
 import {Banner, Button, Dialog, Row, Setting, Switch} from '@personal/ui/react';
 import {Notes} from '../../api';
+import type {ClaudeInfo} from '../../../bindings/github.com/dasariprashant0/gloamlog/desktop';
 import type {SourceProject} from '../../../bindings/github.com/dasariprashant0/gloamlog/internal/sources';
-import {Block, errText, HeadingInput, Panel, Soon, tilde, type PaneProps} from './shared';
+import {ClaudeSteps} from '../../components/ClaudeSteps';
+import {Block, errText, HeadingInput, Panel, tilde, type PaneProps} from './shared';
 
 type Kind = 'claude' | 'git';
 const SOURCE_NAMES: Record<string, string> = {claude: 'Claude Code', git: 'Git'};
@@ -10,7 +12,7 @@ const SOURCE_NAMES: Record<string, string> = {claude: 'Claude Code', git: 'Git'}
 // Run on this Mac by the Claude Code Stop hook, only while Gloamlog is open.
 const HOOK = '"hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "pgrep -x Gloamlog >/dev/null && open -g gloamlog://refresh || true" } ] } ] }';
 
-export function SourcesPane({s, set, info}: PaneProps) {
+export function SourcesPane({s, set, info, reload}: PaneProps) {
     const [consentFor, setConsentFor] = useState<Kind | null>(null);
     const [note, setNote] = useState('');
     const p = s.sources;
@@ -40,6 +42,32 @@ export function SourcesPane({s, set, info}: PaneProps) {
     const setSource = (kind: Kind, v: boolean) => (v && !p.consented ? setConsentFor(kind) : patch({[kind]: v}));
     const accept = () => { if (consentFor) patch({consented: true, [consentFor]: true}); setConsentFor(null); };
 
+    // "Claude writes my log": the connection desktop/claude.go makes (the setup sheet's last step does the same).
+    // Asking `claude` is slow, so the status is looked up once when the pane opens.
+    const [claude, setClaude] = useState<ClaudeInfo | 'checking' | 'working'>('checking');
+    const [claudeNote, setClaudeNote] = useState('');
+    const [confirmClaude, setConfirmClaude] = useState(false);
+    useEffect(() => {
+        let live = true;
+        Notes.ClaudeStatus().then(c => { if (live) setClaude(c); })
+            .catch(e => { if (live) { setClaude({state: 'notConnected', message: 'Not connected'} as ClaudeInfo); setClaudeNote(`Couldn't ask Claude Code: ${errText(e)}`); } });
+        return () => { live = false; };
+    }, []);
+    async function claudeDo(connect: boolean) {
+        setConfirmClaude(false);
+        setClaude('working');
+        try {
+            const r = connect ? await Notes.ConnectClaude() : await Notes.DisconnectClaude();
+            setClaude({state: r.state, message: r.message} as ClaudeInfo);
+            setClaudeNote(r.message);
+            if (connect) reload(); // connecting moves "Jots go under" to What I did
+        } catch (e) {
+            setClaude({state: 'notConnected', message: 'Not connected'} as ClaudeInfo);
+            setClaudeNote(`Couldn't ${connect ? 'connect' : 'disconnect'}: ${errText(e)}`);
+        }
+    }
+    const claudeState = typeof claude === 'string' ? claude : claude.state;
+
     async function copyHook() {
         try { await navigator.clipboard.writeText(HOOK); setNote('Copied. Paste it into ~/.claude/settings.json.'); }
         catch (e) { setNote(`Couldn't copy: ${errText(e)}`); }
@@ -64,8 +92,15 @@ export function SourcesPane({s, set, info}: PaneProps) {
                 <Setting title="Every session and tab" hint="Reads all your Claude Code sessions, in every folder and tab, without ticking projects. Use the list below to skip a project.">
                     <Switch checked={p.allProjects} onChange={v => patch({allProjects: v, allowed: []})} label={on(p.allProjects)}/>
                 </Setting>
-                <Setting title="Claude writes my log" hint="Lets Claude Code add a short entry (the problem, what it did, what is left) to today's page when a piece of work is done. Registers Gloamlog's helper with Claude Code and adds a short section to ~/.claude/CLAUDE.md.">
-                    <div className="row-gap"><Button variant="line" size="sm" disabled>Connect Claude Code</Button><Soon/></div>
+                <Setting title="Claude writes my log" hint={claudeNote || (claudeState === 'noClaude'
+                    ? 'Claude Code was not found on this Mac. Install it from claude.com/claude-code, then open this pane again.'
+                    : "Lets Claude Code add a short entry (the problem, what it did, what is left) to today's page when a piece of work is done. Registers Gloamlog's helper with Claude Code and adds a short section to ~/.claude/CLAUDE.md.")}>
+                    {claudeState === 'checking' ? <span className="muted small" role="status">Looking for Claude Code…</span>
+                        : claudeState === 'working' ? <span className="muted small" role="status">Working…</span>
+                        : claudeState === 'noClaude' ? <span className="muted small">Not found</span>
+                        : claudeState === 'connected'
+                            ? <div className="row-gap"><span className="muted small">Connected</span><Button variant="line" size="sm" onClick={() => void claudeDo(false)}>Disconnect</Button></div>
+                            : <Button variant="line" size="sm" onClick={() => setConfirmClaude(true)}>{claudeState === 'moved' ? 'Reconnect Claude Code' : 'Connect Claude Code'}</Button>}
                 </Setting>
                 <Setting title="Add commits for me" hint="Writes today's commits into a list page by themselves, at their commit time, in the Work or Personal list their folder belongs to: when the page opens, about every 5 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line. A past day has an Add this day's commits button.">
                     <Switch checked={p.autoAdd} onChange={v => patch({autoAdd: v})} label={on(p.autoAdd)}/>
@@ -117,6 +152,11 @@ export function SourcesPane({s, set, info}: PaneProps) {
                     ? 'Every project is read except the ones you switch off here.'
                     : 'Hidden projects are skipped before any text is read. Nothing is included until you tick it.'} Gloamlog stores nothing from what it reads: it looks again when you open a day.</p>
             </Block>
+
+            <Dialog open={confirmClaude} onClose={() => setConfirmClaude(false)} title="Connect Claude Code to Gloamlog?"
+                actions={<><Button variant="line" onClick={() => setConfirmClaude(false)}>Not now</Button><Button onClick={() => void claudeDo(true)}>Connect</Button></>}>
+                <div><ClaudeSteps/></div>
+            </Dialog>
 
             <Dialog open={consentFor !== null} onClose={() => setConsentFor(null)} title="Let Gloamlog read your Claude Code and Git activity?"
                 actions={<><Button variant="line" onClick={() => setConsentFor(null)}>Not now</Button><Button onClick={accept}>Turn on</Button></>}>

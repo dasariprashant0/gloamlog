@@ -8,6 +8,7 @@ import {Banner, Button, Dialog, Field, Segmented, Switch} from '@personal/ui/rea
 import {Notes, Windows, plural} from '../api';
 import type {Settings} from '../api';
 import type {ClaudeInfo, FolderPlan, OnboardingInfo} from '../../bindings/github.com/dasariprashant0/gloamlog/desktop';
+import {ClaudeSteps} from '../components/ClaudeSteps';
 import {CLASSIC_TEMPLATE, DAY_NAMES, DEFAULT_CARRY, DEFAULT_TEMPLATE, NumberField, errText, systemWeekStart} from './settings/shared';
 
 type Preset = {id: string; title: string; detail: string; markdown: string; carry: string[]; preview: string[]};
@@ -357,13 +358,7 @@ function ClaudeControl({claude, note, confirming, onAsk, onCancel, onConnect}: {
     if (confirming) {
         return (
             <Banner tone="warning" action={<div className="row-gap"><Button size="sm" onClick={onConnect}>Connect</Button><Button size="sm" variant="line" onClick={onCancel}>Cancel</Button></div>}>
-                <strong>Connect Claude Code to Gloamlog?</strong> Gloamlog will:
-                <ol>
-                    <li>Register its small helper with Claude Code for all your projects (it runs claude mcp add).</li>
-                    <li>Add a short section to ~/.claude/CLAUDE.md that tells Claude when to write a log entry.</li>
-                    <li>Put Claude's entries in your day's list (on a Daily review page, under "What I did").</li>
-                </ol>
-                Nothing is sent anywhere, and Disconnect undoes steps 1 and 2. Start a new Claude Code session afterwards.
+                <strong>Connect Claude Code to Gloamlog?</strong> <ClaudeSteps/>
             </Banner>
         );
     }
