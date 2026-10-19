@@ -190,7 +190,7 @@ function LogRow({line, editing, draft, html, readOnly, onEdit, onDraft, onKey, o
                 : <button className="log-time" disabled={readOnly} aria-label={line.time ? `Time ${line.time}. Change` : 'Add a time'}
                           onClick={() => setTiming(true)}>{line.time || '–'}</button>}
             {editing
-                ? <textarea ref={ta} className="log-input" rows={1} aria-label="Line" value={draft}
+                ? <textarea ref={ta} className="input-bare log-input" rows={1} aria-label="Line" value={draft}
                             onChange={e => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} onBlur={onBlur}/>
                 : <div className="log-text" role="button" tabIndex={readOnly ? -1 : 0} aria-label={`Edit: ${line.text || 'empty line'}`}
                        onClick={e => { e.preventDefault(); openLinkOrEdit(e.target); }}
@@ -222,23 +222,31 @@ function AddField({lists, start, autoFocus, onAdd}: {
         addedTimer.current = window.setTimeout(() => setAdded(''), 2500);
     };
     return (
-        <div className="log-add">
+        // Focus anywhere in the bar (the field or its chip) keeps the hints: tabbing to the chip must not make the bar jump.
+        <div className="log-add" onFocus={() => setFocused(true)}
+             onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false); }}>
             <label className="sr-only" htmlFor="log-add">{lists.length > 1 ? `Add a line to ${lists[at]}` : 'Add a line'}</label>
-            <div className="log-add-field">
+            <div className="input-wrap">
                 <input id="log-add" className="input" placeholder="What did you just do?" autoFocus={autoFocus} value={text}
-                       onChange={e => setText(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                       onChange={e => setText(e.target.value)}
                        onKeyDown={e => {
                            const mark = markKey(e);
                            if (mark !== null) { e.preventDefault(); e.stopPropagation(); add(mark); }
                            else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(''); }
                        }}/>
                 {lists.length > 1 && (
-                    <button type="button" className="badge log-add-list" aria-label={`Adds to ${lists[at]}. Switch to ${lists[other]}`}
+                    <button type="button" className="badge input-end log-add-list" aria-label={`Adds to ${lists[at]}. Switch to ${lists[other]}`}
                             onMouseDown={e => e.preventDefault() /* keep typing */} onClick={() => setPicked(other)}>{lists[at]} ▾</button>
                 )}
             </div>
-            {added ? <p className="small muted" role="status">{added}</p>
-                : focused && <p className="small muted log-keys"><Kbd>↩</Kbd> add · <Kbd>⌘1</Kbd> done <Kbd>⌘2</Kbd> next <Kbd>⌘3</Kbd> blocked · <Kbd>⇧↩</Kbd> a second row</p>}
+            {/* One line that keeps its height: where the last line went, else the keys while the bar has focus. */}
+            <p className="key-hints log-add-note" aria-live="polite">
+                {added || (focused && <>
+                    <span aria-hidden="true"><Kbd>↩</Kbd> add</span><span aria-hidden="true"><Kbd>⌘1</Kbd> done</span>
+                    <span aria-hidden="true"><Kbd>⌘2</Kbd> next</span><span aria-hidden="true"><Kbd>⌘3</Kbd> blocked</span>
+                    <span aria-hidden="true"><Kbd>⇧↩</Kbd> a second row</span>
+                </>)}
+            </p>
         </div>
     );
 }

@@ -69,7 +69,7 @@ button.cal-day:hover { background: var(--wash-2); }
 .log { display: grid; gap: var(--s6); }
 .log-section { display: grid; gap: var(--s2); }
 .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
-.log-row { display: grid; grid-template-columns: var(--s7) minmax(0, 1fr) auto; gap: var(--s3); align-items: baseline; padding: var(--s1) 0; }
+.log-row { display: grid; grid-template-columns: var(--s7) minmax(0, 1fr) auto; gap: var(--s4); align-items: baseline; padding: var(--s1) 0; }
 .log-row.is-editing { background: var(--wash); }
 .log-other { grid-template-columns: minmax(0, 1fr); }
 .log-time { color: var(--muted); font-size: var(--text-sm); text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -77,7 +77,7 @@ button.cal-day:hover { background: var(--wash-2); }
 .log-text { min-height: 1.55em; cursor: text; }
 .log-text p { margin: 0; }
 .log-text img { display: block; max-height: var(--s9); margin-top: var(--s1); }
-.log-input { width: 100%; resize: none; overflow: hidden; font: inherit; line-height: inherit; color: inherit; padding: 0; border: 0; background: transparent; }
+.log-input { overflow: hidden; }
 .log-mark { background: none; color: var(--muted); cursor: pointer; }
 .log-mark.mark-next { color: var(--accent-text); border-color: var(--accent); }
 .log-mark.mark-blocked { color: var(--warning); border-color: var(--warning); }
@@ -88,16 +88,14 @@ button.cal-day:hover { background: var(--wash-2); }
 .log-row.is-clamped .log-text p { display: inline; }
 .log-row.is-clamped .log-text p + p::before { content: " "; }
 /* The add field stays at the bottom of the window while the lines scroll under it (a long day needs no scrolling to add). */
-.log-add { display: grid; gap: var(--s1); position: sticky; bottom: 0; z-index: 1; padding: var(--s3) 0 var(--s4); background: var(--background); }
+.log-add { display: grid; gap: var(--s2); position: sticky; bottom: 0; z-index: 1; padding: var(--s3) 0 var(--s4); background: var(--background); }
 .log-row.is-editing { scroll-margin-bottom: var(--s9); }
 /* A sticky box stops at the scroll column's padding edge: on a list page the column's bottom padding moves onto the page,
    so the field sits on the window's bottom edge. */
 .main:has(.log-add) { padding-bottom: 0; }
 .main:has(.log-add) > .page { padding-bottom: var(--s9); }
-.log-add-field { position: relative; }
-.log-add-field .input { width: 100%; padding-right: var(--s9); }
-.log-add-list { position: absolute; right: var(--s2); top: 50%; transform: translateY(-50%); background: none; color: var(--muted); cursor: pointer; }
-.log-keys .kbd { margin: 0 var(--s1); }
+.log-add-list { background: none; color: var(--muted); cursor: pointer; }
+.log-add-note { min-height: var(--s5); }
 
 /* From yesterday on a list page. */
 .carry-box { display: grid; gap: var(--s2); padding: var(--s2) 0; margin-bottom: var(--s5); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
