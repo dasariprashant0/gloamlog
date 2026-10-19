@@ -47,10 +47,10 @@ export function SourcesPane({s, set, info}: PaneProps) {
                 <Setting title="Claude writes my log" hint="Lets Claude Code add a short entry (the problem, what it did, what is left) to today's page when a piece of work is done. Registers Gloamlog's helper with Claude Code and adds a short section to ~/.claude/CLAUDE.md.">
                     <div className="row-gap"><Button variant="line" size="sm" disabled>Connect Claude Code</Button><Soon/></div>
                 </Setting>
-                <Setting title="Add commits for me" hint="Writes today's commits and pull requests into your page by themselves as you work, about every 2 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line.">
+                <Setting title="Add commits for me" hint="Writes today's commits into a list page by themselves, at their commit time, in the Work or Personal list their folder belongs to: when the page opens, about every 5 minutes, and right away when a Claude Code session ends (see the hook below). Edit or delete them like any other line. A past day has an Add this day's commits button.">
                     <Switch checked={p.autoAdd} onChange={v => patch({autoAdd: v})} label={on(p.autoAdd)}/>
                 </Setting>
-                <Setting title="Instant update" hint={note || 'Optional. Add this hook to ~/.claude/settings.json so Gloamlog updates the moment a Claude Code session ends, instead of waiting up to 2 minutes.'}>
+                <Setting title="Instant update" hint={note || 'Optional. Add this hook to ~/.claude/settings.json so Gloamlog updates the moment a Claude Code session ends, instead of waiting up to 5 minutes.'}>
                     <Button variant="line" size="sm" onClick={copyHook}>Copy hook</Button>
                 </Setting>
                 <Setting title="Insert under" hint="The heading the lines you choose are added under. It is added at the end of the page when the page has none.">

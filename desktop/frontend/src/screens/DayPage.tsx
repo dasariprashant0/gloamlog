@@ -134,29 +134,15 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         (window as unknown as {__dlDoc?: string}).__dlDoc = d;
     }
 
-    // Adds the suggestions strip's lines: on a list page each part goes to its own list, one after the other (each append starts
-    // from the last one's lines); on a classic page all of them go under heading as one undoable step (the editor replies with
-    // appendResult).
+    // The suggestions strip's lines (classic pages only: a list page gets its commits by themselves) go under heading as one
+    // undoable step; the editor replies with appendResult.
     const insertUnder = useCallback((heading: string, parts: InsertPart[]) => {
         const d = loaded.current;
         const count = parts.reduce((n, p) => n + p.count, 0);
         if (!d || !count) return;
-        const log = logRef.current;
-        if (listMode.current && log) {
-            void (async () => {
-                let last = '';
-                for (const p of parts) {
-                    const r = await log.appendLines(p.markdown, p.list);
-                    if (r.result === 'appended') last = r.markdown;
-                }
-                if (last) { void save(d, last); onToast(`Added ${plural(count, 'line')}.`); }
-                else onToast('Those lines are already on the page.');
-            })().catch(e => onToast(`Couldn't add the lines: ${String(e?.message ?? e)}`));
-            return;
-        }
         appending.current = count;
         editor.appendToSection(`add-${Date.now()}`, d, heading, parts.map(p => p.markdown).join('\n'), {unlessPresent: true});
-    }, [save, onToast]);
+    }, []);
 
     // Jots for the open day arrive through the editor so the next autosave can't write over them (capture.go).
     useEffect(() => on<{id: string; day: string; heading: string; list?: string; markdown: string; timed?: boolean}>('jot-into-page', j => {
@@ -289,6 +275,16 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
         setFull(true);
     }
 
+    // A past list page: its commits go in at their times, each in its list (they arrive as jots); today's come by themselves.
+    async function addCommits() {
+        try {
+            const n = await Notes.AddCommits(day);
+            onToast(n ? `Added ${plural(n, 'commit')}.` : 'No new commits for this day.');
+        } catch (e) {
+            onToast(String((e as Error)?.message ?? e));
+        }
+    }
+
     async function backToList() {
         const parsed = await Notes.LogParse(editor.getMarkdown()).catch(e => { onToast(`Couldn't go back to the list: ${String(e?.message ?? e)}`); return null; });
         if (!parsed) return; // the full editor stays, with its text
@@ -356,7 +352,7 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                 </section>
             )}
 
-            {page && !skipped && day <= today && (
+            {page && !skipped && day <= today && !listPage && (
                 <SuggestionsStrip day={day} pageMarkdown={() => editor.getMarkdown()} onInsert={insertUnder} onToast={onToast}/>
             )}
 
@@ -381,6 +377,8 @@ export function DayPage({day, today, minWords, active, folderError, reloadKey, o
                     {listPage && (full
                         ? <Button variant="ghost" size="sm" onClick={() => void backToList()}>Back to the list</Button>
                         : <Button variant="ghost" size="sm" onClick={() => void editWholePage()}>Edit whole page</Button>)}
+                    {listPage && !full && day < today && !page.notLocal &&
+                        <Button variant="ghost" size="sm" onClick={() => void addCommits()}>Add this day's commits</Button>}
                     {page.status !== 'logged' && day <= today && <Button variant="ghost" size="sm" onClick={() => onSkip([day])}>Skip day…</Button>}
                     {page.exists && <Button variant="ghost" size="sm" onClick={() => onRestore(day)}>Restore previous version…</Button>}
                 </footer>

@@ -183,6 +183,7 @@ export const Notes = {
         ]}, lists: {c1: 'Personal', s1: 'Personal', p1: 'Personal', c2: 'Work'}}),
     SuggestionLines: (bullets: {text: string}[]) => later(bullets.map(b => '- ' + b.text).join('\n')),
     AlreadyAdded: (bullets: {id: string; evidence: string}[], page: string) => later(bullets.filter(b => b.evidence && page.includes(b.evidence)).map(b => b.id)),
+    AddCommits: (_day: string) => later(0),
     SourceProjects: () => later([]),
     HotKeyStatus: () => later(''),
     ...settingsMock,
